@@ -18,8 +18,6 @@ public:
     bool init(String code);
     bool run();
     bool finalize();
-    
-    String get_str();
 
     Code_World();
 };

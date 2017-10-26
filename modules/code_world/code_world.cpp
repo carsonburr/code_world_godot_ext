@@ -2,14 +2,14 @@
 
 #include "code_world.h"
 
-
+long c_output;
 
 /***********************
    Embedded Functions
 ***********************/
 
 // test function. making sure python embedding works
-static PyObject* cw_get_n_by_three(PyObject* self, PyObject *args) {
+static PyObject* cw_get_n_by_three(PyObject* self, PyObject* args) {
    PyObject* result = NULL;
    PyObject* py_n;
    if (PyArg_ParseTuple(args, "i:get_n_by_three", &py_n)) {
@@ -17,6 +17,14 @@ static PyObject* cw_get_n_by_three(PyObject* self, PyObject *args) {
       result = PyLong_FromLong(c_n*3);
    }
    return result;
+}
+
+static void cw_set_output(PyObject* self, PyObject* args) {
+   PyObject* py_output;
+   if (PyArg_ParseTuple(args, "i:set_output", &py_output)) {
+      c_output = PyLong_AsLong(py_output);
+   }
+   return;
 }
 
 
@@ -27,6 +35,7 @@ static PyObject* cw_get_n_by_three(PyObject* self, PyObject *args) {
 
 static PyMethodDef cw_methods[] = {
    {"get_n_by_three", cw_get_n_by_three, METH_VARARGS, "Return n times three"},
+   {"set_output", cw_set_output, METH_VARARGS, "Set a variable within C++"},
    {NULL, NULL, 0, NULL}
 };
 
@@ -35,31 +44,73 @@ static PyModuleDef cw_module = {
    NULL, NULL, NULL, NULL
 };
 
+static PyObject* PyInit_cw_emb() {
+   return PyModule_Create(&cw_module);
+}
+
+
+
+/**********************
+   Private Functions
+**********************/
+
 
 
 /*********************
    Public Functions
 *********************/
 
+PyObject* py_run_func;
+PyObject* py_module;
+
 bool Code_World::init(String code) {
-   const char* mod_name = "cw_ex";
-   const char* cstr_code = code.c_str();
-   PyObject* py_mod = PyModule_New(MyModuleName);
    
-   // set properties of the new module object
-   PyModule_AddStringConstant(py_mod, "__file__", "");
-   PyObject* localDict = PyModule_GetDict(py_mod);
-   PyObject* builtins = PyEval_GetBuiltins();
-   PyDict_SetItemString(localDict, "__builtins__", builtins);
+   // ***** temp init *****
+   c_output = 0;
    
-   // define code in the newly created module
-   PyObject* pyValue = PyRun_String(cstr_code, Py_file_input, localDict, localDict);
+   PyImport_AppendInittab("cw_emb", &PyInit_cw_emb);
    
+   Py_Initialize();
+   
+   PyObject* py_code = PyUnicode_FromString(code.ascii().get_data());
+   py_module = PyImport_Import(py_code);
+   Py_DECREF(py_code);
+   
+   if (py_module == NULL) {
+      PyErr_Print();
+      // handle error
+      return false;
+   }
+   
+   py_run_func = PyObject_GetAttrString(py_module, "run");
+   
+   if (!py_run_func || !PyCallable_Check(py_run_func)) {
+      if (PyErr_Occurred()) {
+         PyErr_Print();
+      }
+      // handle error
+      Py_XDECREF(py_run_func);
+      Py_DECREF(py_module);
+      return false;
+   }
+   
+   return true;
 }
 
 bool Code_World::run() {
-   char* cstr_code = code.c_str();
-   Py_Initailize();
-   PyRun_SimpleString(cstr_code);
-   Py_FinalizeEx();
+   PyObject_CallObject(py_run_func, NULL);
+   
+   if (PyErr_Occurred()) {
+      PyErr_Print();
+      return false;
+   }
+   
+   return true;
+}
+
+bool Code_World::finalize() {
+   Py_DECREF(py_run_func);
+   Py_DECREF(py_module);
+   Py_Finalize();
+   return true;
 }
