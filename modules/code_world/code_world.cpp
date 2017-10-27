@@ -1,8 +1,7 @@
 /* code_world.cpp */
 
 #include "code_world.h"
-
-long c_output;
+static int c_output;
 
 /***********************
    Embedded Functions
@@ -19,12 +18,12 @@ static PyObject* cw_get_n_by_three(PyObject* self, PyObject* args) {
    return result;
 }
 
-static void cw_set_output(PyObject* self, PyObject* args) {
+static PyObject* cw_set_output(PyObject* self, PyObject* args) {
    PyObject* py_output;
    if (PyArg_ParseTuple(args, "i:set_output", &py_output)) {
-      c_output = PyLong_AsLong(py_output);
+      c_output = (int)PyLong_AsLong(py_output);
    }
-   return;
+   return NULL;
 }
 
 
@@ -60,9 +59,6 @@ static PyObject* PyInit_cw_emb() {
    Public Functions
 *********************/
 
-PyObject* py_run_func;
-PyObject* py_module;
-
 bool Code_World::init(String code) {
    
    // ***** temp init *****
@@ -93,11 +89,16 @@ bool Code_World::init(String code) {
       Py_DECREF(py_module);
       return false;
    }
-   
+   initialized = true;
    return true;
 }
 
 bool Code_World::run() {
+   if (!initialized) {
+      // handle error
+      return false;
+   }
+   
    PyObject_CallObject(py_run_func, NULL);
    
    if (PyErr_Occurred()) {
@@ -109,8 +110,24 @@ bool Code_World::run() {
 }
 
 bool Code_World::finalize() {
+   if (!initialized) {
+      //handle error
+      return false;
+   }
+   
    Py_DECREF(py_run_func);
    Py_DECREF(py_module);
    Py_Finalize();
+   initialized = false;
    return true;
+}
+
+void Code_World::_bind_methods() {
+   ClassDB::bind_method("init",&Code_World::init);
+   ClassDB::bind_method("run",&Code_World::run);
+   ClassDB::bind_method("finalize",&Code_World::finalize);
+}
+
+Code_World::Code_World() {
+   initialized = false;
 }

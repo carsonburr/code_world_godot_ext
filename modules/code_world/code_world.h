@@ -3,23 +3,24 @@
 #define CODE_WORLD_H
 
 #include "reference.h"
-#include "ustring.h"
 #include "Python.h"
 
 class Code_World : public Reference {
-    OBJ_TYPE(Code_World,Reference);
-
-    String test_str;
+   GDCLASS(Code_World,Reference);
+   
+   bool initialized;
+   PyObject* py_run_func;
+   PyObject* py_module;
 
 protected:
-    static void _bind_methods();
+   static void _bind_methods();
 
 public:
-    bool init(String code);
-    bool run();
-    bool finalize();
+   bool init(String code);
+   bool run();
+   bool finalize();
 
-    Code_World();
+   Code_World();
 };
 
 #endif
