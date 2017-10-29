@@ -19,6 +19,8 @@ public:
    bool init(String code);
    bool run();
    bool finalize();
+   
+   int get_output();
 
    Code_World();
 };

@@ -122,12 +122,20 @@ bool Code_World::finalize() {
    return true;
 }
 
+int Code_World::get_output() {
+   return c_output;
+}
+
 void Code_World::_bind_methods() {
-   ClassDB::bind_method("init",&Code_World::init);
-   ClassDB::bind_method("run",&Code_World::run);
-   ClassDB::bind_method("finalize",&Code_World::finalize);
+   ClassDB::bind_method("init", &Code_World::init);
+   ClassDB::bind_method("run", &Code_World::run);
+   ClassDB::bind_method("finalize", &Code_World::finalize);
+   ClassDB::bind_method("get_output", &Code_World::get_output);
 }
 
 Code_World::Code_World() {
+   // ***** temp init *****
+   c_output = 0;
+   
    initialized = false;
 }

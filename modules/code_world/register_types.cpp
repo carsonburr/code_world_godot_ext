@@ -1,6 +1,6 @@
 /* register_types.cpp */
 
-#include "register_class.h"
+#include "register_types.h"
 #include "class_db.h"
 #include "code_world.h"
 

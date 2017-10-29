@@ -1,6 +1,21 @@
 # SCsub
 Import('env')
 
+sources = [
+	"register_class.cpp",
+	"code_world.cpp"
+]
+
 module_env = env.Clone()
-module_env.add_source_files(env.modules_sources,"*.cpp")
-module_env.Append(CXXFLAGS=['/I\Python36\include'])
+module_env.Append(CXXFLAGS=['/I\\Python36\\include\\'])
+
+if ARGUMENTS.get('code_world_shared', 'no') == 'yes':
+	module_env['LIBS'] = []
+
+	shared_lib = module_env.SharedLibrary(target='#bin/code_world', source = sources)
+
+	shared_lib_shim = shared_lib[0].name.rsplit('.', 1)[0]
+	env.Append(LIBS=[shared_lib_shim])
+	env.Append(LIBPATH=['#bin'])
+else:
+	module_env.add_source_files(env.modules_sources, sources)
