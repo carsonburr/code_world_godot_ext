@@ -35,7 +35,11 @@
 #include "servers/physics/physics_server_sw.h"
 #include "servers/visual/visual_server_raster.h"
 #include "servers/visual/visual_server_wrap_mt.h"
+
+#ifdef HAVE_MNTENT
 #include <mntent.h>
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -235,7 +239,7 @@ void OS_X11::initialize(const VideoMode &p_desired, int p_video_driver, int p_au
 
 // maybe contextgl wants to be in charge of creating the window
 //print_line("def videomode "+itos(current_videomode.width)+","+itos(current_videomode.height));
-#if defined(OPENGL_ENABLED) || defined(LEGACYGL_ENABLED)
+#if defined(OPENGL_ENABLED)
 
 	context_gl = memnew(ContextGL_X11(x11_display, x11_window, current_videomode, true));
 	context_gl->initialize();
@@ -533,7 +537,7 @@ void OS_X11::finalize() {
 	XUnmapWindow(x11_display, x11_window);
 	XDestroyWindow(x11_display, x11_window);
 
-#if defined(OPENGL_ENABLED) || defined(LEGACYGL_ENABLED)
+#if defined(OPENGL_ENABLED)
 	memdelete(context_gl);
 #endif
 	for (int i = 0; i < CURSOR_MAX; i++) {
@@ -1939,7 +1943,7 @@ Error OS_X11::shell_open(String p_uri) {
 	Error ok;
 	List<String> args;
 	args.push_back(p_uri);
-	ok = execute("/usr/bin/xdg-open", args, false);
+	ok = execute("xdg-open", args, false);
 	if (ok == OK)
 		return OK;
 	ok = execute("gnome-open", args, false);
@@ -2003,7 +2007,7 @@ String OS_X11::get_system_dir(SystemDir p_dir) const {
 	String pipe;
 	List<String> arg;
 	arg.push_back(xdgparam);
-	Error err = const_cast<OS_X11 *>(this)->execute("/usr/bin/xdg-user-dir", arg, true, NULL, &pipe);
+	Error err = const_cast<OS_X11 *>(this)->execute("xdg-user-dir", arg, true, NULL, &pipe);
 	if (err != OK)
 		return ".";
 	return pipe.strip_edges();
@@ -2053,7 +2057,7 @@ void OS_X11::alert(const String &p_alert, const String &p_title) {
 	args.push_back(p_title);
 	args.push_back(p_alert);
 
-	execute("/usr/bin/xmessage", args, true);
+	execute("xmessage", args, true);
 }
 
 void OS_X11::set_icon(const Ref<Image> &p_icon) {
@@ -2182,6 +2186,7 @@ static String get_mountpoint(const String &p_path) {
 		return "";
 	}
 
+#ifdef HAVE_MNTENT
 	dev_t dev = s.st_dev;
 	FILE *fd = setmntent("/proc/mounts", "r");
 	if (!fd) {
@@ -2199,6 +2204,7 @@ static String get_mountpoint(const String &p_path) {
 	}
 
 	endmntent(fd);
+#endif
 	return "";
 }
 
@@ -2236,12 +2242,12 @@ Error OS_X11::move_to_trash(const String &p_path) {
 	List<String> args;
 	args.push_back("-p");
 	args.push_back(trashcan);
-	Error err = execute("/bin/mkdir", args, true);
+	Error err = execute("mkdir", args, true);
 	if (err == OK) {
 		List<String> args2;
 		args2.push_back(p_path);
 		args2.push_back(trashcan);
-		err = execute("/bin/mv", args2, true);
+		err = execute("mv", args2, true);
 	}
 
 	return err;

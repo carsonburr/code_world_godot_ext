@@ -2,7 +2,7 @@
 Import('env')
 
 sources = [
-	"register_class.cpp",
+	"register_types.cpp",
 	"code_world.cpp"
 ]
 

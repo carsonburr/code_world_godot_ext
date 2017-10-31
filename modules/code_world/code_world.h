@@ -4,6 +4,8 @@
 
 #include "reference.h"
 #include "Python.h"
+#include <stdio.h>
+#include <windows.h>
 
 class Code_World : public Reference {
    GDCLASS(Code_World,Reference);

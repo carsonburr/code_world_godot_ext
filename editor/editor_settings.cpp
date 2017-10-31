@@ -632,6 +632,7 @@ void EditorSettings::_load_defaults(Ref<ConfigFile> p_extra_config) {
 	_initial_set("text_editor/highlighting/syntax_highlighting", true);
 
 	_initial_set("text_editor/highlighting/highlight_all_occurrences", true);
+	_initial_set("text_editor/highlighting/highlight_current_line", true);
 	_initial_set("text_editor/cursor/scroll_past_end_of_file", false);
 
 	_initial_set("text_editor/indent/type", 0);
@@ -705,7 +706,7 @@ void EditorSettings::_load_defaults(Ref<ConfigFile> p_extra_config) {
 	_initial_set("editors/3d/navigation_feel/orbit_sensitivity", 0.4);
 	hints["editors/3d/navigation_feel/orbit_sensitivity"] = PropertyInfo(Variant::REAL, "editors/3d/navigation_feel/orbit_sensitivity", PROPERTY_HINT_RANGE, "0.0, 2, 0.01");
 
-	_initial_set("editors/3d/navigation_feel/orbit_inertia", 0.15);
+	_initial_set("editors/3d/navigation_feel/orbit_inertia", 0.05);
 	hints["editors/3d/navigation_feel/orbit_inertia"] = PropertyInfo(Variant::REAL, "editors/3d/navigation_feel/orbit_inertia", PROPERTY_HINT_RANGE, "0.0, 1, 0.01");
 	_initial_set("editors/3d/navigation_feel/translation_inertia", 0.15);
 	hints["editors/3d/navigation_feel/translation_inertia"] = PropertyInfo(Variant::REAL, "editors/3d/navigation_feel/translation_inertia", PROPERTY_HINT_RANGE, "0.0, 1, 0.01");
@@ -719,12 +720,13 @@ void EditorSettings::_load_defaults(Ref<ConfigFile> p_extra_config) {
 	// freelook
 	_initial_set("editors/3d/freelook/freelook_inertia", 0.1);
 	hints["editors/3d/freelook/freelook_inertia"] = PropertyInfo(Variant::REAL, "editors/3d/freelook/freelook_inertia", PROPERTY_HINT_RANGE, "0.0, 1, 0.01");
-	_initial_set("editors/3d/freelook/freelook_base_speed", 0.1);
+	_initial_set("editors/3d/freelook/freelook_base_speed", 5.0);
 	hints["editors/3d/freelook/freelook_base_speed"] = PropertyInfo(Variant::REAL, "editors/3d/freelook/freelook_base_speed", PROPERTY_HINT_RANGE, "0.0, 10, 0.01");
 	_initial_set("editors/3d/freelook/freelook_activation_modifier", 0);
 	hints["editors/3d/freelook/freelook_activation_modifier"] = PropertyInfo(Variant::INT, "editors/3d/freelook/freelook_activation_modifier", PROPERTY_HINT_ENUM, "None,Shift,Alt,Meta,Ctrl");
 	_initial_set("editors/3d/freelook/freelook_modifier_speed_factor", 3.0);
 	hints["editors/3d/freelook/freelook_modifier_speed_factor"] = PropertyInfo(Variant::REAL, "editors/3d/freelook/freelook_modifier_speed_factor", PROPERTY_HINT_RANGE, "0.0, 10.0, 0.1");
+	_initial_set("editors/3d/freelook/freelook_speed_zoom_link", false);
 
 	_initial_set("editors/2d/bone_width", 5);
 	_initial_set("editors/2d/bone_color1", Color(1.0, 1.0, 1.0, 0.9));

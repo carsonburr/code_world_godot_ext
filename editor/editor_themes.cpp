@@ -233,7 +233,6 @@ void editor_register_and_generate_icons(Ref<Theme> p_theme, bool p_dark_theme = 
 	clock_t end_time = clock();
 
 	double time_d = (double)(end_time - begin_time) / CLOCKS_PER_SEC;
-	print_line("SVG_GENERATION TIME: " + rtos(time_d));
 #else
 	print_line("Sorry no icons for you");
 #endif
@@ -350,6 +349,7 @@ Ref<Theme> create_editor_theme(const Ref<Theme> p_theme) {
 	theme->set_color("contrast_color_2", "Editor", contrast_color_2);
 
 	theme->set_color("font_color", "Editor", font_color);
+	theme->set_color("highlighted_font_color", "Editor", font_color_hl);
 	theme->set_color("disabled_font_color", "Editor", font_color_disabled);
 
 	theme->set_color("mono_color", "Editor", mono_color);
@@ -391,7 +391,7 @@ Ref<Theme> create_editor_theme(const Ref<Theme> p_theme) {
 		editor_register_and_generate_icons(theme, dark_theme, thumb_size);
 	}
 	// thumbnail size has changed, so we regenerate the medium sizes
-	if (p_theme != NULL && fabs(p_theme->get_constant("thumb_size", "Editor") - thumb_size) > 0.00001) {
+	if (p_theme != NULL && fabs((double)p_theme->get_constant("thumb_size", "Editor") - thumb_size) > 0.00001) {
 		editor_register_and_generate_icons(p_theme, dark_theme, thumb_size, true);
 	}
 
@@ -971,8 +971,8 @@ Ref<Theme> create_editor_theme(const Ref<Theme> p_theme) {
 	const Color dim_color = Color(font_color.r, font_color.g, font_color.b, 0.5);
 
 	const float mono_value = mono_color.r;
-	const Color alpha1 = Color(mono_value, mono_value, mono_value, 0.1);
-	const Color alpha2 = Color(mono_value, mono_value, mono_value, 0.3);
+	const Color alpha1 = Color(mono_value, mono_value, mono_value, 0.07);
+	const Color alpha2 = Color(mono_value, mono_value, mono_value, 0.14);
 	const Color alpha3 = Color(mono_value, mono_value, mono_value, 0.5);
 	const Color alpha4 = Color(mono_value, mono_value, mono_value, 0.7);
 
@@ -997,7 +997,7 @@ Ref<Theme> create_editor_theme(const Ref<Theme> p_theme) {
 	const Color caret_color = mono_color;
 	const Color caret_background_color = mono_color.inverted();
 	const Color text_selected_color = dark_color_3;
-	const Color selection_color = alpha3;
+	const Color selection_color = alpha2;
 	const Color brace_mismatch_color = error_color;
 	const Color current_line_color = alpha1;
 	const Color line_length_guideline_color = warning_color;

@@ -1169,6 +1169,8 @@ void ScriptEditor::_notification(int p_what) {
 
 			script_forward->set_icon(get_icon("Forward", "EditorIcons"));
 			script_back->set_icon(get_icon("Back", "EditorIcons"));
+
+			recent_scripts->set_as_minsize();
 		} break;
 
 		default:
@@ -1409,8 +1411,10 @@ void ScriptEditor::_update_members_overview() {
 void ScriptEditor::_update_help_overview_visibility() {
 
 	int selected = tab_container->get_current_tab();
-	if (selected < 0 || selected >= tab_container->get_child_count())
+	if (selected < 0 || selected >= tab_container->get_child_count()) {
+		help_overview->set_visible(false);
 		return;
+	}
 
 	Node *current = tab_container->get_child(tab_container->get_current_tab());
 	EditorHelp *se = Object::cast_to<EditorHelp>(current);
@@ -1427,6 +1431,7 @@ void ScriptEditor::_update_help_overview_visibility() {
 }
 
 void ScriptEditor::_update_help_overview() {
+	help_overview->clear();
 
 	int selected = tab_container->get_current_tab();
 	if (selected < 0 || selected >= tab_container->get_child_count())
@@ -1438,16 +1443,11 @@ void ScriptEditor::_update_help_overview() {
 		return;
 	}
 
-	help_overview->clear();
-
 	Vector<Pair<String, int> > sections = se->get_sections();
 	for (int i = 0; i < sections.size(); i++) {
 		help_overview->add_item(sections[i].first);
 		help_overview->set_item_metadata(i, sections[i].second);
 	}
-}
-
-void _help_overview_selected(int p_idx) {
 }
 
 void ScriptEditor::_update_script_colors() {
@@ -1595,6 +1595,8 @@ void ScriptEditor::_update_script_names() {
 
 	_update_members_overview();
 	_update_help_overview();
+	_update_members_overview_visibility();
+	_update_help_overview_visibility();
 	_update_script_colors();
 }
 

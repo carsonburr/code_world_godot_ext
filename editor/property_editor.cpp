@@ -376,7 +376,7 @@ bool CustomPropertyEditor::edit(Object *p_owner, const String &p_name, Variant::
 			if (hint == PROPERTY_HINT_RANGE) {
 
 				int c = hint_text.get_slice_count(",");
-				float min = 0, max = 100, step = 1;
+				float min = 0, max = 100, step = type == Variant::REAL ? .01 : 1;
 				if (c >= 1) {
 
 					if (!hint_text.get_slice(",", 0).empty())
@@ -1767,18 +1767,18 @@ void CustomPropertyEditor::_focus_exit() {
 void CustomPropertyEditor::config_action_buttons(const List<String> &p_strings) {
 
 	int w = 100;
-	int h = 18;
+	int h = 60;
 	int m = 5;
 
-	set_size(Size2(w, m * 2 + (h + m) * p_strings.size()));
+	set_size(Size2((m * 2 + w) * p_strings.size() - m, h));
 
 	for (int i = 0; i < MAX_ACTION_BUTTONS; i++) {
 
 		if (i < p_strings.size()) {
 			action_buttons[i]->show();
 			action_buttons[i]->set_text(p_strings[i]);
-			action_buttons[i]->set_position(Point2(m, m + i * (h + m)));
-			action_buttons[i]->set_size(Size2(w - m * 2, h));
+			action_buttons[i]->set_position(Point2(m + i * (w + m), m));
+			action_buttons[i]->set_size(Size2(w, h - m * 2));
 			action_buttons[i]->set_flat(true);
 		} else {
 			action_buttons[i]->hide();
@@ -1788,13 +1788,14 @@ void CustomPropertyEditor::config_action_buttons(const List<String> &p_strings) 
 
 void CustomPropertyEditor::config_value_editors(int p_amount, int p_columns, int p_label_w, const List<String> &p_strings) {
 
-	int w = 80;
-	int h = 20;
-	int m = 10;
+	int cell_width = 80;
+	int cell_height = 20;
+	int cell_margin = 10;
+	int hor_spacing = 8; // Spacing between labels and their values
 
 	int rows = ((p_amount - 1) / p_columns) + 1;
 
-	set_size(Size2(m * (1 + p_columns) + (w + p_label_w) * p_columns, m * (1 + rows) + h * rows));
+	set_size(Size2(cell_margin * (1 + p_columns) + (cell_width + p_label_w + hor_spacing) * p_columns, cell_margin * (1 + rows) + cell_height * rows));
 
 	for (int i = 0; i < MAX_VALUE_EDITORS; i++) {
 
@@ -1805,9 +1806,9 @@ void CustomPropertyEditor::config_value_editors(int p_amount, int p_columns, int
 			value_editor[i]->show();
 			value_label[i]->show();
 			value_label[i]->set_text(i < p_strings.size() ? p_strings[i] : String(""));
-			value_editor[i]->set_position(Point2(m + p_label_w + c * (w + m + p_label_w), m + r * (h + m)));
-			value_editor[i]->set_size(Size2(w, h));
-			value_label[i]->set_position(Point2(m + c * (w + m + p_label_w), m + r * (h + m)));
+			value_editor[i]->set_position(Point2(cell_margin + p_label_w + hor_spacing + c * (cell_width + cell_margin + p_label_w + hor_spacing), cell_margin + r * (cell_height + cell_margin)));
+			value_editor[i]->set_size(Size2(cell_width, cell_height));
+			value_label[i]->set_position(Point2(cell_margin + c * (cell_width + cell_margin + p_label_w + hor_spacing), cell_margin + r * (cell_height + cell_margin)));
 			value_editor[i]->set_editable(!read_only);
 		} else {
 			value_editor[i]->hide();
@@ -3032,7 +3033,7 @@ void PropertyEditor::update_tree() {
 				if (p.hint == PROPERTY_HINT_SPRITE_FRAME || p.hint == PROPERTY_HINT_RANGE || p.hint == PROPERTY_HINT_EXP_RANGE) {
 
 					int c = p.hint_string.get_slice_count(",");
-					float min = 0, max = 100, step = 1;
+					float min = 0, max = 100, step = p.type == Variant::REAL ? .01 : 1;
 					if (c >= 1) {
 
 						min = p.hint_string.get_slice(",", 0).to_double();

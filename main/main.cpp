@@ -45,6 +45,7 @@
 #include "input_map.h"
 #include "io/resource_loader.h"
 #include "scene/main/scene_tree.h"
+#include "servers/arvr_server.h"
 #include "servers/audio_server.h"
 
 #include "io/resource_loader.h"
@@ -82,6 +83,7 @@ static InputMap *input_map = NULL;
 static bool _start_success = false;
 static ScriptDebugger *script_debugger = NULL;
 AudioServer *audio_server = NULL;
+ARVRServer *arvr_server = NULL;
 
 static MessageQueue *message_queue = NULL;
 static Performance *performance = NULL;
@@ -939,10 +941,13 @@ Error Main::setup2(Thread::ID p_main_tid_override) {
 		OS::get_singleton()->set_window_position(init_custom_pos);
 	}
 
-	//right moment to create and initialize the audio server
+	// right moment to create and initialize the audio server
 
 	audio_server = memnew(AudioServer);
 	audio_server->init();
+
+	// also init our arvr_server from here
+	arvr_server = memnew(ARVRServer);
 
 	OS::get_singleton()->set_use_vsync(use_vsync);
 
@@ -1345,7 +1350,7 @@ bool Main::start() {
 			String stretch_mode = GLOBAL_DEF("display/window/stretch/mode", "disabled");
 			String stretch_aspect = GLOBAL_DEF("display/window/stretch/aspect", "ignore");
 			Size2i stretch_size = Size2(GLOBAL_DEF("display/window/size/width", 0), GLOBAL_DEF("display/window/size/height", 0));
-			int stretch_shrink = GLOBAL_DEF("display/window/stretch/shrink", 1);
+			real_t stretch_shrink = GLOBAL_DEF("display/window/stretch/shrink", 1.0f);
 
 			SceneTree::StretchMode sml_sm = SceneTree::STRETCH_MODE_DISABLED;
 			if (stretch_mode == "2d")
@@ -1628,7 +1633,7 @@ bool Main::iteration() {
 
 	while (time_accum > frame_slice) {
 
-		uint64_t fixed_begin = OS::get_singleton()->get_ticks_usec();
+		uint64_t physics_begin = OS::get_singleton()->get_ticks_usec();
 
 		PhysicsServer::get_singleton()->sync();
 		PhysicsServer::get_singleton()->flush_queries();
@@ -1651,8 +1656,8 @@ bool Main::iteration() {
 		time_accum -= frame_slice;
 		message_queue->flush();
 
-		physics_process_ticks = MAX(physics_process_ticks, OS::get_singleton()->get_ticks_usec() - fixed_begin); // keep the largest one for reference
-		physics_process_max = MAX(OS::get_singleton()->get_ticks_usec() - fixed_begin, physics_process_max);
+		physics_process_ticks = MAX(physics_process_ticks, OS::get_singleton()->get_ticks_usec() - physics_begin); // keep the largest one for reference
+		physics_process_max = MAX(OS::get_singleton()->get_ticks_usec() - physics_begin, physics_process_max);
 		iters++;
 		Engine::get_singleton()->_physics_frames++;
 	}
@@ -1773,6 +1778,11 @@ void Main::cleanup() {
 	if (audio_server) {
 		audio_server->finish();
 		memdelete(audio_server);
+	}
+
+	if (arvr_server) {
+		// cleanup now before we pull the rug from underneath...
+		memdelete(arvr_server);
 	}
 
 	unregister_driver_types();

@@ -1,6 +1,7 @@
 /* code_world.cpp */
 
 #include "code_world.h"
+
 static int c_output;
 
 /***********************
@@ -9,19 +10,19 @@ static int c_output;
 
 // test function. making sure python embedding works
 static PyObject* cw_get_n_by_three(PyObject* self, PyObject* args) {
-   PyObject* result = NULL;
-   PyObject* py_n;
+   int py_n;
    if (PyArg_ParseTuple(args, "i:get_n_by_three", &py_n)) {
-      long c_n = PyLong_AsLong(py_n);
-      result = PyLong_FromLong(c_n*3);
+      printf("py_n is %d", py_n);
+      return PyLong_FromLong(py_n*3);
    }
-   return result;
+   return NULL;
 }
 
 static PyObject* cw_set_output(PyObject* self, PyObject* args) {
-   PyObject* py_output;
+   int py_output;
    if (PyArg_ParseTuple(args, "i:set_output", &py_output)) {
-      c_output = (int)PyLong_AsLong(py_output);
+      c_output = py_output;
+      Py_RETURN_TRUE;
    }
    return NULL;
 }
@@ -49,12 +50,6 @@ static PyObject* PyInit_cw_emb() {
 
 
 
-/**********************
-   Private Functions
-**********************/
-
-
-
 /*********************
    Public Functions
 *********************/
@@ -64,11 +59,21 @@ bool Code_World::init(String code) {
    // ***** temp init *****
    c_output = 0;
    
+   // save file from code
+   FILE* py_file = fopen("user_code.py", "w");
+   fputs(code.ascii().get_data(), py_file);
+   fclose(py_file);
+   
+   // import C++ module
    PyImport_AppendInittab("cw_emb", &PyInit_cw_emb);
    
    Py_Initialize();
    
-   PyObject* py_code = PyUnicode_FromString(code.ascii().get_data());
+   PyRun_SimpleString("import sys\n"
+                      "sys.path.append(\".\")");
+   
+   // import user module
+   PyObject* py_code = PyUnicode_DecodeFSDefault("user_code");
    py_module = PyImport_Import(py_code);
    Py_DECREF(py_code);
    

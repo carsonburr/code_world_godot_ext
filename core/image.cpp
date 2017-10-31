@@ -1061,7 +1061,6 @@ Error Image::generate_mipmaps() {
 	int size = _get_dst_image_size(width, height, format, mmcount);
 
 	data.resize(size);
-	print_line("to gen mipmaps w " + itos(width) + " h " + itos(height) + " format " + get_format_name(format) + " mipmaps " + itos(mmcount) + " new size is: " + itos(size));
 
 	PoolVector<uint8_t>::Write wp = data.write();
 
@@ -2474,6 +2473,7 @@ void Image::fix_alpha_edges() {
 					if (rp[3] < alpha_threshold)
 						continue;
 
+					closest_dist = dist;
 					closest_color[0] = rp[0];
 					closest_color[1] = rp[1];
 					closest_color[2] = rp[2];
