@@ -1,6 +1,6 @@
 /* interpreter.h */
-#ifndef CODE_WORLD_H
-#define CODE_WORLD_H
+#ifndef INTERPRETER_H
+#define INTERPRETER_H
 
 #include "reference.h"
 #include "Python.h"
