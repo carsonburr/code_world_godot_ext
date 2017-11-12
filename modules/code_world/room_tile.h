@@ -10,7 +10,7 @@ class Room_Tile : public Reference {
    String img_res;
    int pos_x, pos_y;
    int type;
-   Entity ent;
+   // Entity ent;
 
 protected:
    static void _bind_methods();

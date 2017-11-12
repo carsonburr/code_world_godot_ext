@@ -3,7 +3,11 @@ Import('env')
 
 sources = [
 	"register_types.cpp",
-	"interpreter.cpp"
+	"interpreter.cpp",
+	"room_map.cpp",
+	"room_tile.cpp",
+	"entity.cpp",
+	"floor_map.cpp"
 ]
 
 module_env = env.Clone()
