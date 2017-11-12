@@ -1,6 +1,6 @@
-/* code_world.cpp */
+/* interpreter.cpp */
 
-#include "code_world.h"
+#include "interpreter.h"
 
 static int c_output;
 
@@ -54,7 +54,7 @@ static PyObject* PyInit_cw_emb() {
    Public Functions
 *********************/
 
-bool Code_World::init(String code) {
+bool Interpreter::init(String code) {
    
    // ***** temp init *****
    c_output = 0;
@@ -98,7 +98,7 @@ bool Code_World::init(String code) {
    return true;
 }
 
-bool Code_World::run() {
+bool Interpreter::run() {
    if (!initialized) {
       // handle error
       return false;
@@ -114,7 +114,7 @@ bool Code_World::run() {
    return true;
 }
 
-bool Code_World::finalize() {
+bool Interpreter::finalize() {
    if (!initialized) {
       //handle error
       return false;
@@ -127,18 +127,18 @@ bool Code_World::finalize() {
    return true;
 }
 
-int Code_World::get_output() {
+int Interpreter::get_output() {
    return c_output;
 }
 
-void Code_World::_bind_methods() {
-   ClassDB::bind_method("init", &Code_World::init);
-   ClassDB::bind_method("run", &Code_World::run);
-   ClassDB::bind_method("finalize", &Code_World::finalize);
-   ClassDB::bind_method("get_output", &Code_World::get_output);
+void Interpreter::_bind_methods() {
+   ClassDB::bind_method("init", &Interpreter::init);
+   ClassDB::bind_method("run", &Interpreter::run);
+   ClassDB::bind_method("finalize", &Interpreter::finalize);
+   ClassDB::bind_method("get_output", &Interpreter::get_output);
 }
 
-Code_World::Code_World() {
+Interpreter::Interpreter() {
    // ***** temp init *****
    c_output = 0;
    

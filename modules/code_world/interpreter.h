@@ -1,4 +1,4 @@
-/* code_world.h */
+/* interpreter.h */
 #ifndef CODE_WORLD_H
 #define CODE_WORLD_H
 
@@ -7,8 +7,8 @@
 #include <stdio.h>
 #include <windows.h>
 
-class Code_World : public Reference {
-   GDCLASS(Code_World,Reference);
+class Interpreter : public Reference {
+   GDCLASS(Interpreter,Reference);
    
    bool initialized;
    PyObject* py_run_func;
@@ -24,7 +24,7 @@ public:
    
    int get_output();
 
-   Code_World();
+   Interpreter();
 };
 
 #endif

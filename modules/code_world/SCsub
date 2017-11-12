@@ -3,7 +3,7 @@ Import('env')
 
 sources = [
 	"register_types.cpp",
-	"code_world.cpp"
+	"interpreter.cpp"
 ]
 
 module_env = env.Clone()
