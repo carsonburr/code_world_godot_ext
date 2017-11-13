@@ -5,7 +5,7 @@
 #include "reference.h"
 
 class Entity : public Reference {
-   GDCLASS(Entity,Reference);
+   OBJ_TYPE(Entity,Reference);
 
 protected:
    static void _bind_methods();

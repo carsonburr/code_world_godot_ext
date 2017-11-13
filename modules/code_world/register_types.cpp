@@ -1,7 +1,7 @@
 /* register_types.cpp */
 
 #include "register_types.h"
-#include "class_db.h"
+#include "object_type_db.h"
 #include "interpreter.h"
 #include "room_map.h"
 #include "room_tile.h"
@@ -10,11 +10,11 @@
 
 void register_code_world_types() {
    
-   ClassDB::register_class<Interpreter>();
-   ClassDB::register_class<Room_Map>();
-   ClassDB::register_class<Room_Tile>();
-   ClassDB::register_class<Entity>();
-   ClassDB::register_class<Floor_Map>();
+   ObjectTypeDB::register_type<Interpreter>();
+   ObjectTypeDB::register_type<Room_Map>();
+   ObjectTypeDB::register_type<Room_Tile>();
+   ObjectTypeDB::register_type<Entity>();
+   ObjectTypeDB::register_type<Floor_Map>();
 }
 
 void unregister_code_world_types() {

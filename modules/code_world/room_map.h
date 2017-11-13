@@ -5,7 +5,7 @@
 #include "reference.h"
 
 class Room_Map : public Reference {
-   GDCLASS(Room_Map,Reference);
+   OBJ_TYPE(Room_Map,Reference);
 
 protected:
    static void _bind_methods();

@@ -8,7 +8,7 @@
 #include <windows.h>
 
 class Interpreter : public Reference {
-   GDCLASS(Interpreter,Reference);
+   OBJ_TYPE(Interpreter,Reference);
    
    bool initialized;
    PyObject* py_run_func;

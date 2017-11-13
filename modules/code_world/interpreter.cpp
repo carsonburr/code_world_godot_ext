@@ -132,10 +132,10 @@ int Interpreter::get_output() {
 }
 
 void Interpreter::_bind_methods() {
-   ClassDB::bind_method("init", &Interpreter::init);
-   ClassDB::bind_method("run", &Interpreter::run);
-   ClassDB::bind_method("finalize", &Interpreter::finalize);
-   ClassDB::bind_method("get_output", &Interpreter::get_output);
+   ObjectTypeDB::bind_method("init", &Interpreter::init);
+   ObjectTypeDB::bind_method("run", &Interpreter::run);
+   ObjectTypeDB::bind_method("finalize", &Interpreter::finalize);
+   ObjectTypeDB::bind_method("get_output", &Interpreter::get_output);
 }
 
 Interpreter::Interpreter() {

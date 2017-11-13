@@ -5,7 +5,7 @@
 #include "reference.h"
 
 class Room_Tile : public Reference {
-   GDCLASS(Room_Tile,Reference);
+   OBJ_TYPE(Room_Tile,Reference);
    
    String img_res;
    int pos_x, pos_y;
