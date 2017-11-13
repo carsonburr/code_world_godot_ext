@@ -34,7 +34,7 @@
 
 class PlaneShape : public Shape {
 
-	GDCLASS(PlaneShape, Shape);
+	OBJ_TYPE(PlaneShape, Shape);
 	Plane plane;
 
 protected:

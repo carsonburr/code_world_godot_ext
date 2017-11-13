@@ -36,14 +36,14 @@
 class Viewport;
 class CanvasLayer : public Node {
 
-	GDCLASS(CanvasLayer, Node);
+	OBJ_TYPE(CanvasLayer, Node);
 
 	bool locrotscale_dirty;
 	Vector2 ofs;
 	Size2 scale;
 	real_t rot;
 	int layer;
-	Transform2D transform;
+	Matrix32 transform;
 	Ref<World2D> canvas;
 
 	ObjectID custom_viewport_id; // to check validity
@@ -52,10 +52,8 @@ class CanvasLayer : public Node {
 	RID viewport;
 	Viewport *vp;
 
-	int sort_index;
-
 	// Deprecated, should be removed in a future version.
-	void _set_rotationd(real_t p_degrees);
+	void _set_rotationd(real_t p_rotation);
 	real_t _get_rotationd() const;
 
 	void _update_xform();
@@ -69,8 +67,8 @@ public:
 	void set_layer(int p_xform);
 	int get_layer() const;
 
-	void set_transform(const Transform2D &p_xform);
-	Transform2D get_transform() const;
+	void set_transform(const Matrix32 &p_xform);
+	Matrix32 get_transform() const;
 
 	void set_offset(const Vector2 &p_offset);
 	Vector2 get_offset() const;
@@ -92,9 +90,6 @@ public:
 
 	void set_custom_viewport(Node *p_viewport);
 	Node *get_custom_viewport() const;
-
-	void reset_sort_index();
-	int get_sort_index();
 
 	CanvasLayer();
 };

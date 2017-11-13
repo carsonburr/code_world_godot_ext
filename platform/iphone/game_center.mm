@@ -28,19 +28,15 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 #ifdef GAME_CENTER_ENABLED
-
 #include "game_center.h"
 
 #ifdef __IPHONE_9_0
-
 #import <GameKit/GameKit.h>
 extern "C" {
 
 #else
-
 extern "C" {
 #import <GameKit/GameKit.h>
-
 #endif
 
 #import "app_delegate.h"
@@ -49,54 +45,35 @@ extern "C" {
 GameCenter *GameCenter::instance = NULL;
 
 void GameCenter::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("is_authenticated"), &GameCenter::is_authenticated);
+	ObjectTypeDB::bind_method(_MD("connect"), &GameCenter::connect);
+	ObjectTypeDB::bind_method(_MD("is_connected"), &GameCenter::is_connected);
 
-	ClassDB::bind_method(D_METHOD("post_score"), &GameCenter::post_score);
-	ClassDB::bind_method(D_METHOD("award_achievement"), &GameCenter::award_achievement);
-	ClassDB::bind_method(D_METHOD("reset_achievements"), &GameCenter::reset_achievements);
-	ClassDB::bind_method(D_METHOD("request_achievements"), &GameCenter::request_achievements);
-	ClassDB::bind_method(D_METHOD("request_achievement_descriptions"), &GameCenter::request_achievement_descriptions);
-	ClassDB::bind_method(D_METHOD("show_game_center"), &GameCenter::show_game_center);
-	ClassDB::bind_method(D_METHOD("request_identity_verification_signature"), &GameCenter::request_identity_verification_signature);
+	ObjectTypeDB::bind_method(_MD("post_score"), &GameCenter::post_score);
+	ObjectTypeDB::bind_method(_MD("award_achievement"), &GameCenter::award_achievement);
+	ObjectTypeDB::bind_method(_MD("reset_achievements"), &GameCenter::reset_achievements);
+	ObjectTypeDB::bind_method(_MD("request_achievements"), &GameCenter::request_achievements);
+	ObjectTypeDB::bind_method(_MD("request_achievement_descriptions"), &GameCenter::request_achievement_descriptions);
+	ObjectTypeDB::bind_method(_MD("show_game_center"), &GameCenter::show_game_center);
 
-	ClassDB::bind_method(D_METHOD("get_pending_event_count"), &GameCenter::get_pending_event_count);
-	ClassDB::bind_method(D_METHOD("pop_pending_event"), &GameCenter::pop_pending_event);
+	ObjectTypeDB::bind_method(_MD("get_pending_event_count"), &GameCenter::get_pending_event_count);
+	ObjectTypeDB::bind_method(_MD("pop_pending_event"), &GameCenter::pop_pending_event);
 };
 
-void GameCenter::return_connect_error(const char *p_error_description) {
-	authenticated = false;
-	Dictionary ret;
-	ret["type"] = "authentication";
-	ret["result"] = "error";
-	ret["error_code"] = 0;
-	ret["error_description"] = p_error_description;
-	pending_events.push_back(ret);
-}
-
-void GameCenter::connect() {
+Error GameCenter::connect() {
 
 	//if this class isn't available, game center isn't implemented
 	if ((NSClassFromString(@"GKLocalPlayer")) == nil) {
-		return_connect_error("GameCenter not available");
-		return;
+		GameCenter::get_singleton()->connected = false;
+		return ERR_UNAVAILABLE;
 	}
 
 	GKLocalPlayer *player = [GKLocalPlayer localPlayer];
-	if (![player respondsToSelector:@selector(authenticateHandler)]) {
-		return_connect_error("GameCenter doesn't respond to 'authenticateHandler'");
-		return;
-	}
+	ERR_FAIL_COND_V(![player respondsToSelector:@selector(authenticateHandler)], ERR_UNAVAILABLE);
 
 	ViewController *root_controller = (ViewController *)((AppDelegate *)[[UIApplication sharedApplication] delegate]).window.rootViewController;
-	if (!root_controller) {
-		return_connect_error("Window doesn't have root ViewController");
-		return;
-	}
+	ERR_FAIL_COND_V(!root_controller, FAILED);
 
-	// This handler is called several times.  First when the view needs to be shown, then again
-	// after the view is cancelled or the user logs in.  Or if the user's already logged in, it's
-	// called just once to confirm they're authenticated.  This is why no result needs to be specified
-	// in the presentViewController phase. In this case, more calls to this function will follow.
+	//this handler is called serveral times.  first when the view needs to be shown, then again after the view is cancelled or the user logs in.  or if the user's already logged in, it's called just once to confirm they're authenticated.  This is why no result needs to be specified in the presentViewController phase. in this case, more calls to this function will follow.
 	player.authenticateHandler = (^(UIViewController *controller, NSError *error) {
 		if (controller) {
 			[root_controller presentViewController:controller animated:YES completion:nil];
@@ -105,22 +82,23 @@ void GameCenter::connect() {
 			ret["type"] = "authentication";
 			if (player.isAuthenticated) {
 				ret["result"] = "ok";
-				ret["player_id"] = [player.playerID UTF8String];
-				GameCenter::get_singleton()->authenticated = true;
+				GameCenter::get_singleton()->connected = true;
 			} else {
 				ret["result"] = "error";
 				ret["error_code"] = error.code;
 				ret["error_description"] = [error.localizedDescription UTF8String];
-				GameCenter::get_singleton()->authenticated = false;
+				GameCenter::get_singleton()->connected = false;
 			};
 
 			pending_events.push_back(ret);
 		};
 	});
+
+	return OK;
 };
 
-bool GameCenter::is_authenticated() {
-	return authenticated;
+bool GameCenter::is_connected() {
+	return connected;
 };
 
 Error GameCenter::post_score(Variant p_score) {
@@ -138,7 +116,6 @@ Error GameCenter::post_score(Variant p_score) {
 
 	[GKScore reportScores:@[ reporter ]
 			withCompletionHandler:^(NSError *error) {
-
 				Dictionary ret;
 				ret["type"] = "post_score";
 				if (error == nil) {
@@ -200,11 +177,11 @@ void GameCenter::request_achievement_descriptions() {
 		ret["type"] = "achievement_descriptions";
 		if (error == nil) {
 			ret["result"] = "ok";
-			PoolStringArray names;
-			PoolStringArray titles;
-			PoolStringArray unachieved_descriptions;
-			PoolStringArray achieved_descriptions;
-			PoolIntArray maximum_points;
+			StringArray names;
+			StringArray titles;
+			StringArray unachieved_descriptions;
+			StringArray achieved_descriptions;
+			IntArray maximum_points;
 			Array hidden;
 			Array replayable;
 
@@ -256,8 +233,8 @@ void GameCenter::request_achievements() {
 		ret["type"] = "achievements";
 		if (error == nil) {
 			ret["result"] = "ok";
-			PoolStringArray names;
-			PoolRealArray percentages;
+			StringArray names;
+			RealArray percentages;
 
 			for (int i = 0; i < [achievements count]; i++) {
 
@@ -340,37 +317,10 @@ Error GameCenter::show_game_center(Variant p_params) {
 	return OK;
 };
 
-Error GameCenter::request_identity_verification_signature() {
-
-	ERR_FAIL_COND_V(!is_authenticated(), ERR_UNAUTHORIZED);
-
-	GKLocalPlayer *player = [GKLocalPlayer localPlayer];
-	[player generateIdentityVerificationSignatureWithCompletionHandler:^(NSURL *publicKeyUrl, NSData *signature, NSData *salt, uint64_t timestamp, NSError *error) {
-
-		Dictionary ret;
-		ret["type"] = "identity_verification_signature";
-		if (error == nil) {
-			ret["result"] = "ok";
-			ret["public_key_url"] = [publicKeyUrl.absoluteString UTF8String];
-			ret["signature"] = [[signature base64EncodedStringWithOptions:0] UTF8String];
-			ret["salt"] = [[salt base64EncodedStringWithOptions:0] UTF8String];
-			ret["timestamp"] = timestamp;
-			ret["player_id"] = [player.playerID UTF8String];
-		} else {
-			ret["result"] = "error";
-			ret["error_code"] = error.code;
-			ret["error_description"] = [error.localizedDescription UTF8String];
-		};
-
-		pending_events.push_back(ret);
-	}];
-
-	return OK;
-};
-
 void GameCenter::game_center_closed() {
 
 	Dictionary ret;
+
 	ret["type"] = "show_game_center";
 	ret["result"] = "ok";
 	pending_events.push_back(ret);
@@ -396,9 +346,11 @@ GameCenter *GameCenter::get_singleton() {
 GameCenter::GameCenter() {
 	ERR_FAIL_COND(instance != NULL);
 	instance = this;
-	authenticated = false;
+	connected = false;
 };
 
-GameCenter::~GameCenter(){};
+GameCenter::~GameCenter(){
+
+};
 
 #endif

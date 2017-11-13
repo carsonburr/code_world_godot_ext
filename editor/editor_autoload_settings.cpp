@@ -27,11 +27,13 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #include "editor_autoload_settings.h"
 
-#include "editor_node.h"
 #include "global_constants.h"
-#include "project_settings.h"
+#include "globals.h"
+
+#include "editor_node.h"
 
 #define PREVIEW_LIST_MAX_SIZE 10
 
@@ -61,7 +63,7 @@ bool EditorAutoloadSettings::_autoload_name_is_valid(const String &p_name, Strin
 		return false;
 	}
 
-	if (ClassDB::class_exists(p_name)) {
+	if (ObjectTypeDB::type_exists(p_name)) {
 		if (r_error)
 			*r_error = TTR("Invalid name. Must not collide with an existing engine class name.");
 
@@ -115,12 +117,13 @@ void EditorAutoloadSettings::_autoload_add() {
 	UndoRedo *undo_redo = EditorNode::get_singleton()->get_undo_redo();
 
 	undo_redo->create_action(TTR("Add AutoLoad"));
-	undo_redo->add_do_property(ProjectSettings::get_singleton(), name, "*" + path);
+	undo_redo->add_do_property(Globals::get_singleton(), name, "*" + path);
+	undo_redo->add_do_method(Globals::get_singleton(), "set_persisting", name, true);
 
-	if (ProjectSettings::get_singleton()->has_setting(name)) {
-		undo_redo->add_undo_property(ProjectSettings::get_singleton(), name, ProjectSettings::get_singleton()->get(name));
+	if (Globals::get_singleton()->has(name)) {
+		undo_redo->add_undo_property(Globals::get_singleton(), name, Globals::get_singleton()->get(name));
 	} else {
-		undo_redo->add_undo_property(ProjectSettings::get_singleton(), name, Variant());
+		undo_redo->add_undo_property(Globals::get_singleton(), name, Variant());
 	}
 
 	undo_redo->add_do_method(this, "update_autoload");
@@ -169,7 +172,7 @@ void EditorAutoloadSettings::_autoload_edited() {
 			return;
 		}
 
-		if (ProjectSettings::get_singleton()->has_setting("autoload/" + name)) {
+		if (Globals::get_singleton()->has("autoload/" + name)) {
 			ti->set_text(0, old_name);
 			EditorNode::get_singleton()->show_warning(vformat(TTR("Autoload '%s' already exists!"), name));
 			return;
@@ -179,18 +182,21 @@ void EditorAutoloadSettings::_autoload_edited() {
 
 		name = "autoload/" + name;
 
-		int order = ProjectSettings::get_singleton()->get_order(selected_autoload);
-		String path = ProjectSettings::get_singleton()->get(selected_autoload);
+		bool persisting = Globals::get_singleton()->get(selected_autoload);
+		int order = Globals::get_singleton()->get(selected_autoload);
+		String path = Globals::get_singleton()->get(selected_autoload);
 
 		undo_redo->create_action(TTR("Rename Autoload"));
 
-		undo_redo->add_do_property(ProjectSettings::get_singleton(), name, path);
-		undo_redo->add_do_method(ProjectSettings::get_singleton(), "set_order", name, order);
-		undo_redo->add_do_method(ProjectSettings::get_singleton(), "clear", selected_autoload);
+		undo_redo->add_do_property(Globals::get_singleton(), name, path);
+		undo_redo->add_do_method(Globals::get_singleton(), "set_persisting", name, persisting);
+		undo_redo->add_do_method(Globals::get_singleton(), "set_order", name, order);
+		undo_redo->add_do_method(Globals::get_singleton(), "clear", selected_autoload);
 
-		undo_redo->add_undo_property(ProjectSettings::get_singleton(), selected_autoload, path);
-		undo_redo->add_undo_method(ProjectSettings::get_singleton(), "set_order", selected_autoload, order);
-		undo_redo->add_undo_method(ProjectSettings::get_singleton(), "clear", name);
+		undo_redo->add_undo_property(Globals::get_singleton(), selected_autoload, path);
+		undo_redo->add_undo_method(Globals::get_singleton(), "set_persisting", selected_autoload, persisting);
+		undo_redo->add_undo_method(Globals::get_singleton(), "set_order", selected_autoload, order);
+		undo_redo->add_undo_method(Globals::get_singleton(), "clear", name);
 
 		undo_redo->add_do_method(this, "update_autoload");
 		undo_redo->add_undo_method(this, "update_autoload");
@@ -207,8 +213,8 @@ void EditorAutoloadSettings::_autoload_edited() {
 		bool checked = ti->is_checked(2);
 		String base = "autoload/" + ti->get_text(0);
 
-		int order = ProjectSettings::get_singleton()->get_order(base);
-		String path = ProjectSettings::get_singleton()->get(base);
+		int order = Globals::get_singleton()->get_order(base);
+		String path = Globals::get_singleton()->get(base);
 
 		if (path.begins_with("*"))
 			path = path.substr(1, path.length());
@@ -218,11 +224,11 @@ void EditorAutoloadSettings::_autoload_edited() {
 
 		undo_redo->create_action(TTR("Toggle AutoLoad Globals"));
 
-		undo_redo->add_do_property(ProjectSettings::get_singleton(), base, path);
-		undo_redo->add_undo_property(ProjectSettings::get_singleton(), base, ProjectSettings::get_singleton()->get(base));
+		undo_redo->add_do_property(Globals::get_singleton(), base, path);
+		undo_redo->add_undo_property(Globals::get_singleton(), base, Globals::get_singleton()->get(base));
 
-		undo_redo->add_do_method(ProjectSettings::get_singleton(), "set_order", base, order);
-		undo_redo->add_undo_method(ProjectSettings::get_singleton(), "set_order", base, order);
+		undo_redo->add_do_method(Globals::get_singleton(), "set_order", base, order);
+		undo_redo->add_undo_method(Globals::get_singleton(), "set_order", base, order);
 
 		undo_redo->add_do_method(this, "update_autoload");
 		undo_redo->add_undo_method(this, "update_autoload");
@@ -238,7 +244,7 @@ void EditorAutoloadSettings::_autoload_edited() {
 
 void EditorAutoloadSettings::_autoload_button_pressed(Object *p_item, int p_column, int p_button) {
 
-	TreeItem *ti = Object::cast_to<TreeItem>(p_item);
+	TreeItem *ti = p_item->cast_to<TreeItem>();
 
 	String name = "autoload/" + ti->get_text(0);
 
@@ -262,16 +268,16 @@ void EditorAutoloadSettings::_autoload_button_pressed(Object *p_item, int p_colu
 
 			String swap_name = "autoload/" + swap->get_text(0);
 
-			int order = ProjectSettings::get_singleton()->get_order(name);
-			int swap_order = ProjectSettings::get_singleton()->get_order(swap_name);
+			int order = Globals::get_singleton()->get_order(name);
+			int swap_order = Globals::get_singleton()->get_order(swap_name);
 
 			undo_redo->create_action(TTR("Move Autoload"));
 
-			undo_redo->add_do_method(ProjectSettings::get_singleton(), "set_order", name, swap_order);
-			undo_redo->add_undo_method(ProjectSettings::get_singleton(), "set_order", name, order);
+			undo_redo->add_do_method(Globals::get_singleton(), "set_order", name, swap_order);
+			undo_redo->add_undo_method(Globals::get_singleton(), "set_order", name, order);
 
-			undo_redo->add_do_method(ProjectSettings::get_singleton(), "set_order", swap_name, order);
-			undo_redo->add_undo_method(ProjectSettings::get_singleton(), "set_order", swap_name, swap_order);
+			undo_redo->add_do_method(Globals::get_singleton(), "set_order", swap_name, order);
+			undo_redo->add_undo_method(Globals::get_singleton(), "set_order", swap_name, swap_order);
 
 			undo_redo->add_do_method(this, "update_autoload");
 			undo_redo->add_undo_method(this, "update_autoload");
@@ -283,15 +289,15 @@ void EditorAutoloadSettings::_autoload_button_pressed(Object *p_item, int p_colu
 		} break;
 		case BUTTON_DELETE: {
 
-			int order = ProjectSettings::get_singleton()->get_order(name);
+			int order = Globals::get_singleton()->get_order(name);
 
 			undo_redo->create_action(TTR("Remove Autoload"));
 
-			undo_redo->add_do_property(ProjectSettings::get_singleton(), name, Variant());
+			undo_redo->add_do_property(Globals::get_singleton(), name, Variant());
 
-			undo_redo->add_undo_property(ProjectSettings::get_singleton(), name, ProjectSettings::get_singleton()->get(name));
-			undo_redo->add_undo_method(ProjectSettings::get_singleton(), "set_persisting", name, true);
-			undo_redo->add_undo_method(ProjectSettings::get_singleton(), "set_order", order);
+			undo_redo->add_undo_property(Globals::get_singleton(), name, Globals::get_singleton()->get(name));
+			undo_redo->add_undo_method(Globals::get_singleton(), "set_persisting", name, true);
+			undo_redo->add_undo_method(Globals::get_singleton(), "set_order", order);
 
 			undo_redo->add_do_method(this, "update_autoload");
 			undo_redo->add_undo_method(this, "update_autoload");
@@ -306,7 +312,7 @@ void EditorAutoloadSettings::_autoload_button_pressed(Object *p_item, int p_colu
 
 void EditorAutoloadSettings::_autoload_file_callback(const String &p_path) {
 
-	autoload_add_name->set_text(p_path.get_file().get_basename());
+	autoload_add_name->set_text(p_path.get_file().basename());
 }
 
 void EditorAutoloadSettings::update_autoload() {
@@ -322,7 +328,7 @@ void EditorAutoloadSettings::update_autoload() {
 	TreeItem *root = tree->create_item();
 
 	List<PropertyInfo> props;
-	ProjectSettings::get_singleton()->get_property_list(&props);
+	Globals::get_singleton()->get_property_list(&props);
 
 	for (List<PropertyInfo>::Element *E = props.front(); E; E = E->next()) {
 
@@ -332,14 +338,14 @@ void EditorAutoloadSettings::update_autoload() {
 			continue;
 
 		String name = pi.name.get_slice("/", 1);
-		String path = ProjectSettings::get_singleton()->get(pi.name);
+		String path = Globals::get_singleton()->get(pi.name);
 
 		if (name.empty())
 			continue;
 
 		AutoLoadInfo info;
 		info.name = pi.name;
-		info.order = ProjectSettings::get_singleton()->get_order(pi.name);
+		info.order = Globals::get_singleton()->get_order(pi.name);
 
 		autoload_cache.push_back(info);
 
@@ -364,7 +370,7 @@ void EditorAutoloadSettings::update_autoload() {
 
 		item->add_button(3, get_icon("MoveUp", "EditorIcons"), BUTTON_MOVE_UP);
 		item->add_button(3, get_icon("MoveDown", "EditorIcons"), BUTTON_MOVE_DOWN);
-		item->add_button(3, get_icon("Remove", "EditorIcons"), BUTTON_DELETE);
+		item->add_button(3, get_icon("Del", "EditorIcons"), BUTTON_DELETE);
 		item->set_selectable(3, false);
 	}
 
@@ -376,7 +382,7 @@ Variant EditorAutoloadSettings::get_drag_data_fw(const Point2 &p_point, Control 
 	if (autoload_cache.size() <= 1)
 		return false;
 
-	PoolStringArray autoloads;
+	StringArray autoloads;
 
 	TreeItem *next = tree->get_next_selected(NULL);
 
@@ -394,7 +400,7 @@ Variant EditorAutoloadSettings::get_drag_data_fw(const Point2 &p_point, Control 
 
 	for (int i = 0; i < max_size; i++) {
 		Label *label = memnew(Label(autoloads[i]));
-		label->set_self_modulate(Color(1, 1, 1, Math::lerp(1, 0, float(i) / PREVIEW_LIST_MAX_SIZE)));
+		label->set_self_opacity(Math::lerp(1, 0, float(i) / PREVIEW_LIST_MAX_SIZE));
 
 		preview->add_child(label);
 	}
@@ -419,12 +425,12 @@ bool EditorAutoloadSettings::can_drop_data_fw(const Point2 &p_point, const Varia
 		return false;
 
 	if (drop_data.has("type")) {
-		TreeItem *ti = tree->get_item_at_position(p_point);
+		TreeItem *ti = tree->get_item_at_pos(p_point);
 
 		if (!ti)
 			return false;
 
-		int section = tree->get_drop_section_at_position(p_point);
+		int section = tree->get_drop_section_at_pos(p_point);
 
 		if (section < -1)
 			return false;
@@ -437,12 +443,12 @@ bool EditorAutoloadSettings::can_drop_data_fw(const Point2 &p_point, const Varia
 
 void EditorAutoloadSettings::drop_data_fw(const Point2 &p_point, const Variant &p_data, Control *p_control) {
 
-	TreeItem *ti = tree->get_item_at_position(p_point);
+	TreeItem *ti = tree->get_item_at_pos(p_point);
 
 	if (!ti)
 		return;
 
-	int section = tree->get_drop_section_at_position(p_point);
+	int section = tree->get_drop_section_at_pos(p_point);
 
 	if (section < -1)
 		return;
@@ -459,7 +465,7 @@ void EditorAutoloadSettings::drop_data_fw(const Point2 &p_point, const Variant &
 		move_to_back = true;
 	}
 
-	int order = ProjectSettings::get_singleton()->get_order("autoload/" + name);
+	int order = Globals::get_singleton()->get_order("autoload/" + name);
 
 	AutoLoadInfo aux;
 	List<AutoLoadInfo>::Element *E = NULL;
@@ -470,13 +476,13 @@ void EditorAutoloadSettings::drop_data_fw(const Point2 &p_point, const Variant &
 	}
 
 	Dictionary drop_data = p_data;
-	PoolStringArray autoloads = drop_data["autoloads"];
+	StringArray autoloads = drop_data["autoloads"];
 
 	Vector<int> orders;
 	orders.resize(autoload_cache.size());
 
 	for (int i = 0; i < autoloads.size(); i++) {
-		aux.order = ProjectSettings::get_singleton()->get_order("autoload/" + autoloads[i]);
+		aux.order = Globals::get_singleton()->get_order("autoload/" + autoloads[i]);
 
 		List<AutoLoadInfo>::Element *I = autoload_cache.find(aux);
 
@@ -506,8 +512,8 @@ void EditorAutoloadSettings::drop_data_fw(const Point2 &p_point, const Variant &
 	i = 0;
 
 	for (List<AutoLoadInfo>::Element *E = autoload_cache.front(); E; E = E->next()) {
-		undo_redo->add_do_method(ProjectSettings::get_singleton(), "set_order", E->get().name, orders[i++]);
-		undo_redo->add_undo_method(ProjectSettings::get_singleton(), "set_order", E->get().name, E->get().order);
+		undo_redo->add_do_method(Globals::get_singleton(), "set_order", E->get().name, orders[i++]);
+		undo_redo->add_undo_method(Globals::get_singleton(), "set_order", E->get().name, E->get().order);
 	}
 
 	orders.clear();
@@ -523,17 +529,17 @@ void EditorAutoloadSettings::drop_data_fw(const Point2 &p_point, const Variant &
 
 void EditorAutoloadSettings::_bind_methods() {
 
-	ClassDB::bind_method("_autoload_add", &EditorAutoloadSettings::_autoload_add);
-	ClassDB::bind_method("_autoload_selected", &EditorAutoloadSettings::_autoload_selected);
-	ClassDB::bind_method("_autoload_edited", &EditorAutoloadSettings::_autoload_edited);
-	ClassDB::bind_method("_autoload_button_pressed", &EditorAutoloadSettings::_autoload_button_pressed);
-	ClassDB::bind_method("_autoload_file_callback", &EditorAutoloadSettings::_autoload_file_callback);
+	ObjectTypeDB::bind_method("_autoload_add", &EditorAutoloadSettings::_autoload_add);
+	ObjectTypeDB::bind_method("_autoload_selected", &EditorAutoloadSettings::_autoload_selected);
+	ObjectTypeDB::bind_method("_autoload_edited", &EditorAutoloadSettings::_autoload_edited);
+	ObjectTypeDB::bind_method("_autoload_button_pressed", &EditorAutoloadSettings::_autoload_button_pressed);
+	ObjectTypeDB::bind_method("_autoload_file_callback", &EditorAutoloadSettings::_autoload_file_callback);
 
-	ClassDB::bind_method("get_drag_data_fw", &EditorAutoloadSettings::get_drag_data_fw);
-	ClassDB::bind_method("can_drop_data_fw", &EditorAutoloadSettings::can_drop_data_fw);
-	ClassDB::bind_method("drop_data_fw", &EditorAutoloadSettings::drop_data_fw);
+	ObjectTypeDB::bind_method("get_drag_data_fw", &EditorAutoloadSettings::get_drag_data_fw);
+	ObjectTypeDB::bind_method("can_drop_data_fw", &EditorAutoloadSettings::can_drop_data_fw);
+	ObjectTypeDB::bind_method("drop_data_fw", &EditorAutoloadSettings::drop_data_fw);
 
-	ClassDB::bind_method("update_autoload", &EditorAutoloadSettings::update_autoload);
+	ObjectTypeDB::bind_method("update_autoload", &EditorAutoloadSettings::update_autoload);
 
 	ADD_SIGNAL(MethodInfo("autoload_changed"));
 }
@@ -580,7 +586,7 @@ EditorAutoloadSettings::EditorAutoloadSettings() {
 	tree = memnew(Tree);
 	tree->set_hide_root(true);
 	tree->set_select_mode(Tree::SELECT_MULTI);
-	tree->set_allow_reselect(true);
+	tree->set_single_select_cell_editing_only_when_already_selected(true);
 
 	tree->set_drag_forwarding(this);
 

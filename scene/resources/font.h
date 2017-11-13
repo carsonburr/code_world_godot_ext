@@ -39,7 +39,7 @@
 
 class Font : public Resource {
 
-	GDCLASS(Font, Resource);
+	OBJ_TYPE(Font, Resource);
 
 protected:
 	static void _bind_methods();
@@ -65,8 +65,8 @@ public:
 
 class BitmapFont : public Font {
 
-	GDCLASS(BitmapFont, Font);
-	RES_BASE_EXTENSION("font");
+	OBJ_TYPE(BitmapFont, Font);
+	RES_BASE_EXTENSION("fnt");
 
 	Vector<Ref<Texture> > textures;
 
@@ -106,10 +106,10 @@ private:
 	float ascent;
 	bool distance_field_hint;
 
-	void _set_chars(const PoolVector<int> &p_chars);
-	PoolVector<int> _get_chars() const;
-	void _set_kernings(const PoolVector<int> &p_kernings);
-	PoolVector<int> _get_kernings() const;
+	void _set_chars(const DVector<int> &p_chars);
+	DVector<int> _get_chars() const;
+	void _set_kernings(const DVector<int> &p_kernings);
+	DVector<int> _get_kernings() const;
 	void _set_textures(const Vector<Variant> &p_textures);
 	Vector<Variant> _get_textures() const;
 

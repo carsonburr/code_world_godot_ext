@@ -71,7 +71,7 @@ void PolygonPathFinder::setup(const Vector<Vector2> &p_points, const Vector<int>
 		outside_point.y = i == 0 ? p_points[0].y : (MAX(p_points[i].y, outside_point.y));
 
 		if (i == 0) {
-			bounds.position = points[i].pos;
+			bounds.pos = points[i].pos;
 		} else {
 			bounds.expand_to(points[i].pos);
 		}
@@ -414,7 +414,7 @@ void PolygonPathFinder::_set_data(const Dictionary &p_data) {
 	ERR_FAIL_COND(!p_data.has("segments"));
 	ERR_FAIL_COND(!p_data.has("bounds"));
 
-	PoolVector<Vector2> p = p_data["points"];
+	DVector<Vector2> p = p_data["points"];
 	Array c = p_data["connections"];
 
 	ERR_FAIL_COND(c.size() != p.size());
@@ -424,11 +424,11 @@ void PolygonPathFinder::_set_data(const Dictionary &p_data) {
 	int pc = p.size();
 	points.resize(pc + 2);
 
-	PoolVector<Vector2>::Read pr = p.read();
+	DVector<Vector2>::Read pr = p.read();
 	for (int i = 0; i < pc; i++) {
 		points[i].pos = pr[i];
-		PoolVector<int> con = c[i];
-		PoolVector<int>::Read cr = con.read();
+		DVector<int> con = c[i];
+		DVector<int>::Read cr = con.read();
 		int cc = con.size();
 		for (int j = 0; j < cc; j++) {
 
@@ -438,19 +438,19 @@ void PolygonPathFinder::_set_data(const Dictionary &p_data) {
 
 	if (p_data.has("penalties")) {
 
-		PoolVector<float> penalties = p_data["penalties"];
+		DVector<float> penalties = p_data["penalties"];
 		if (penalties.size() == pc) {
-			PoolVector<float>::Read pr = penalties.read();
+			DVector<float>::Read pr = penalties.read();
 			for (int i = 0; i < pc; i++) {
 				points[i].penalty = pr[i];
 			}
 		}
 	}
 
-	PoolVector<int> segs = p_data["segments"];
+	DVector<int> segs = p_data["segments"];
 	int sc = segs.size();
 	ERR_FAIL_COND(sc & 1);
-	PoolVector<int>::Read sr = segs.read();
+	DVector<int>::Read sr = segs.read();
 	for (int i = 0; i < sc; i += 2) {
 
 		Edge e(sr[i], sr[i + 1]);
@@ -462,25 +462,25 @@ void PolygonPathFinder::_set_data(const Dictionary &p_data) {
 Dictionary PolygonPathFinder::_get_data() const {
 
 	Dictionary d;
-	PoolVector<Vector2> p;
-	PoolVector<int> ind;
+	DVector<Vector2> p;
+	DVector<int> ind;
 	Array connections;
 	p.resize(points.size() - 2);
 	connections.resize(points.size() - 2);
 	ind.resize(edges.size() * 2);
-	PoolVector<float> penalties;
+	DVector<float> penalties;
 	penalties.resize(points.size() - 2);
 	{
-		PoolVector<Vector2>::Write wp = p.write();
-		PoolVector<float>::Write pw = penalties.write();
+		DVector<Vector2>::Write wp = p.write();
+		DVector<float>::Write pw = penalties.write();
 
 		for (int i = 0; i < points.size() - 2; i++) {
 			wp[i] = points[i].pos;
 			pw[i] = points[i].penalty;
-			PoolVector<int> c;
+			DVector<int> c;
 			c.resize(points[i].connections.size());
 			{
-				PoolVector<int>::Write cw = c.write();
+				DVector<int>::Write cw = c.write();
 				int idx = 0;
 				for (Set<int>::Element *E = points[i].connections.front(); E; E = E->next()) {
 					cw[idx++] = E->get();
@@ -491,7 +491,7 @@ Dictionary PolygonPathFinder::_get_data() const {
 	}
 	{
 
-		PoolVector<int>::Write iw = ind.write();
+		DVector<int>::Write iw = ind.write();
 		int idx = 0;
 		for (Set<Edge>::Element *E = edges.front(); E; E = E->next()) {
 			iw[idx++] = E->get().points[0];
@@ -576,19 +576,19 @@ float PolygonPathFinder::get_point_penalty(int p_point) const {
 
 void PolygonPathFinder::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("setup", "points", "connections"), &PolygonPathFinder::setup);
-	ClassDB::bind_method(D_METHOD("find_path", "from", "to"), &PolygonPathFinder::find_path);
-	ClassDB::bind_method(D_METHOD("get_intersections", "from", "to"), &PolygonPathFinder::get_intersections);
-	ClassDB::bind_method(D_METHOD("get_closest_point", "point"), &PolygonPathFinder::get_closest_point);
-	ClassDB::bind_method(D_METHOD("is_point_inside", "point"), &PolygonPathFinder::is_point_inside);
-	ClassDB::bind_method(D_METHOD("set_point_penalty", "idx", "penalty"), &PolygonPathFinder::set_point_penalty);
-	ClassDB::bind_method(D_METHOD("get_point_penalty", "idx"), &PolygonPathFinder::get_point_penalty);
+	ObjectTypeDB::bind_method(_MD("setup", "points", "connections"), &PolygonPathFinder::setup);
+	ObjectTypeDB::bind_method(_MD("find_path", "from", "to"), &PolygonPathFinder::find_path);
+	ObjectTypeDB::bind_method(_MD("get_intersections", "from", "to"), &PolygonPathFinder::get_intersections);
+	ObjectTypeDB::bind_method(_MD("get_closest_point", "point"), &PolygonPathFinder::get_closest_point);
+	ObjectTypeDB::bind_method(_MD("is_point_inside", "point"), &PolygonPathFinder::is_point_inside);
+	ObjectTypeDB::bind_method(_MD("set_point_penalty", "idx", "penalty"), &PolygonPathFinder::set_point_penalty);
+	ObjectTypeDB::bind_method(_MD("get_point_penalty", "idx"), &PolygonPathFinder::get_point_penalty);
 
-	ClassDB::bind_method(D_METHOD("get_bounds"), &PolygonPathFinder::get_bounds);
-	ClassDB::bind_method(D_METHOD("_set_data"), &PolygonPathFinder::_set_data);
-	ClassDB::bind_method(D_METHOD("_get_data"), &PolygonPathFinder::_get_data);
+	ObjectTypeDB::bind_method(_MD("get_bounds"), &PolygonPathFinder::get_bounds);
+	ObjectTypeDB::bind_method(_MD("_set_data"), &PolygonPathFinder::_set_data);
+	ObjectTypeDB::bind_method(_MD("_get_data"), &PolygonPathFinder::_get_data);
 
-	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "data", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR), "_set_data", "_get_data");
+	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "data", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR), _SCS("_set_data"), _SCS("_get_data"));
 }
 
 PolygonPathFinder::PolygonPathFinder() {

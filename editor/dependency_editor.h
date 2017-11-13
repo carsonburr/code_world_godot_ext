@@ -38,7 +38,7 @@
 class EditorFileSystemDirectory;
 
 class DependencyEditor : public AcceptDialog {
-	GDCLASS(DependencyEditor, AcceptDialog);
+	OBJ_TYPE(DependencyEditor, AcceptDialog);
 
 	Tree *tree;
 	Button *fixdeps;
@@ -68,7 +68,7 @@ public:
 };
 
 class DependencyEditorOwners : public AcceptDialog {
-	GDCLASS(DependencyEditorOwners, AcceptDialog);
+	OBJ_TYPE(DependencyEditorOwners, AcceptDialog);
 
 	ItemList *owners;
 	String editing;
@@ -80,42 +80,23 @@ public:
 };
 
 class DependencyRemoveDialog : public ConfirmationDialog {
-	GDCLASS(DependencyRemoveDialog, ConfirmationDialog);
+	OBJ_TYPE(DependencyRemoveDialog, ConfirmationDialog);
 
 	Label *text;
 	Tree *owners;
-
-	Map<String, String> all_remove_files;
-	Vector<String> to_delete;
-
-	struct RemovedDependency {
-		String file;
-		String file_type;
-		String dependency;
-		String dependency_folder;
-
-		bool operator<(const RemovedDependency &p_other) const {
-			if (dependency_folder.empty() != p_other.dependency_folder.empty()) {
-				return p_other.dependency_folder.empty();
-			} else {
-				return dependency < p_other.dependency;
-			}
-		}
-	};
-
-	void _find_files_in_removed_folder(EditorFileSystemDirectory *efsd, const String &p_folder);
-	void _find_all_removed_dependencies(EditorFileSystemDirectory *efsd, Vector<RemovedDependency> &p_removed);
-	void _build_removed_dependency_tree(const Vector<RemovedDependency> &p_removed);
+	bool exist;
+	Map<String, TreeItem *> files;
+	void _fill_owners(EditorFileSystemDirectory *efsd);
 
 	void ok_pressed();
 
 public:
-	void show(const Vector<String> &p_folders, const Vector<String> &p_files);
+	void show(const Vector<String> &to_erase);
 	DependencyRemoveDialog();
 };
 
 class DependencyErrorDialog : public ConfirmationDialog {
-	GDCLASS(DependencyErrorDialog, ConfirmationDialog);
+	OBJ_TYPE(DependencyErrorDialog, ConfirmationDialog);
 
 	String for_file;
 	Button *fdep;
@@ -125,12 +106,12 @@ class DependencyErrorDialog : public ConfirmationDialog {
 	void custom_action(const String &);
 
 public:
-	void show(const String &p_for_file, const Vector<String> &report);
+	void show(const String &p_for, const Vector<String> &report);
 	DependencyErrorDialog();
 };
 
 class OrphanResourcesDialog : public ConfirmationDialog {
-	GDCLASS(OrphanResourcesDialog, ConfirmationDialog);
+	OBJ_TYPE(OrphanResourcesDialog, ConfirmationDialog);
 
 	DependencyEditor *dep_edit;
 	Tree *files;

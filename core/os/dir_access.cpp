@@ -28,16 +28,16 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 #include "dir_access.h"
+#include "globals.h"
 #include "os/file_access.h"
 #include "os/memory.h"
 #include "os/os.h"
-#include "project_settings.h"
 
 String DirAccess::_get_root_path() const {
 
 	switch (_access_type) {
 
-		case ACCESS_RESOURCES: return ProjectSettings::get_singleton()->get_resource_path();
+		case ACCESS_RESOURCES: return Globals::get_singleton()->get_resource_path();
 		case ACCESS_USERDATA: return OS::get_singleton()->get_data_dir();
 		default: return "";
 	}
@@ -176,9 +176,9 @@ Error DirAccess::make_dir_recursive(String p_dir) {
 	for (int i = 0; i < subdirs.size(); i++) {
 
 		curpath = curpath.plus_file(subdirs[i]);
+
 		Error err = make_dir(curpath);
 		if (err != OK && err != ERR_ALREADY_EXISTS) {
-
 			ERR_FAIL_V(err);
 		}
 	}
@@ -200,10 +200,10 @@ String DirAccess::fix_path(String p_path) const {
 
 		case ACCESS_RESOURCES: {
 
-			if (ProjectSettings::get_singleton()) {
+			if (Globals::get_singleton()) {
 				if (p_path.begins_with("res://")) {
 
-					String resource_path = ProjectSettings::get_singleton()->get_resource_path();
+					String resource_path = Globals::get_singleton()->get_resource_path();
 					if (resource_path != "") {
 
 						return p_path.replace_first("res:/", resource_path);
@@ -292,7 +292,7 @@ String DirAccess::get_full_path(const String &p_path, AccessType p_access) {
 	return full;
 }
 
-Error DirAccess::copy(String p_from, String p_to, int chmod_flags) {
+Error DirAccess::copy(String p_from, String p_to) {
 
 	//printf("copy %s -> %s\n",p_from.ascii().get_data(),p_to.ascii().get_data());
 	Error err;
@@ -312,7 +312,7 @@ Error DirAccess::copy(String p_from, String p_to, int chmod_flags) {
 	}
 
 	fsrc->seek_end(0);
-	int size = fsrc->get_position();
+	int size = fsrc->get_pos();
 	fsrc->seek(0);
 	err = OK;
 	while (size--) {
@@ -327,11 +327,6 @@ Error DirAccess::copy(String p_from, String p_to, int chmod_flags) {
 		}
 
 		fdst->store_8(fsrc->get_8());
-	}
-
-	if (err == OK && chmod_flags != -1) {
-		fdst->close();
-		err = fdst->_chmod(p_to, chmod_flags);
 	}
 
 	memdelete(fsrc);

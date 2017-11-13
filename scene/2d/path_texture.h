@@ -33,7 +33,7 @@
 #include "scene/2d/node_2d.h"
 
 class PathTexture : public Node2D {
-	GDCLASS(PathTexture, Node2D);
+	OBJ_TYPE(PathTexture, Node2D);
 
 	Ref<Texture> begin;
 	Ref<Texture> repeat;

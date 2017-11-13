@@ -31,7 +31,6 @@
 #define EDITOR_DATA_H
 
 #include "editor/editor_plugin.h"
-#include "editor/plugins/script_editor_plugin.h"
 #include "list.h"
 #include "pair.h"
 #include "scene/resources/texture.h"
@@ -74,7 +73,7 @@ class EditorHistory {
 	void _add_object(ObjectID p_object, const String &p_property, int p_level_change);
 
 public:
-	bool is_at_beginning() const;
+	bool is_at_begining() const;
 	bool is_at_end() const;
 
 	void add_object(ObjectID p_object);
@@ -110,17 +109,6 @@ public:
 		Ref<Texture> icon;
 	};
 
-	struct EditedScene {
-		Node *root;
-		Dictionary editor_states;
-		List<Node *> selection;
-		Vector<EditorHistory::History> history_stored;
-		int history_current;
-		Dictionary custom_state;
-		uint64_t version;
-		NodePath live_edit_root;
-	};
-
 private:
 	Vector<EditorPlugin *> editor_plugins;
 
@@ -135,6 +123,18 @@ private:
 	UndoRedo undo_redo;
 
 	void _cleanup_history();
+
+	struct EditedScene {
+		Node *root;
+		Dictionary editor_states;
+		Ref<ResourceImportMetadata> medatata;
+		List<Node *> selection;
+		Vector<EditorHistory::History> history_stored;
+		int history_current;
+		Dictionary custom_state;
+		uint64_t version;
+		NodePath live_edit_root;
+	};
 
 	Vector<EditedScene> edited_scene;
 	int current_edited_scene;
@@ -178,10 +178,11 @@ public:
 	void remove_scene(int p_idx);
 	void set_edited_scene(int p_idx);
 	void set_edited_scene_root(Node *p_root);
+	void set_edited_scene_import_metadata(Ref<ResourceImportMetadata> p_mdata);
+	Ref<ResourceImportMetadata> get_edited_scene_import_metadata(int p_idx = -1) const;
 	int get_edited_scene() const;
 	Node *get_edited_scene_root(int p_idx = -1);
 	int get_edited_scene_count() const;
-	Vector<EditedScene> get_edited_scenes() const;
 	String get_scene_title(int p_idx) const;
 	String get_scene_path(int p_idx) const;
 	String get_scene_type(int p_idx) const;
@@ -207,7 +208,7 @@ public:
 
 class EditorSelection : public Object {
 
-	GDCLASS(EditorSelection, Object);
+	OBJ_TYPE(EditorSelection, Object);
 
 public:
 	Map<Node *, Object *> selection;
@@ -222,7 +223,6 @@ public:
 
 	void _update_nl();
 	Array _get_selected_nodes();
-	Array _get_transformable_selected_nodes();
 
 protected:
 	static void _bind_methods();
@@ -236,7 +236,10 @@ public:
 	T *get_node_editor_data(Node *p_node) {
 		if (!selection.has(p_node))
 			return NULL;
-		return Object::cast_to<T>(selection[p_node]);
+		Object *obj = selection[p_node];
+		if (!obj)
+			return NULL;
+		return obj->cast_to<T>();
 	}
 
 	void add_editor_plugin(Object *p_object);

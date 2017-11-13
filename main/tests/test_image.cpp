@@ -5,8 +5,7 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2016 Juan Linietsky, Ariel Manzur.                 */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -28,12 +27,10 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 #include "test_image.h"
-
 #include "io/image_loader.h"
 #include "math_funcs.h"
 #include "os/main_loop.h"
 #include "print_string.h"
-
 namespace TestImage {
 
 class TestMainLoop : public MainLoop {
@@ -41,7 +38,7 @@ class TestMainLoop : public MainLoop {
 	bool quit;
 
 public:
-	virtual void input_event(const Ref<InputEvent> &p_event) {
+	virtual void input_event(const InputEvent &p_event) {
 	}
 
 	virtual void init() {
@@ -62,6 +59,11 @@ public:
 };
 
 MainLoop *test() {
+
+	Image img;
+	ImageLoader::load_image("as1.png", &img);
+
+	img.resize(512, 512);
 
 	return memnew(TestMainLoop);
 }

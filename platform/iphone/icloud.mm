@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  icloud.mm                                                            */
+/*  icloud.mm                                                       */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -28,7 +28,6 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 #ifdef ICLOUD_ENABLED
-
 #include "icloud.h"
 
 #ifndef __IPHONE_9_0
@@ -46,14 +45,14 @@ extern "C" {
 ICloud *ICloud::instance = NULL;
 
 void ICloud::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("remove_key"), &ICloud::remove_key);
-	ClassDB::bind_method(D_METHOD("set_key_values"), &ICloud::set_key_values);
-	ClassDB::bind_method(D_METHOD("get_key_value"), &ICloud::get_key_value);
-	ClassDB::bind_method(D_METHOD("synchronize_key_values"), &ICloud::synchronize_key_values);
-	ClassDB::bind_method(D_METHOD("get_all_key_values"), &ICloud::get_all_key_values);
+	ObjectTypeDB::bind_method(_MD("remove_key"), &ICloud::remove_key);
+	ObjectTypeDB::bind_method(_MD("set_key_values"), &ICloud::set_key_values);
+	ObjectTypeDB::bind_method(_MD("get_key_value"), &ICloud::get_key_value);
+	ObjectTypeDB::bind_method(_MD("synchronize_key_values"), &ICloud::synchronize_key_values);
+	ObjectTypeDB::bind_method(_MD("get_all_key_values"), &ICloud::get_all_key_values);
 
-	ClassDB::bind_method(D_METHOD("get_pending_event_count"), &ICloud::get_pending_event_count);
-	ClassDB::bind_method(D_METHOD("pop_pending_event"), &ICloud::pop_pending_event);
+	ObjectTypeDB::bind_method(_MD("get_pending_event_count"), &ICloud::get_pending_event_count);
+	ObjectTypeDB::bind_method(_MD("pop_pending_event"), &ICloud::pop_pending_event);
 };
 
 int ICloud::get_pending_event_count() {
@@ -79,12 +78,12 @@ Variant nsobject_to_variant(NSObject *object) {
 		const char *str = [(NSString *)object UTF8String];
 		return String::utf8(str != NULL ? str : "");
 	} else if ([object isKindOfClass:[NSData class]]) {
-		PoolByteArray ret;
+		ByteArray ret;
 		NSData *data = (NSData *)object;
 		if ([data length] > 0) {
 			ret.resize([data length]);
 			{
-				PoolByteArray::Write w = ret.write();
+				ByteArray::Write w = ret.write();
 				copymem(w.ptr(), [data bytes], [data length]);
 			}
 		}
@@ -181,9 +180,9 @@ NSObject *variant_to_nsobject(Variant v) {
 			[result addObject:value];
 		}
 		return result;
-	} else if (v.get_type() == Variant::POOL_BYTE_ARRAY) {
-		PoolByteArray arr = v;
-		PoolByteArray::Read r = arr.read();
+	} else if (v.get_type() == Variant::RAW_ARRAY) {
+		ByteArray arr = v;
+		ByteArray::Read r = arr.read();
 		NSData *result = [NSData dataWithBytes:r.ptr() length:arr.size()];
 		return result;
 	}
@@ -301,7 +300,9 @@ ICloud::ICloud() {
 	instance = this;
 	//connected = false;
 
-	[[NSNotificationCenter defaultCenter]
+	[
+			//[NSNotificationCenter defaultCenter] addObserverForName: @"notify"
+			[NSNotificationCenter defaultCenter]
 			addObserverForName:NSUbiquitousKeyValueStoreDidChangeExternallyNotification
 						object:[NSUbiquitousKeyValueStore defaultStore]
 						 queue:nil
@@ -312,7 +313,7 @@ ICloud::ICloud() {
 						Dictionary ret;
 						ret["type"] = "key_value_changed";
 
-						//PoolStringArray result_keys;
+						//StringArray result_keys;
 						//Array result_values;
 						Dictionary keyValues;
 						String reason = "";

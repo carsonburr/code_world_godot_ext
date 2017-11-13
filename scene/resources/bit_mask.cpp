@@ -41,23 +41,23 @@ void BitMap::create(const Size2 &p_size) {
 	zeromem(bitmask.ptr(), bitmask.size());
 }
 
-void BitMap::create_from_image_alpha(const Ref<Image> &p_image) {
+void BitMap::create_from_image_alpha(const Image &p_image) {
 
-	ERR_FAIL_COND(p_image.is_null() || p_image->empty());
-	Ref<Image> img = p_image->duplicate();
-	img->convert(Image::FORMAT_LA8);
-	ERR_FAIL_COND(img->get_format() != Image::FORMAT_LA8);
+	ERR_FAIL_COND(p_image.empty());
+	Image img = p_image;
+	img.convert(Image::FORMAT_INTENSITY);
+	ERR_FAIL_COND(img.get_format() != Image::FORMAT_INTENSITY);
 
-	create(Size2(img->get_width(), img->get_height()));
+	create(Size2(img.get_width(), img.get_height()));
 
-	PoolVector<uint8_t>::Read r = img->get_data().read();
+	DVector<uint8_t>::Read r = img.get_data().read();
 	uint8_t *w = bitmask.ptr();
 
 	for (int i = 0; i < width * height; i++) {
 
 		int bbyte = i / 8;
 		int bbit = i % 8;
-		if (r[i * 2])
+		if (r[i])
 			w[bbyte] |= (1 << bbit);
 	}
 }
@@ -67,9 +67,9 @@ void BitMap::set_bit_rect(const Rect2 &p_rect, bool p_value) {
 	Rect2i current = Rect2i(0, 0, width, height).clip(p_rect);
 	uint8_t *data = bitmask.ptr();
 
-	for (int i = current.position.x; i < current.position.x + current.size.x; i++) {
+	for (int i = current.pos.x; i < current.pos.x + current.size.x; i++) {
 
-		for (int j = current.position.y; j < current.position.y + current.size.y; j++) {
+		for (int j = current.pos.y; j < current.pos.y + current.size.y; j++) {
 
 			int ofs = width * j + i;
 			int bbyte = ofs / 8;
@@ -169,21 +169,21 @@ Dictionary BitMap::_get_data() const {
 
 void BitMap::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("create", "size"), &BitMap::create);
-	ClassDB::bind_method(D_METHOD("create_from_image_alpha", "image"), &BitMap::create_from_image_alpha);
+	ObjectTypeDB::bind_method(_MD("create", "size"), &BitMap::create);
+	ObjectTypeDB::bind_method(_MD("create_from_image_alpha", "image"), &BitMap::create_from_image_alpha);
 
-	ClassDB::bind_method(D_METHOD("set_bit", "position", "bit"), &BitMap::set_bit);
-	ClassDB::bind_method(D_METHOD("get_bit", "position"), &BitMap::get_bit);
+	ObjectTypeDB::bind_method(_MD("set_bit", "pos", "bit"), &BitMap::set_bit);
+	ObjectTypeDB::bind_method(_MD("get_bit", "pos"), &BitMap::get_bit);
 
-	ClassDB::bind_method(D_METHOD("set_bit_rect", "p_rect", "bit"), &BitMap::set_bit_rect);
-	ClassDB::bind_method(D_METHOD("get_true_bit_count"), &BitMap::get_true_bit_count);
+	ObjectTypeDB::bind_method(_MD("set_bit_rect", "p_rect", "bit"), &BitMap::set_bit_rect);
+	ObjectTypeDB::bind_method(_MD("get_true_bit_count"), &BitMap::get_true_bit_count);
 
-	ClassDB::bind_method(D_METHOD("get_size"), &BitMap::get_size);
+	ObjectTypeDB::bind_method(_MD("get_size"), &BitMap::get_size);
 
-	ClassDB::bind_method(D_METHOD("_set_data"), &BitMap::_set_data);
-	ClassDB::bind_method(D_METHOD("_get_data"), &BitMap::_get_data);
+	ObjectTypeDB::bind_method(_MD("_set_data"), &BitMap::_set_data);
+	ObjectTypeDB::bind_method(_MD("_get_data"), &BitMap::_get_data);
 
-	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "data", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR), "_set_data", "_get_data");
+	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "data", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR), _SCS("_set_data"), _SCS("_get_data"));
 }
 
 BitMap::BitMap() {

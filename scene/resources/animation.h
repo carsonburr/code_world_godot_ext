@@ -36,10 +36,17 @@
 */
 class Animation : public Resource {
 
-	GDCLASS(Animation, Resource);
-	RES_BASE_EXTENSION("anim");
+	OBJ_TYPE(Animation, Resource);
+	RES_BASE_EXTENSION("anm");
 
 public:
+	enum LoopMode {
+
+		LOOP_NONE,
+		LOOP_ENABLED,
+		LOOP_WRAP
+	};
+
 	enum TrackType {
 		TYPE_VALUE, ///< Set a value in a property, can be interpolated.
 		TYPE_TRANSFORM, ///< Transform a node or a bone.
@@ -64,13 +71,11 @@ private:
 
 		TrackType type;
 		InterpolationType interpolation;
-		bool loop_wrap;
 		NodePath path; // path to something
 		bool imported;
 		Track() {
 			interpolation = INTERPOLATION_LINEAR;
 			imported = false;
-			loop_wrap = true;
 		}
 		virtual ~Track() {}
 	};
@@ -163,7 +168,7 @@ private:
 	_FORCE_INLINE_ float _cubic_interpolate(const float &p_pre_a, const float &p_a, const float &p_b, const float &p_post_b, float p_c) const;
 
 	template <class T>
-	_FORCE_INLINE_ T _interpolate(const Vector<TKey<T> > &p_keys, float p_time, InterpolationType p_interp, bool p_loop_wrap, bool *p_ok) const;
+	_FORCE_INLINE_ T _interpolate(const Vector<TKey<T> > &p_keys, float p_time, InterpolationType p_interp, bool *p_ok) const;
 
 	_FORCE_INLINE_ void _value_track_get_key_indices_in_range(const ValueTrack *vt, float from_time, float to_time, List<int> *p_indices) const;
 	_FORCE_INLINE_ void _method_track_get_key_indices_in_range(const MethodTrack *mt, float from_time, float to_time, List<int> *p_indices) const;
@@ -186,11 +191,11 @@ private:
 		return ret;
 	}
 
-	PoolVector<int> _value_track_get_key_indices(int p_track, float p_time, float p_delta) const {
+	DVector<int> _value_track_get_key_indices(int p_track, float p_time, float p_delta) const {
 
 		List<int> idxs;
 		value_track_get_key_indices(p_track, p_time, p_delta, &idxs);
-		PoolVector<int> idxr;
+		DVector<int> idxr;
 
 		for (List<int>::Element *E = idxs.front(); E; E = E->next()) {
 
@@ -198,11 +203,11 @@ private:
 		}
 		return idxr;
 	}
-	PoolVector<int> _method_track_get_key_indices(int p_track, float p_time, float p_delta) const {
+	DVector<int> _method_track_get_key_indices(int p_track, float p_time, float p_delta) const {
 
 		List<int> idxs;
 		method_track_get_key_indices(p_track, p_time, p_delta, &idxs);
-		PoolVector<int> idxr;
+		DVector<int> idxr;
 
 		for (List<int>::Element *E = idxs.front(); E; E = E->next()) {
 
@@ -212,7 +217,7 @@ private:
 	}
 
 	bool _transform_track_optimize_key(const TKey<TransformKey> &t0, const TKey<TransformKey> &t1, const TKey<TransformKey> &t2, float p_alowed_linear_err, float p_alowed_angular_err, float p_max_optimizable_angle, const Vector3 &p_norm);
-	void _transform_track_optimize(int p_idx, float p_allowed_linear_err = 0.05, float p_allowed_angular_err = 0.01, float p_max_optimizable_angle = Math_PI * 0.125);
+	void _transform_track_optimize(int p_idx, float p_allowed_err = 0.05, float p_alowed_angular_err = 0.01, float p_max_optimizable_angle = Math_PI * 0.125);
 
 protected:
 	bool _set(const StringName &p_name, const Variant &p_value);
@@ -245,7 +250,7 @@ public:
 	void track_set_key_value(int p_track, int p_key_idx, const Variant &p_value);
 	int track_find_key(int p_track, float p_time, bool p_exact = false) const;
 	void track_remove_key(int p_track, int p_idx);
-	void track_remove_key_at_position(int p_track, float p_pos);
+	void track_remove_key_at_pos(int p_track, float p_pos);
 	int track_get_key_count(int p_track) const;
 	Variant track_get_key_value(int p_track, int p_key_idx) const;
 	float track_get_key_time(int p_track, int p_key_idx) const;
@@ -254,9 +259,6 @@ public:
 	Error transform_track_get_key(int p_track, int p_key, Vector3 *r_loc, Quat *r_rot, Vector3 *r_scale) const;
 	void track_set_interpolation_type(int p_track, InterpolationType p_interp);
 	InterpolationType track_get_interpolation_type(int p_track) const;
-
-	void track_set_interpolation_loop_wrap(int p_track, bool p_enable);
-	bool track_get_interpolation_loop_wrap(int p_track) const;
 
 	Error transform_track_interpolate(int p_track, float p_time, Vector3 *r_loc, Quat *r_rot, Vector3 *r_scale) const;
 

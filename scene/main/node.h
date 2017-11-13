@@ -30,19 +30,18 @@
 #ifndef NODE_H
 #define NODE_H
 
-#include "class_db.h"
 #include "map.h"
-#include "node_path.h"
 #include "object.h"
-#include "project_settings.h"
-#include "scene/main/scene_tree.h"
+#include "object_type_db.h"
+#include "path_db.h"
+#include "scene/main/scene_main_loop.h"
 #include "script_language.h"
 
 class Viewport;
 class SceneState;
 class Node : public Object {
 
-	GDCLASS(Node, Object);
+	OBJ_TYPE(Node, Object);
 	OBJ_CATEGORY("Nodes");
 
 public:
@@ -57,17 +56,7 @@ public:
 
 		DUPLICATE_SIGNALS = 1,
 		DUPLICATE_GROUPS = 2,
-		DUPLICATE_SCRIPTS = 4,
-		DUPLICATE_USE_INSTANCING = 8
-	};
-
-	enum RPCMode {
-
-		RPC_MODE_DISABLED, //no rpc for this method, calls to this will be blocked (default)
-		RPC_MODE_REMOTE, // using rpc() on it will call method / set property in all other peers
-		RPC_MODE_SYNC, // using rpc() on it will call method / set property in all other peers and locally
-		RPC_MODE_MASTER, // usinc rpc() on it will call method on wherever the master is, be it local or remote
-		RPC_MODE_SLAVE, // usinc rpc() on it will call method for all slaves, be it local or remote
+		DUPLICATE_SCRIPTS = 4
 	};
 
 	struct Comparator {
@@ -100,8 +89,7 @@ private:
 		StringName name;
 		SceneTree *tree;
 		bool inside_tree;
-		bool ready_notified; //this is a small hack, so if a node is added during _ready() to the tree, it corretly gets the _ready() notification
-		bool ready_first;
+		bool ready_notified;
 #ifdef TOOLS_ENABLED
 		NodePath import_path; //path used when imported, used by scene editors to keep tracking
 #endif
@@ -114,18 +102,10 @@ private:
 
 		PauseMode pause_mode;
 		Node *pause_owner;
-
-		int network_master;
-		Map<StringName, RPCMode> rpc_methods;
-		Map<StringName, RPCMode> rpc_properties;
-
 		// variables used to properly sort the node when processing, ignored otherwise
 		//should move all the stuff below to bits
-		bool physics_process;
+		bool fixed_process;
 		bool idle_process;
-
-		bool physics_process_internal;
-		bool idle_process_internal;
 
 		bool input;
 		bool unhandled_input;
@@ -137,25 +117,17 @@ private:
 
 		bool display_folded;
 
-		mutable NodePath *path_cache;
-
 	} data;
-
-	enum NameCasing {
-		NAME_CASING_PASCAL_CASE,
-		NAME_CASING_CAMEL_CASE,
-		NAME_CASING_SNAKE_CASE
-	};
 
 	void _print_tree(const Node *p_node);
 
+	virtual bool _use_builtin_script() const { return true; }
 	Node *_get_node(const NodePath &p_path) const;
 	Node *_get_child_by_name(const StringName &p_name) const;
 
 	void _replace_connections_target(Node *p_new_target);
 
-	void _validate_child_name(Node *p_child, bool p_force_human_readable = false);
-	String _generate_serial_child_name(Node *p_child);
+	void _validate_child_name(Node *p_name, bool p_force_human_readable = false);
 
 	void _propagate_reverse_notification(int p_notification);
 	void _propagate_deferred_notification(int p_notification, bool p_reverse);
@@ -169,15 +141,10 @@ private:
 
 	void _duplicate_signals(const Node *p_original, Node *p_copy) const;
 	void _duplicate_and_reown(Node *p_new_parent, const Map<Node *, Node *> &p_reown_map) const;
-	Node *_duplicate(int p_flags) const;
+	Node *_duplicate(bool p_use_instancing, int p_flags) const;
 
 	Array _get_children() const;
 	Array _get_groups() const;
-
-	Variant _rpc_bind(const Variant **p_args, int p_argcount, Variant::CallError &r_error);
-	Variant _rpc_unreliable_bind(const Variant **p_args, int p_argcount, Variant::CallError &r_error);
-	Variant _rpc_id_bind(const Variant **p_args, int p_argcount, Variant::CallError &r_error);
-	Variant _rpc_unreliable_id_bind(const Variant **p_args, int p_argcount, Variant::CallError &r_error);
 
 	friend class SceneTree;
 
@@ -192,11 +159,11 @@ protected:
 	virtual void add_child_notify(Node *p_child);
 	virtual void remove_child_notify(Node *p_child);
 	virtual void move_child_notify(Node *p_child);
+	//void remove_and_delete_child(Node *p_child);
 
 	void _propagate_replace_owner(Node *p_owner, Node *p_by_owner);
 
 	static void _bind_methods();
-	static String _get_name_num_separator();
 
 	friend class SceneState;
 
@@ -211,20 +178,16 @@ public:
 		NOTIFICATION_EXIT_TREE = 11,
 		NOTIFICATION_MOVED_IN_PARENT = 12,
 		NOTIFICATION_READY = 13,
+		//NOTIFICATION_PARENT_DECONFIGURED =15, - it's confusing, it's going away
 		NOTIFICATION_PAUSED = 14,
 		NOTIFICATION_UNPAUSED = 15,
-		NOTIFICATION_PHYSICS_PROCESS = 16,
+		NOTIFICATION_FIXED_PROCESS = 16,
 		NOTIFICATION_PROCESS = 17,
 		NOTIFICATION_PARENTED = 18,
 		NOTIFICATION_UNPARENTED = 19,
 		NOTIFICATION_INSTANCED = 20,
 		NOTIFICATION_DRAG_BEGIN = 21,
 		NOTIFICATION_DRAG_END = 22,
-		NOTIFICATION_PATH_CHANGED = 23,
-		NOTIFICATION_TRANSLATION_CHANGED = 24,
-		NOTIFICATION_INTERNAL_PROCESS = 25,
-		NOTIFICATION_INTERNAL_PHYSICS_PROCESS = 26,
-
 	};
 
 	/* NODE/TREE */
@@ -296,22 +259,14 @@ public:
 
 	void propagate_notification(int p_notification);
 
-	void propagate_call(const StringName &p_method, const Array &p_args = Array(), const bool p_parent_first = false);
-
 	/* PROCESSING */
-	void set_physics_process(bool p_process);
-	float get_physics_process_delta_time() const;
-	bool is_physics_processing() const;
+	void set_fixed_process(bool p_process);
+	float get_fixed_process_delta_time() const;
+	bool is_fixed_processing() const;
 
-	void set_process(bool p_idle_process);
+	void set_process(bool p_process);
 	float get_process_delta_time() const;
 	bool is_processing() const;
-
-	void set_physics_process_internal(bool p_process_internal);
-	bool is_physics_processing_internal() const;
-
-	void set_process_internal(bool p_idle_process_internal);
-	bool is_processing_internal() const;
 
 	void set_process_input(bool p_enable);
 	bool is_processing_input() const;
@@ -324,7 +279,7 @@ public:
 
 	int get_position_in_parent() const;
 
-	Node *duplicate(int p_flags = DUPLICATE_GROUPS | DUPLICATE_SIGNALS | DUPLICATE_SCRIPTS) const;
+	Node *duplicate(bool p_use_instancing = false, int p_flags = DUPLICATE_GROUPS | DUPLICATE_SIGNALS | DUPLICATE_SCRIPTS) const;
 	Node *duplicate_and_reown(const Map<Node *, Node *> &p_reown_map) const;
 
 	//Node *clone_tree() const;
@@ -347,13 +302,9 @@ public:
 	PauseMode get_pause_mode() const;
 	bool can_process() const;
 
-	void request_ready();
-
 	static void print_stray_nodes();
 
-#ifdef TOOLS_ENABLED
-	String validate_child_name(Node *p_child);
-#endif
+	String validate_child_name(const String &p_name) const;
 
 	void queue_delete();
 
@@ -382,37 +333,11 @@ public:
 
 	void set_display_folded(bool p_folded);
 	bool is_displayed_folded() const;
-	/* NETWORK */
-
-	void set_network_master(int p_peer_id, bool p_recursive = true);
-	int get_network_master() const;
-	bool is_network_master() const;
-
-	void rpc_config(const StringName &p_method, RPCMode p_mode); // config a local method for RPC
-	void rset_config(const StringName &p_property, RPCMode p_mode); // config a local property for RPC
-
-	void rpc(const StringName &p_method, VARIANT_ARG_LIST); //rpc call, honors RPCMode
-	void rpc_unreliable(const StringName &p_method, VARIANT_ARG_LIST); //rpc call, honors RPCMode
-	void rpc_id(int p_peer_id, const StringName &p_method, VARIANT_ARG_LIST); //rpc call, honors RPCMode
-	void rpc_unreliable_id(int p_peer_id, const StringName &p_method, VARIANT_ARG_LIST); //rpc call, honors RPCMode
-
-	void rpcp(int p_peer_id, bool p_unreliable, const StringName &p_method, const Variant **p_arg, int p_argcount);
-
-	void rset(const StringName &p_property, const Variant &p_value); //remote set call, honors RPCMode
-	void rset_unreliable(const StringName &p_property, const Variant &p_value); //remote set call, honors RPCMode
-	void rset_id(int p_peer_id, const StringName &p_property, const Variant &p_value); //remote set call, honors RPCMode
-	void rset_unreliable_id(int p_peer_id, const StringName &p_property, const Variant &p_value); //remote set call, honors RPCMode
-
-	void rsetp(int p_peer_id, bool p_unreliable, const StringName &p_property, const Variant &p_value);
-
-	bool can_call_rpc(const StringName &p_method, int p_from) const;
-	bool can_call_rset(const StringName &p_property, int p_from) const;
+	/* CANVAS */
 
 	Node();
 	~Node();
 };
-
-VARIANT_ENUM_CAST(Node::DuplicateFlags);
 
 typedef Set<Node *, Node::Comparator> NodeSet;
 

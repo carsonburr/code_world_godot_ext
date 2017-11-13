@@ -33,7 +33,7 @@
 #include "scene/resources/shape_2d.h"
 
 class ConvexPolygonShape2D : public Shape2D {
-	GDCLASS(ConvexPolygonShape2D, Shape2D);
+	OBJ_TYPE(ConvexPolygonShape2D, Shape2D);
 
 	Vector<Vector2> points;
 	void _update_shape();

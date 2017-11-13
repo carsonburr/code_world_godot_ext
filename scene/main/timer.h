@@ -34,13 +34,13 @@
 
 class Timer : public Node {
 
-	GDCLASS(Timer, Node);
+	OBJ_TYPE(Timer, Node);
 
 	float wait_time;
 	bool one_shot;
 	bool autostart;
 	bool processing;
-	bool paused;
+	bool active;
 
 	double time_left;
 
@@ -50,7 +50,7 @@ protected:
 
 public:
 	enum TimerProcessMode {
-		TIMER_PROCESS_PHYSICS,
+		TIMER_PROCESS_FIXED,
 		TIMER_PROCESS_IDLE,
 	};
 
@@ -65,11 +65,8 @@ public:
 
 	void start();
 	void stop();
-
-	void set_paused(bool p_paused);
-	bool is_paused() const;
-
-	bool is_stopped() const;
+	void set_active(bool p_active);
+	bool is_active() const;
 
 	float get_time_left() const;
 

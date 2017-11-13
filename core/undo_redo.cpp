@@ -29,8 +29,6 @@
 /*************************************************************************/
 #include "undo_redo.h"
 
-#include "os/os.h"
-
 void UndoRedo::_discard_redo() {
 
 	if (current_action == actions.size() - 1)
@@ -55,14 +53,12 @@ void UndoRedo::_discard_redo() {
 
 void UndoRedo::create_action(const String &p_name, MergeMode p_mode) {
 
-	uint32_t ticks = OS::get_singleton()->get_ticks_msec();
-
 	if (action_level == 0) {
 
 		_discard_redo();
 
 		// Check if the merge operation is valid
-		if (p_mode != MERGE_DISABLE && actions.size() && actions[actions.size() - 1].name == p_name && actions[actions.size() - 1].last_tick + 800 > ticks) {
+		if (p_mode != MERGE_DISABLE && actions.size() && actions[actions.size() - 1].name == p_name) {
 
 			current_action = actions.size() - 2;
 
@@ -86,15 +82,12 @@ void UndoRedo::create_action(const String &p_name, MergeMode p_mode) {
 				}
 			}
 
-			actions[actions.size() - 1].last_tick = ticks;
-
 			merge_mode = p_mode;
 
 		} else {
 
 			Action new_action;
 			new_action.name = p_name;
-			new_action.last_tick = ticks;
 			actions.push_back(new_action);
 
 			merge_mode = MERGE_DISABLE;
@@ -110,9 +103,9 @@ void UndoRedo::add_do_method(Object *p_object, const String &p_method, VARIANT_A
 	ERR_FAIL_COND(action_level <= 0);
 	ERR_FAIL_COND((current_action + 1) >= actions.size());
 	Operation do_op;
-	do_op.object = p_object->get_instance_id();
-	if (Object::cast_to<Resource>(p_object))
-		do_op.resref = Ref<Resource>(Object::cast_to<Resource>(p_object));
+	do_op.object = p_object->get_instance_ID();
+	if (p_object->cast_to<Resource>())
+		do_op.resref = Ref<Resource>(p_object->cast_to<Resource>());
 
 	do_op.type = Operation::TYPE_METHOD;
 	do_op.name = p_method;
@@ -134,9 +127,9 @@ void UndoRedo::add_undo_method(Object *p_object, const String &p_method, VARIANT
 		return;
 
 	Operation undo_op;
-	undo_op.object = p_object->get_instance_id();
-	if (Object::cast_to<Resource>(p_object))
-		undo_op.resref = Ref<Resource>(Object::cast_to<Resource>(p_object));
+	undo_op.object = p_object->get_instance_ID();
+	if (p_object->cast_to<Resource>())
+		undo_op.resref = Ref<Resource>(p_object->cast_to<Resource>());
 
 	undo_op.type = Operation::TYPE_METHOD;
 	undo_op.name = p_method;
@@ -151,9 +144,9 @@ void UndoRedo::add_do_property(Object *p_object, const String &p_property, const
 	ERR_FAIL_COND(action_level <= 0);
 	ERR_FAIL_COND((current_action + 1) >= actions.size());
 	Operation do_op;
-	do_op.object = p_object->get_instance_id();
-	if (Object::cast_to<Resource>(p_object))
-		do_op.resref = Ref<Resource>(Object::cast_to<Resource>(p_object));
+	do_op.object = p_object->get_instance_ID();
+	if (p_object->cast_to<Resource>())
+		do_op.resref = Ref<Resource>(p_object->cast_to<Resource>());
 
 	do_op.type = Operation::TYPE_PROPERTY;
 	do_op.name = p_property;
@@ -170,9 +163,9 @@ void UndoRedo::add_undo_property(Object *p_object, const String &p_property, con
 		return;
 
 	Operation undo_op;
-	undo_op.object = p_object->get_instance_id();
-	if (Object::cast_to<Resource>(p_object))
-		undo_op.resref = Ref<Resource>(Object::cast_to<Resource>(p_object));
+	undo_op.object = p_object->get_instance_ID();
+	if (p_object->cast_to<Resource>())
+		undo_op.resref = Ref<Resource>(p_object->cast_to<Resource>());
 
 	undo_op.type = Operation::TYPE_PROPERTY;
 	undo_op.name = p_property;
@@ -184,9 +177,9 @@ void UndoRedo::add_do_reference(Object *p_object) {
 	ERR_FAIL_COND(action_level <= 0);
 	ERR_FAIL_COND((current_action + 1) >= actions.size());
 	Operation do_op;
-	do_op.object = p_object->get_instance_id();
-	if (Object::cast_to<Resource>(p_object))
-		do_op.resref = Ref<Resource>(Object::cast_to<Resource>(p_object));
+	do_op.object = p_object->get_instance_ID();
+	if (p_object->cast_to<Resource>())
+		do_op.resref = Ref<Resource>(p_object->cast_to<Resource>());
 
 	do_op.type = Operation::TYPE_REFERENCE;
 	actions[current_action + 1].do_ops.push_back(do_op);
@@ -201,9 +194,9 @@ void UndoRedo::add_undo_reference(Object *p_object) {
 		return;
 
 	Operation undo_op;
-	undo_op.object = p_object->get_instance_id();
-	if (Object::cast_to<Resource>(p_object))
-		undo_op.resref = Ref<Resource>(Object::cast_to<Resource>(p_object));
+	undo_op.object = p_object->get_instance_ID();
+	if (p_object->cast_to<Resource>())
+		undo_op.resref = Ref<Resource>(p_object->cast_to<Resource>());
 
 	undo_op.type = Operation::TYPE_REFERENCE;
 	actions[current_action + 1].undo_ops.push_back(undo_op);
@@ -270,7 +263,7 @@ void UndoRedo::_process_operation_list(List<Operation>::Element *E) {
 
 				obj->call(op.name, VARIANT_ARGS_FROM_ARRAY(op.args));
 #ifdef TOOLS_ENABLED
-				Resource *res = Object::cast_to<Resource>(obj);
+				Resource *res = obj->cast_to<Resource>();
 				if (res)
 					res->set_edited(true);
 
@@ -284,7 +277,7 @@ void UndoRedo::_process_operation_list(List<Operation>::Element *E) {
 
 				obj->set(op.name, op.args[0]);
 #ifdef TOOLS_ENABLED
-				Resource *res = Object::cast_to<Resource>(obj);
+				Resource *res = obj->cast_to<Resource>();
 				if (res)
 					res->set_edited(true);
 #endif
@@ -472,19 +465,24 @@ Variant UndoRedo::_add_undo_method(const Variant **p_args, int p_argcount, Varia
 
 void UndoRedo::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("create_action", "name", "merge_mode"), &UndoRedo::create_action, DEFVAL(MERGE_DISABLE));
-	ClassDB::bind_method(D_METHOD("commit_action"), &UndoRedo::commit_action);
+	ObjectTypeDB::bind_method(_MD("create_action", "name", "merge_mode"), &UndoRedo::create_action, DEFVAL(MERGE_DISABLE));
+	ObjectTypeDB::bind_method(_MD("commit_action"), &UndoRedo::commit_action);
 
-	//ClassDB::bind_method(D_METHOD("add_do_method","p_object", "p_method", "VARIANT_ARG_LIST"),&UndoRedo::add_do_method);
-	//ClassDB::bind_method(D_METHOD("add_undo_method","p_object", "p_method", "VARIANT_ARG_LIST"),&UndoRedo::add_undo_method);
+	//ObjectTypeDB::bind_method(_MD("add_do_method","p_object", "p_method", "VARIANT_ARG_LIST"),&UndoRedo::add_do_method);
+	//ObjectTypeDB::bind_method(_MD("add_undo_method","p_object", "p_method", "VARIANT_ARG_LIST"),&UndoRedo::add_undo_method);
 
 	{
 		MethodInfo mi;
 		mi.name = "add_do_method";
 		mi.arguments.push_back(PropertyInfo(Variant::OBJECT, "object"));
 		mi.arguments.push_back(PropertyInfo(Variant::STRING, "method"));
+		Vector<Variant> defargs;
+		for (int i = 0; i < VARIANT_ARG_MAX; ++i) {
+			mi.arguments.push_back(PropertyInfo(Variant::NIL, "arg" + itos(i)));
+			defargs.push_back(Variant());
+		}
 
-		ClassDB::bind_vararg_method(METHOD_FLAGS_DEFAULT, "add_do_method", &UndoRedo::_add_do_method, mi);
+		ObjectTypeDB::bind_native_method(METHOD_FLAGS_DEFAULT, "add_do_method", &UndoRedo::_add_do_method, mi, defargs);
 	}
 
 	{
@@ -492,23 +490,24 @@ void UndoRedo::_bind_methods() {
 		mi.name = "add_undo_method";
 		mi.arguments.push_back(PropertyInfo(Variant::OBJECT, "object"));
 		mi.arguments.push_back(PropertyInfo(Variant::STRING, "method"));
+		Vector<Variant> defargs;
+		for (int i = 0; i < VARIANT_ARG_MAX; ++i) {
+			mi.arguments.push_back(PropertyInfo(Variant::NIL, "arg" + itos(i)));
+			defargs.push_back(Variant());
+		}
 
-		ClassDB::bind_vararg_method(METHOD_FLAGS_DEFAULT, "add_undo_method", &UndoRedo::_add_undo_method, mi);
+		ObjectTypeDB::bind_native_method(METHOD_FLAGS_DEFAULT, "add_undo_method", &UndoRedo::_add_undo_method, mi, defargs);
 	}
 
-	ClassDB::bind_method(D_METHOD("add_do_property", "object", "property", "value"), &UndoRedo::add_do_property);
-	ClassDB::bind_method(D_METHOD("add_undo_property", "object", "property", "value"), &UndoRedo::add_undo_property);
-	ClassDB::bind_method(D_METHOD("add_do_reference", "object"), &UndoRedo::add_do_reference);
-	ClassDB::bind_method(D_METHOD("add_undo_reference", "object"), &UndoRedo::add_undo_reference);
-	ClassDB::bind_method(D_METHOD("clear_history"), &UndoRedo::clear_history);
-	ClassDB::bind_method(D_METHOD("get_current_action_name"), &UndoRedo::get_current_action_name);
-	ClassDB::bind_method(D_METHOD("get_version"), &UndoRedo::get_version);
-	ClassDB::bind_method(D_METHOD("set_max_steps", "max_steps"), &UndoRedo::set_max_steps);
-	ClassDB::bind_method(D_METHOD("get_max_steps"), &UndoRedo::get_max_steps);
-	ClassDB::bind_method(D_METHOD("redo"), &UndoRedo::redo);
-	ClassDB::bind_method(D_METHOD("undo"), &UndoRedo::undo);
+	ObjectTypeDB::bind_method(_MD("add_do_property", "object", "property", "value:Variant"), &UndoRedo::add_do_property);
+	ObjectTypeDB::bind_method(_MD("add_undo_property", "object", "property", "value:Variant"), &UndoRedo::add_undo_property);
+	ObjectTypeDB::bind_method(_MD("add_do_reference", "object"), &UndoRedo::add_do_reference);
+	ObjectTypeDB::bind_method(_MD("add_undo_reference", "object"), &UndoRedo::add_undo_reference);
+	ObjectTypeDB::bind_method(_MD("clear_history"), &UndoRedo::clear_history);
+	ObjectTypeDB::bind_method(_MD("get_current_action_name"), &UndoRedo::get_current_action_name);
+	ObjectTypeDB::bind_method(_MD("get_version"), &UndoRedo::get_version);
 
-	BIND_ENUM_CONSTANT(MERGE_DISABLE);
-	BIND_ENUM_CONSTANT(MERGE_ENDS);
-	BIND_ENUM_CONSTANT(MERGE_ALL);
+	BIND_CONSTANT(MERGE_DISABLE);
+	BIND_CONSTANT(MERGE_ENDS);
+	BIND_CONSTANT(MERGE_ALL);
 }

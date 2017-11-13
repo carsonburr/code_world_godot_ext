@@ -34,7 +34,7 @@
 
 class RayCast : public Spatial {
 
-	GDCLASS(RayCast, Spatial);
+	OBJ_TYPE(RayCast, Spatial);
 
 	bool enabled;
 	bool collided;
@@ -47,15 +47,8 @@ class RayCast : public Spatial {
 
 	Set<RID> exclude;
 
-	uint32_t collision_mask;
+	uint32_t layer_mask;
 	uint32_t type_mask;
-
-	Node *debug_shape;
-	Ref<Material> debug_material;
-
-	void _create_debug_shape();
-	void _update_debug_shape();
-	void _clear_debug_shape();
 
 protected:
 	void _notification(int p_what);
@@ -69,11 +62,8 @@ public:
 	void set_cast_to(const Vector3 &p_point);
 	Vector3 get_cast_to() const;
 
-	void set_collision_mask(uint32_t p_mask);
-	uint32_t get_collision_mask() const;
-
-	void set_collision_mask_bit(int p_bit, bool p_value);
-	bool get_collision_mask_bit(int p_bit) const;
+	void set_layer_mask(uint32_t p_mask);
+	uint32_t get_layer_mask() const;
 
 	void set_type_mask(uint32_t p_mask);
 	uint32_t get_type_mask() const;

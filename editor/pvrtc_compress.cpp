@@ -28,20 +28,18 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 #include "pvrtc_compress.h"
-
 #include "editor_settings.h"
 #include "io/resource_loader.h"
 #include "io/resource_saver.h"
 #include "os/file_access.h"
 #include "os/os.h"
 #include "scene/resources/texture.h"
-
 static void (*_base_image_compress_pvrtc2_func)(Image *) = NULL;
 static void (*_base_image_compress_pvrtc4_func)(Image *) = NULL;
 
 static void _compress_image(Image::CompressMode p_mode, Image *p_image) {
 
-	String ttpath = EditorSettings::get_singleton()->get("filesystem/import/pvrtc_texture_tool");
+	String ttpath = EditorSettings::get_singleton()->get("PVRTC/texture_tool");
 
 	if (ttpath.strip_edges() == "" || !FileAccess::exists(ttpath)) {
 		switch (p_mode) {
@@ -82,14 +80,14 @@ static void _compress_image(Image::CompressMode p_mode, Image *p_image) {
 		default: ERR_FAIL();
 	}
 
-	if (EditorSettings::get_singleton()->get("filesystem/import/pvrtc_fast_conversion").operator bool()) {
+	if (EditorSettings::get_singleton()->get("PVRTC/fast_conversion").operator bool()) {
 		args.push_back("-pvrtcfast");
 	}
-	if (p_image->has_mipmaps())
+	if (p_image->get_mipmaps() > 0)
 		args.push_back("-m");
 
 	Ref<ImageTexture> t = memnew(ImageTexture);
-	t->create_from_image(Ref<Image>(p_image), 0);
+	t->create_from_image(*p_image, 0);
 	ResourceSaver::save(src_img, t);
 
 	Error err = OS::get_singleton()->execute(ttpath, args, true);
@@ -101,7 +99,7 @@ static void _compress_image(Image::CompressMode p_mode, Image *p_image) {
 	ERR_EXPLAIN(TTR("Can't load back converted image using PVRTC tool:") + " " + dst_img);
 	ERR_FAIL_COND(t.is_null());
 
-	p_image->copy_internals_from(t->get_data());
+	*p_image = t->get_data();
 }
 
 static void _compress_pvrtc2(Image *p_image) {

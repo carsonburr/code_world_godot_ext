@@ -28,6 +28,5 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 #include <alloca.h>
-
-#define GLES3_INCLUDE_H "glad/glad.h"
+#define GLES2_INCLUDE_H "GL/glew.h"
 #define PTHREAD_RENAME_SELF

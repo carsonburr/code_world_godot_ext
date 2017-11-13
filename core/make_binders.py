@@ -11,25 +11,19 @@ public:
 #ifdef DEBUG_METHODS_ENABLED
 	virtual Variant::Type _gen_argument_type(int p_arg) const { return _get_argument_type(p_arg); }
 	Variant::Type _get_argument_type(int p_argument) const {
-		$ifret if (p_argument==-1) return (Variant::Type)GetTypeInfo<R>::VARIANT_TYPE;$
-		$arg if (p_argument==(@-1)) return (Variant::Type)GetTypeInfo<P@>::VARIANT_TYPE;
+		$ifret if (p_argument==-1) return Variant::get_type_for<R>();$
+		$arg if (p_argument==(@-1)) return Variant::get_type_for<P@>();
 		$
 		return Variant::NIL;
 	}
-	virtual PropertyInfo _gen_argument_type_info(int p_argument) const {
-		$ifret if (p_argument==-1) return GetTypeInfo<R>::get_class_info();$
-		$arg if (p_argument==(@-1)) return GetTypeInfo<P@>::get_class_info();
-		$
-		return PropertyInfo();
-	}
 #endif
-	virtual String get_instance_class() const {
-		return T::get_class_static();
+	virtual String get_instance_type() const {
+		return T::get_type_static();
 	}
 
 	virtual Variant call(Object* p_object,const Variant** p_args,int p_arg_count, Variant::CallError& r_error) {
 
-		T *instance=Object::cast_to<T>(p_object);
+		T *instance=p_object->cast_to<T>();
 		r_error.error=Variant::CallError::CALL_OK;
 #ifdef DEBUG_METHODS_ENABLED
 
@@ -57,7 +51,7 @@ public:
 #ifdef PTRCALL_ENABLED
 	virtual void ptrcall(Object*p_object,const void** p_args,void *r_ret) {
 
-		T *instance=Object::cast_to<T>(p_object);
+		T *instance=p_object->cast_to<T>();
 		$ifret PtrToArg<R>::encode( $ (instance->*method)($arg, PtrToArg<P@>::convert(p_args[@-1])$) $ifret ,r_ret)$ ;
 	}
 #endif
@@ -68,8 +62,6 @@ public:
 #else
 		set_argument_count($argc$);
 #endif
-
-		$ifret _set_returns(true); $
 	};
 };
 
@@ -97,21 +89,13 @@ public:
 	virtual Variant::Type _gen_argument_type(int p_arg) const { return _get_argument_type(p_arg); }
 
 	Variant::Type _get_argument_type(int p_argument) const {
-		$ifret if (p_argument==-1) return (Variant::Type)GetTypeInfo<R>::VARIANT_TYPE;$
-		$arg if (p_argument==(@-1)) return (Variant::Type)GetTypeInfo<P@>::VARIANT_TYPE;
+		$ifret if (p_argument==-1) return Variant::get_type_for<R>();$
+		$arg if (p_argument==(@-1)) return Variant::get_type_for<P@>();
 		$
 		return Variant::NIL;
 	}
-
-	virtual PropertyInfo _gen_argument_type_info(int p_argument) const {
-		$ifret if (p_argument==-1) return GetTypeInfo<R>::get_class_info();$
-		$arg if (p_argument==(@-1)) return GetTypeInfo<P@>::get_class_info();
-		$
-		return PropertyInfo();
-	}
-
 #endif
-	virtual String get_instance_class() const {
+	virtual String get_instance_type() const {
 		return type_name;
 	}
 
@@ -156,9 +140,6 @@ public:
 #else
 		set_argument_count($argc$);
 #endif
-		$ifret _set_returns(true); $
-
-
 	};
 };
 
@@ -173,7 +154,7 @@ MethodBind* create_method_bind($ifret R$ $ifnoret void$ (T::*p_method)($arg, P@$
 	} u;
 	u.sm=p_method;
 	a->method=u.dm;
-	a->type_name=T::get_class_static();
+	a->type_name=T::get_type_static();
 	return a;
 }
 #endif
@@ -244,7 +225,7 @@ def make_version(template, nargs, argmax, const, ret):
 
 def run(target, source, env):
 
-    versions = 11
+    versions = 10
     versions_ext = 6
     text = ""
     text_ext = ""

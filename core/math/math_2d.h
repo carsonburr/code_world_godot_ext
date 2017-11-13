@@ -43,14 +43,6 @@ enum Margin {
 	MARGIN_BOTTOM
 };
 
-enum Corner {
-
-	CORNER_TOP_LEFT,
-	CORNER_TOP_RIGHT,
-	CORNER_BOTTOM_RIGHT,
-	CORNER_BOTTOM_LEFT
-};
-
 enum Orientation {
 
 	HORIZONTAL,
@@ -74,35 +66,34 @@ enum VAlign {
 struct Vector2 {
 
 	union {
-		real_t x;
-		real_t width;
+		float x;
+		float width;
 	};
 	union {
-		real_t y;
-		real_t height;
+		float y;
+		float height;
 	};
 
-	_FORCE_INLINE_ real_t &operator[](int p_idx) {
+	_FORCE_INLINE_ float &operator[](int p_idx) {
 		return p_idx ? y : x;
 	}
-	_FORCE_INLINE_ const real_t &operator[](int p_idx) const {
+	_FORCE_INLINE_ const float &operator[](int p_idx) const {
 		return p_idx ? y : x;
 	}
 
 	void normalize();
 	Vector2 normalized() const;
-	bool is_normalized() const;
 
-	real_t length() const;
-	real_t length_squared() const;
+	float length() const;
+	float length_squared() const;
 
-	real_t distance_to(const Vector2 &p_vector2) const;
-	real_t distance_squared_to(const Vector2 &p_vector2) const;
-	real_t angle_to(const Vector2 &p_vector2) const;
-	real_t angle_to_point(const Vector2 &p_vector2) const;
+	float distance_to(const Vector2 &p_vector2) const;
+	float distance_squared_to(const Vector2 &p_vector2) const;
+	float angle_to(const Vector2 &p_vector2) const;
+	float angle_to_point(const Vector2 &p_vector2) const;
 
-	real_t dot(const Vector2 &p_other) const;
-	real_t cross(const Vector2 &p_other) const;
+	float dot(const Vector2 &p_other) const;
+	float cross(const Vector2 &p_other) const;
 	Vector2 cross(real_t p_other) const;
 	Vector2 project(const Vector2 &p_vec) const;
 
@@ -110,13 +101,13 @@ struct Vector2 {
 
 	Vector2 clamped(real_t p_len) const;
 
-	_FORCE_INLINE_ static Vector2 linear_interpolate(const Vector2 &p_a, const Vector2 &p_b, real_t p_t);
-	_FORCE_INLINE_ Vector2 linear_interpolate(const Vector2 &p_b, real_t p_t) const;
-	Vector2 cubic_interpolate(const Vector2 &p_b, const Vector2 &p_pre_a, const Vector2 &p_post_b, real_t p_t) const;
+	_FORCE_INLINE_ static Vector2 linear_interpolate(const Vector2 &p_a, const Vector2 &p_b, float p_t);
+	_FORCE_INLINE_ Vector2 linear_interpolate(const Vector2 &p_b, float p_t) const;
+	Vector2 cubic_interpolate(const Vector2 &p_b, const Vector2 &p_pre_a, const Vector2 &p_post_b, float p_t) const;
+	Vector2 cubic_interpolate_soft(const Vector2 &p_b, const Vector2 &p_pre_a, const Vector2 &p_post_b, float p_t) const;
 
-	Vector2 slide(const Vector2 &p_normal) const;
-	Vector2 bounce(const Vector2 &p_normal) const;
-	Vector2 reflect(const Vector2 &p_normal) const;
+	Vector2 slide(const Vector2 &p_vec) const;
+	Vector2 reflect(const Vector2 &p_vec) const;
 
 	Vector2 operator+(const Vector2 &p_v) const;
 	void operator+=(const Vector2 &p_v);
@@ -124,15 +115,15 @@ struct Vector2 {
 	void operator-=(const Vector2 &p_v);
 	Vector2 operator*(const Vector2 &p_v1) const;
 
-	Vector2 operator*(const real_t &rvalue) const;
-	void operator*=(const real_t &rvalue);
+	Vector2 operator*(const float &rvalue) const;
+	void operator*=(const float &rvalue);
 	void operator*=(const Vector2 &rvalue) { *this = *this * rvalue; }
 
 	Vector2 operator/(const Vector2 &p_v1) const;
 
-	Vector2 operator/(const real_t &rvalue) const;
+	Vector2 operator/(const float &rvalue) const;
 
-	void operator/=(const real_t &rvalue);
+	void operator/=(const float &rvalue);
 
 	Vector2 operator-() const;
 
@@ -144,10 +135,10 @@ struct Vector2 {
 
 	real_t angle() const;
 
-	void set_rotation(real_t p_radians) {
+	void set_rotation(float p_radians) {
 
-		x = Math::cos(p_radians);
-		y = Math::sin(p_radians);
+		x = Math::sin(p_radians);
+		y = Math::cos(p_radians);
 	}
 
 	_FORCE_INLINE_ Vector2 abs() const {
@@ -155,7 +146,7 @@ struct Vector2 {
 		return Vector2(Math::abs(x), Math::abs(y));
 	}
 
-	Vector2 rotated(real_t p_by) const;
+	Vector2 rotated(float p_by) const;
 	Vector2 tangent() const {
 
 		return Vector2(y, -x);
@@ -163,11 +154,11 @@ struct Vector2 {
 
 	Vector2 floor() const;
 	Vector2 snapped(const Vector2 &p_by) const;
-	real_t aspect() const { return width / height; }
+	float get_aspect() const { return width / height; }
 
 	operator String() const { return String::num(x) + ", " + String::num(y); }
 
-	_FORCE_INLINE_ Vector2(real_t p_x, real_t p_y) {
+	_FORCE_INLINE_ Vector2(float p_x, float p_y) {
 		x = p_x;
 		y = p_y;
 	}
@@ -182,12 +173,12 @@ _FORCE_INLINE_ Vector2 Vector2::plane_project(real_t p_d, const Vector2 &p_vec) 
 	return p_vec - *this * (dot(p_vec) - p_d);
 }
 
-_FORCE_INLINE_ Vector2 operator*(real_t p_scalar, const Vector2 &p_vec) {
+_FORCE_INLINE_ Vector2 operator*(float p_scalar, const Vector2 &p_vec) {
 
 	return p_vec * p_scalar;
 }
 
-Vector2 Vector2::linear_interpolate(const Vector2 &p_b, real_t p_t) const {
+Vector2 Vector2::linear_interpolate(const Vector2 &p_b, float p_t) const {
 
 	Vector2 res = *this;
 
@@ -197,7 +188,7 @@ Vector2 Vector2::linear_interpolate(const Vector2 &p_b, real_t p_t) const {
 	return res;
 }
 
-Vector2 Vector2::linear_interpolate(const Vector2 &p_a, const Vector2 &p_b, real_t p_t) {
+Vector2 Vector2::linear_interpolate(const Vector2 &p_a, const Vector2 &p_b, float p_t) {
 
 	Vector2 res = p_a;
 
@@ -210,48 +201,48 @@ Vector2 Vector2::linear_interpolate(const Vector2 &p_a, const Vector2 &p_b, real
 typedef Vector2 Size2;
 typedef Vector2 Point2;
 
-struct Transform2D;
+struct Matrix32;
 
 struct Rect2 {
 
-	Point2 position;
+	Point2 pos;
 	Size2 size;
 
-	const Vector2 &get_position() const { return position; }
-	void set_position(const Vector2 &p_pos) { position = p_pos; }
+	const Vector2 &get_pos() const { return pos; }
+	void set_pos(const Vector2 &p_pos) { pos = p_pos; }
 	const Vector2 &get_size() const { return size; }
 	void set_size(const Vector2 &p_size) { size = p_size; }
 
-	real_t get_area() const { return size.width * size.height; }
+	float get_area() const { return size.width * size.height; }
 
 	inline bool intersects(const Rect2 &p_rect) const {
-		if (position.x >= (p_rect.position.x + p_rect.size.width))
+		if (pos.x >= (p_rect.pos.x + p_rect.size.width))
 			return false;
-		if ((position.x + size.width) <= p_rect.position.x)
+		if ((pos.x + size.width) <= p_rect.pos.x)
 			return false;
-		if (position.y >= (p_rect.position.y + p_rect.size.height))
+		if (pos.y >= (p_rect.pos.y + p_rect.size.height))
 			return false;
-		if ((position.y + size.height) <= p_rect.position.y)
+		if ((pos.y + size.height) <= p_rect.pos.y)
 			return false;
 
 		return true;
 	}
 
-	inline real_t distance_to(const Vector2 &p_point) const {
+	inline float distance_to(const Vector2 &p_point) const {
 
-		real_t dist = 1e20;
+		float dist = 1e20;
 
-		if (p_point.x < position.x) {
-			dist = MIN(dist, position.x - p_point.x);
+		if (p_point.x < pos.x) {
+			dist = MIN(dist, pos.x - p_point.x);
 		}
-		if (p_point.y < position.y) {
-			dist = MIN(dist, position.y - p_point.y);
+		if (p_point.y < pos.y) {
+			dist = MIN(dist, pos.y - p_point.y);
 		}
-		if (p_point.x >= (position.x + size.x)) {
-			dist = MIN(p_point.x - (position.x + size.x), dist);
+		if (p_point.x >= (pos.x + size.x)) {
+			dist = MIN(p_point.x - (pos.x + size.x), dist);
 		}
-		if (p_point.y >= (position.y + size.y)) {
-			dist = MIN(p_point.y - (position.y + size.y), dist);
+		if (p_point.y >= (pos.y + size.y)) {
+			dist = MIN(p_point.y - (pos.y + size.y), dist);
 		}
 
 		if (dist == 1e20)
@@ -260,15 +251,15 @@ struct Rect2 {
 			return dist;
 	}
 
-	_FORCE_INLINE_ bool intersects_transformed(const Transform2D &p_xform, const Rect2 &p_rect) const;
+	_FORCE_INLINE_ bool intersects_transformed(const Matrix32 &p_xform, const Rect2 &p_rect) const;
 
 	bool intersects_segment(const Point2 &p_from, const Point2 &p_to, Point2 *r_pos = NULL, Point2 *r_normal = NULL) const;
 
 	inline bool encloses(const Rect2 &p_rect) const {
 
-		return (p_rect.position.x >= position.x) && (p_rect.position.y >= position.y) &&
-			   ((p_rect.position.x + p_rect.size.x) < (position.x + size.x)) &&
-			   ((p_rect.position.y + p_rect.size.y) < (position.y + size.y));
+		return (p_rect.pos.x >= pos.x) && (p_rect.pos.y >= pos.y) &&
+			   ((p_rect.pos.x + p_rect.size.x) < (pos.x + size.x)) &&
+			   ((p_rect.pos.y + p_rect.size.y) < (pos.y + size.y));
 	}
 
 	inline bool has_no_area() const {
@@ -282,14 +273,14 @@ struct Rect2 {
 		if (!intersects(new_rect))
 			return Rect2();
 
-		new_rect.position.x = MAX(p_rect.position.x, position.x);
-		new_rect.position.y = MAX(p_rect.position.y, position.y);
+		new_rect.pos.x = MAX(p_rect.pos.x, pos.x);
+		new_rect.pos.y = MAX(p_rect.pos.y, pos.y);
 
-		Point2 p_rect_end = p_rect.position + p_rect.size;
-		Point2 end = position + size;
+		Point2 p_rect_end = p_rect.pos + p_rect.size;
+		Point2 end = pos + size;
 
-		new_rect.size.x = MIN(p_rect_end.x, end.x) - new_rect.position.x;
-		new_rect.size.y = MIN(p_rect_end.y, end.y) - new_rect.position.y;
+		new_rect.size.x = MIN(p_rect_end.x, end.x) - new_rect.pos.x;
+		new_rect.size.y = MIN(p_rect_end.y, end.y) - new_rect.pos.y;
 
 		return new_rect;
 	}
@@ -298,25 +289,25 @@ struct Rect2 {
 
 		Rect2 new_rect;
 
-		new_rect.position.x = MIN(p_rect.position.x, position.x);
-		new_rect.position.y = MIN(p_rect.position.y, position.y);
+		new_rect.pos.x = MIN(p_rect.pos.x, pos.x);
+		new_rect.pos.y = MIN(p_rect.pos.y, pos.y);
 
-		new_rect.size.x = MAX(p_rect.position.x + p_rect.size.x, position.x + size.x);
-		new_rect.size.y = MAX(p_rect.position.y + p_rect.size.y, position.y + size.y);
+		new_rect.size.x = MAX(p_rect.pos.x + p_rect.size.x, pos.x + size.x);
+		new_rect.size.y = MAX(p_rect.pos.y + p_rect.size.y, pos.y + size.y);
 
-		new_rect.size = new_rect.size - new_rect.position; //make relative again
+		new_rect.size = new_rect.size - new_rect.pos; //make relative again
 
 		return new_rect;
 	};
 	inline bool has_point(const Point2 &p_point) const {
-		if (p_point.x < position.x)
+		if (p_point.x < pos.x)
 			return false;
-		if (p_point.y < position.y)
+		if (p_point.y < pos.y)
 			return false;
 
-		if (p_point.x >= (position.x + size.x))
+		if (p_point.x >= (pos.x + size.x))
 			return false;
-		if (p_point.y >= (position.y + size.y))
+		if (p_point.y >= (pos.y + size.y))
 			return false;
 
 		return true;
@@ -324,14 +315,14 @@ struct Rect2 {
 
 	inline bool no_area() const { return (size.width <= 0 || size.height <= 0); }
 
-	bool operator==(const Rect2 &p_rect) const { return position == p_rect.position && size == p_rect.size; }
-	bool operator!=(const Rect2 &p_rect) const { return position != p_rect.position || size != p_rect.size; }
+	bool operator==(const Rect2 &p_rect) const { return pos == p_rect.pos && size == p_rect.size; }
+	bool operator!=(const Rect2 &p_rect) const { return pos != p_rect.pos || size != p_rect.size; }
 
 	inline Rect2 grow(real_t p_by) const {
 
 		Rect2 g = *this;
-		g.position.x -= p_by;
-		g.position.y -= p_by;
+		g.pos.x -= p_by;
+		g.pos.y -= p_by;
 		g.size.width += p_by * 2;
 		g.size.height += p_by * 2;
 		return g;
@@ -348,8 +339,8 @@ struct Rect2 {
 	inline Rect2 grow_individual(real_t p_left, real_t p_top, real_t p_right, real_t p_bottom) const {
 
 		Rect2 g = *this;
-		g.position.x -= p_left;
-		g.position.y -= p_top;
+		g.pos.x -= p_left;
+		g.pos.y -= p_top;
 		g.size.width += p_left + p_right;
 		g.size.height += p_top + p_bottom;
 
@@ -365,8 +356,8 @@ struct Rect2 {
 
 	inline void expand_to(const Vector2 &p_vector) { //in place function for speed
 
-		Vector2 begin = position;
-		Vector2 end = position + size;
+		Vector2 begin = pos;
+		Vector2 end = pos + size;
 
 		if (p_vector.x < begin.x)
 			begin.x = p_vector.x;
@@ -378,20 +369,20 @@ struct Rect2 {
 		if (p_vector.y > end.y)
 			end.y = p_vector.y;
 
-		position = begin;
+		pos = begin;
 		size = end - begin;
 	}
 
-	operator String() const { return String(position) + ", " + String(size); }
+	operator String() const { return String(pos) + ", " + String(size); }
 
 	Rect2() {}
-	Rect2(real_t p_x, real_t p_y, real_t p_width, real_t p_height)
-		: position(Point2(p_x, p_y)),
-		  size(Size2(p_width, p_height)) {
+	Rect2(float p_x, float p_y, float p_width, float p_height) {
+		pos = Point2(p_x, p_y);
+		size = Size2(p_width, p_height);
 	}
-	Rect2(const Point2 &p_pos, const Size2 &p_size)
-		: position(p_pos),
-		  size(p_size) {
+	Rect2(const Point2 &p_pos, const Size2 &p_size) {
+		pos = p_pos;
+		size = p_size;
 	}
 };
 
@@ -437,7 +428,7 @@ struct Point2i {
 	bool operator==(const Point2i &p_vec2) const;
 	bool operator!=(const Point2i &p_vec2) const;
 
-	real_t get_aspect() const { return width / (real_t)height; }
+	float get_aspect() const { return width / (float)height; }
 
 	operator String() const { return String::num(x) + ", " + String::num(y); }
 
@@ -460,24 +451,24 @@ typedef Point2i Size2i;
 
 struct Rect2i {
 
-	Point2i position;
+	Point2i pos;
 	Size2i size;
 
-	const Point2i &get_position() const { return position; }
-	void set_position(const Point2i &p_pos) { position = p_pos; }
+	const Point2i &get_pos() const { return pos; }
+	void set_pos(const Point2i &p_pos) { pos = p_pos; }
 	const Point2i &get_size() const { return size; }
 	void set_size(const Point2i &p_size) { size = p_size; }
 
 	int get_area() const { return size.width * size.height; }
 
 	inline bool intersects(const Rect2i &p_rect) const {
-		if (position.x > (p_rect.position.x + p_rect.size.width))
+		if (pos.x > (p_rect.pos.x + p_rect.size.width))
 			return false;
-		if ((position.x + size.width) < p_rect.position.x)
+		if ((pos.x + size.width) < p_rect.pos.x)
 			return false;
-		if (position.y > (p_rect.position.y + p_rect.size.height))
+		if (pos.y > (p_rect.pos.y + p_rect.size.height))
 			return false;
-		if ((position.y + size.height) < p_rect.position.y)
+		if ((pos.y + size.height) < p_rect.pos.y)
 			return false;
 
 		return true;
@@ -485,9 +476,9 @@ struct Rect2i {
 
 	inline bool encloses(const Rect2i &p_rect) const {
 
-		return (p_rect.position.x >= position.x) && (p_rect.position.y >= position.y) &&
-			   ((p_rect.position.x + p_rect.size.x) < (position.x + size.x)) &&
-			   ((p_rect.position.y + p_rect.size.y) < (position.y + size.y));
+		return (p_rect.pos.x >= pos.x) && (p_rect.pos.y >= pos.y) &&
+			   ((p_rect.pos.x + p_rect.size.x) < (pos.x + size.x)) &&
+			   ((p_rect.pos.y + p_rect.size.y) < (pos.y + size.y));
 	}
 
 	inline bool has_no_area() const {
@@ -501,14 +492,14 @@ struct Rect2i {
 		if (!intersects(new_rect))
 			return Rect2i();
 
-		new_rect.position.x = MAX(p_rect.position.x, position.x);
-		new_rect.position.y = MAX(p_rect.position.y, position.y);
+		new_rect.pos.x = MAX(p_rect.pos.x, pos.x);
+		new_rect.pos.y = MAX(p_rect.pos.y, pos.y);
 
-		Point2 p_rect_end = p_rect.position + p_rect.size;
-		Point2 end = position + size;
+		Point2 p_rect_end = p_rect.pos + p_rect.size;
+		Point2 end = pos + size;
 
-		new_rect.size.x = (int)(MIN(p_rect_end.x, end.x) - new_rect.position.x);
-		new_rect.size.y = (int)(MIN(p_rect_end.y, end.y) - new_rect.position.y);
+		new_rect.size.x = (int)(MIN(p_rect_end.x, end.x) - new_rect.pos.x);
+		new_rect.size.y = (int)(MIN(p_rect_end.y, end.y) - new_rect.pos.y);
 
 		return new_rect;
 	}
@@ -517,25 +508,25 @@ struct Rect2i {
 
 		Rect2i new_rect;
 
-		new_rect.position.x = MIN(p_rect.position.x, position.x);
-		new_rect.position.y = MIN(p_rect.position.y, position.y);
+		new_rect.pos.x = MIN(p_rect.pos.x, pos.x);
+		new_rect.pos.y = MIN(p_rect.pos.y, pos.y);
 
-		new_rect.size.x = MAX(p_rect.position.x + p_rect.size.x, position.x + size.x);
-		new_rect.size.y = MAX(p_rect.position.y + p_rect.size.y, position.y + size.y);
+		new_rect.size.x = MAX(p_rect.pos.x + p_rect.size.x, pos.x + size.x);
+		new_rect.size.y = MAX(p_rect.pos.y + p_rect.size.y, pos.y + size.y);
 
-		new_rect.size = new_rect.size - new_rect.position; //make relative again
+		new_rect.size = new_rect.size - new_rect.pos; //make relative again
 
 		return new_rect;
 	};
 	bool has_point(const Point2 &p_point) const {
-		if (p_point.x < position.x)
+		if (p_point.x < pos.x)
 			return false;
-		if (p_point.y < position.y)
+		if (p_point.y < pos.y)
 			return false;
 
-		if (p_point.x >= (position.x + size.x))
+		if (p_point.x >= (pos.x + size.x))
 			return false;
-		if (p_point.y >= (position.y + size.y))
+		if (p_point.y >= (pos.y + size.y))
 			return false;
 
 		return true;
@@ -543,14 +534,14 @@ struct Rect2i {
 
 	bool no_area() { return (size.width <= 0 || size.height <= 0); }
 
-	bool operator==(const Rect2i &p_rect) const { return position == p_rect.position && size == p_rect.size; }
-	bool operator!=(const Rect2i &p_rect) const { return position != p_rect.position || size != p_rect.size; }
+	bool operator==(const Rect2i &p_rect) const { return pos == p_rect.pos && size == p_rect.size; }
+	bool operator!=(const Rect2i &p_rect) const { return pos != p_rect.pos || size != p_rect.size; }
 
 	Rect2i grow(int p_by) const {
 
 		Rect2i g = *this;
-		g.position.x -= p_by;
-		g.position.y -= p_by;
+		g.pos.x -= p_by;
+		g.pos.y -= p_by;
 		g.size.width += p_by * 2;
 		g.size.height += p_by * 2;
 		return g;
@@ -558,8 +549,8 @@ struct Rect2i {
 
 	inline void expand_to(const Point2i &p_vector) {
 
-		Point2i begin = position;
-		Point2i end = position + size;
+		Point2i begin = pos;
+		Point2i end = pos + size;
 
 		if (p_vector.x < begin.x)
 			begin.x = p_vector.x;
@@ -571,44 +562,34 @@ struct Rect2i {
 		if (p_vector.y > end.y)
 			end.y = p_vector.y;
 
-		position = begin;
+		pos = begin;
 		size = end - begin;
 	}
 
-	operator String() const { return String(position) + ", " + String(size); }
+	operator String() const { return String(pos) + ", " + String(size); }
 
-	operator Rect2() const { return Rect2(position, size); }
-	Rect2i(const Rect2 &p_r2)
-		: position(p_r2.position),
-		  size(p_r2.size) {
+	operator Rect2() const { return Rect2(pos, size); }
+	Rect2i(const Rect2 &p_r2) {
+		pos = p_r2.pos;
+		size = p_r2.size;
 	}
 	Rect2i() {}
-	Rect2i(int p_x, int p_y, int p_width, int p_height)
-		: position(Point2(p_x, p_y)),
-		  size(Size2(p_width, p_height)) {
+	Rect2i(int p_x, int p_y, int p_width, int p_height) {
+		pos = Point2(p_x, p_y);
+		size = Size2(p_width, p_height);
 	}
-	Rect2i(const Point2 &p_pos, const Size2 &p_size)
-		: position(p_pos),
-		  size(p_size) {
+	Rect2i(const Point2 &p_pos, const Size2 &p_size) {
+		pos = p_pos;
+		size = p_size;
 	}
 };
 
-struct Transform2D {
-	// Warning #1: basis of Transform2D is stored differently from Basis. In terms of elements array, the basis matrix looks like "on paper":
-	// M = (elements[0][0] elements[1][0])
-	//     (elements[0][1] elements[1][1])
-	// This is such that the columns, which can be interpreted as basis vectors of the coordinate system "painted" on the object, can be accessed as elements[i].
-	// Note that this is the opposite of the indices in mathematical texts, meaning: $M_{12}$ in a math book corresponds to elements[1][0] here.
-	// This requires additional care when working with explicit indices.
-	// See https://en.wikipedia.org/wiki/Row-_and_column-major_order for further reading.
-
-	// Warning #2: 2D be aware that unlike 3D code, 2D code uses a left-handed coordinate system: Y-axis points down,
-	// and angle is measure from +X to +Y in a clockwise-fashion.
+struct Matrix32 {
 
 	Vector2 elements[3];
 
-	_FORCE_INLINE_ real_t tdotx(const Vector2 &v) const { return elements[0][0] * v.x + elements[1][0] * v.y; }
-	_FORCE_INLINE_ real_t tdoty(const Vector2 &v) const { return elements[0][1] * v.x + elements[1][1] * v.y; }
+	_FORCE_INLINE_ float tdotx(const Vector2 &v) const { return elements[0][0] * v.x + elements[1][0] * v.y; }
+	_FORCE_INLINE_ float tdoty(const Vector2 &v) const { return elements[0][1] * v.x + elements[1][1] * v.y; }
 
 	const Vector2 &operator[](int p_idx) const { return elements[p_idx]; }
 	Vector2 &operator[](int p_idx) { return elements[p_idx]; }
@@ -623,14 +604,14 @@ struct Transform2D {
 	}
 
 	void invert();
-	Transform2D inverse() const;
+	Matrix32 inverse() const;
 
 	void affine_invert();
-	Transform2D affine_inverse() const;
+	Matrix32 affine_inverse() const;
 
-	void set_rotation(real_t p_rot);
+	void set_rotation(real_t p_phi);
 	real_t get_rotation() const;
-	_FORCE_INLINE_ void set_rotation_and_scale(real_t p_rot, const Size2 &p_scale);
+	_FORCE_INLINE_ void set_rotation_and_scale(real_t p_phi, const Size2 &p_scale);
 	void rotate(real_t p_phi);
 
 	void scale(const Size2 &p_scale);
@@ -638,41 +619,41 @@ struct Transform2D {
 	void translate(real_t p_tx, real_t p_ty);
 	void translate(const Vector2 &p_translation);
 
-	real_t basis_determinant() const;
+	float basis_determinant() const;
 
 	Size2 get_scale() const;
 
 	_FORCE_INLINE_ const Vector2 &get_origin() const { return elements[2]; }
 	_FORCE_INLINE_ void set_origin(const Vector2 &p_origin) { elements[2] = p_origin; }
 
-	Transform2D scaled(const Size2 &p_scale) const;
-	Transform2D basis_scaled(const Size2 &p_scale) const;
-	Transform2D translated(const Vector2 &p_offset) const;
-	Transform2D rotated(real_t p_phi) const;
+	Matrix32 scaled(const Size2 &p_scale) const;
+	Matrix32 basis_scaled(const Size2 &p_scale) const;
+	Matrix32 translated(const Vector2 &p_offset) const;
+	Matrix32 rotated(float p_phi) const;
 
-	Transform2D untranslated() const;
+	Matrix32 untranslated() const;
 
 	void orthonormalize();
-	Transform2D orthonormalized() const;
+	Matrix32 orthonormalized() const;
 
-	bool operator==(const Transform2D &p_transform) const;
-	bool operator!=(const Transform2D &p_transform) const;
+	bool operator==(const Matrix32 &p_transform) const;
+	bool operator!=(const Matrix32 &p_transform) const;
 
-	void operator*=(const Transform2D &p_transform);
-	Transform2D operator*(const Transform2D &p_transform) const;
+	void operator*=(const Matrix32 &p_transform);
+	Matrix32 operator*(const Matrix32 &p_transform) const;
 
-	Transform2D interpolate_with(const Transform2D &p_transform, real_t p_c) const;
+	Matrix32 interpolate_with(const Matrix32 &p_transform, float p_c) const;
 
 	_FORCE_INLINE_ Vector2 basis_xform(const Vector2 &p_vec) const;
 	_FORCE_INLINE_ Vector2 basis_xform_inv(const Vector2 &p_vec) const;
 	_FORCE_INLINE_ Vector2 xform(const Vector2 &p_vec) const;
 	_FORCE_INLINE_ Vector2 xform_inv(const Vector2 &p_vec) const;
-	_FORCE_INLINE_ Rect2 xform(const Rect2 &p_rect) const;
-	_FORCE_INLINE_ Rect2 xform_inv(const Rect2 &p_rect) const;
+	_FORCE_INLINE_ Rect2 xform(const Rect2 &p_vec) const;
+	_FORCE_INLINE_ Rect2 xform_inv(const Rect2 &p_vec) const;
 
 	operator String() const;
 
-	Transform2D(real_t xx, real_t xy, real_t yx, real_t yy, real_t ox, real_t oy) {
+	Matrix32(real_t xx, real_t xy, real_t yx, real_t yy, real_t ox, real_t oy) {
 
 		elements[0][0] = xx;
 		elements[0][1] = xy;
@@ -682,42 +663,42 @@ struct Transform2D {
 		elements[2][1] = oy;
 	}
 
-	Transform2D(real_t p_rot, const Vector2 &p_pos);
-	Transform2D() {
+	Matrix32(real_t p_rot, const Vector2 &p_pos);
+	Matrix32() {
 		elements[0][0] = 1.0;
 		elements[1][1] = 1.0;
 	}
 };
 
-bool Rect2::intersects_transformed(const Transform2D &p_xform, const Rect2 &p_rect) const {
+bool Rect2::intersects_transformed(const Matrix32 &p_xform, const Rect2 &p_rect) const {
 
 	//SAT intersection between local and transformed rect2
 
 	Vector2 xf_points[4] = {
-		p_xform.xform(p_rect.position),
-		p_xform.xform(Vector2(p_rect.position.x + p_rect.size.x, p_rect.position.y)),
-		p_xform.xform(Vector2(p_rect.position.x, p_rect.position.y + p_rect.size.y)),
-		p_xform.xform(Vector2(p_rect.position.x + p_rect.size.x, p_rect.position.y + p_rect.size.y)),
+		p_xform.xform(p_rect.pos),
+		p_xform.xform(Vector2(p_rect.pos.x + p_rect.size.x, p_rect.pos.y)),
+		p_xform.xform(Vector2(p_rect.pos.x, p_rect.pos.y + p_rect.size.y)),
+		p_xform.xform(Vector2(p_rect.pos.x + p_rect.size.x, p_rect.pos.y + p_rect.size.y)),
 	};
 
 	real_t low_limit;
 
 	//base rect2 first (faster)
 
-	if (xf_points[0].y > position.y)
+	if (xf_points[0].y > pos.y)
 		goto next1;
-	if (xf_points[1].y > position.y)
+	if (xf_points[1].y > pos.y)
 		goto next1;
-	if (xf_points[2].y > position.y)
+	if (xf_points[2].y > pos.y)
 		goto next1;
-	if (xf_points[3].y > position.y)
+	if (xf_points[3].y > pos.y)
 		goto next1;
 
 	return false;
 
 next1:
 
-	low_limit = position.y + size.y;
+	low_limit = pos.y + size.y;
 
 	if (xf_points[0].y < low_limit)
 		goto next2;
@@ -732,20 +713,20 @@ next1:
 
 next2:
 
-	if (xf_points[0].x > position.x)
+	if (xf_points[0].x > pos.x)
 		goto next3;
-	if (xf_points[1].x > position.x)
+	if (xf_points[1].x > pos.x)
 		goto next3;
-	if (xf_points[2].x > position.x)
+	if (xf_points[2].x > pos.x)
 		goto next3;
-	if (xf_points[3].x > position.x)
+	if (xf_points[3].x > pos.x)
 		goto next3;
 
 	return false;
 
 next3:
 
-	low_limit = position.x + size.x;
+	low_limit = pos.x + size.x;
 
 	if (xf_points[0].x < low_limit)
 		goto next4;
@@ -761,10 +742,10 @@ next3:
 next4:
 
 	Vector2 xf_points2[4] = {
-		position,
-		Vector2(position.x + size.x, position.y),
-		Vector2(position.x, position.y + size.y),
-		Vector2(position.x + size.x, position.y + size.y),
+		pos,
+		Vector2(pos.x + size.x, pos.y),
+		Vector2(pos.x, pos.y + size.y),
+		Vector2(pos.x + size.x, pos.y + size.y),
 	};
 
 	real_t maxa = p_xform.elements[0].dot(xf_points2[0]);
@@ -840,28 +821,28 @@ next4:
 	return true;
 }
 
-Vector2 Transform2D::basis_xform(const Vector2 &p_vec) const {
+Vector2 Matrix32::basis_xform(const Vector2 &v) const {
 
 	return Vector2(
-			tdotx(p_vec),
-			tdoty(p_vec));
+			tdotx(v),
+			tdoty(v));
 }
 
-Vector2 Transform2D::basis_xform_inv(const Vector2 &p_vec) const {
+Vector2 Matrix32::basis_xform_inv(const Vector2 &v) const {
 
 	return Vector2(
-			elements[0].dot(p_vec),
-			elements[1].dot(p_vec));
+			elements[0].dot(v),
+			elements[1].dot(v));
 }
 
-Vector2 Transform2D::xform(const Vector2 &p_vec) const {
+Vector2 Matrix32::xform(const Vector2 &v) const {
 
 	return Vector2(
-				   tdotx(p_vec),
-				   tdoty(p_vec)) +
+				   tdotx(v),
+				   tdoty(v)) +
 		   elements[2];
 }
-Vector2 Transform2D::xform_inv(const Vector2 &p_vec) const {
+Vector2 Matrix32::xform_inv(const Vector2 &p_vec) const {
 
 	Vector2 v = p_vec - elements[2];
 
@@ -869,39 +850,39 @@ Vector2 Transform2D::xform_inv(const Vector2 &p_vec) const {
 			elements[0].dot(v),
 			elements[1].dot(v));
 }
-Rect2 Transform2D::xform(const Rect2 &p_rect) const {
+Rect2 Matrix32::xform(const Rect2 &p_rect) const {
 
 	Vector2 x = elements[0] * p_rect.size.x;
 	Vector2 y = elements[1] * p_rect.size.y;
-	Vector2 pos = xform(p_rect.position);
+	Vector2 pos = xform(p_rect.pos);
 
 	Rect2 new_rect;
-	new_rect.position = pos;
+	new_rect.pos = pos;
 	new_rect.expand_to(pos + x);
 	new_rect.expand_to(pos + y);
 	new_rect.expand_to(pos + x + y);
 	return new_rect;
 }
 
-void Transform2D::set_rotation_and_scale(real_t p_rot, const Size2 &p_scale) {
+void Matrix32::set_rotation_and_scale(real_t p_rot, const Size2 &p_scale) {
 
 	elements[0][0] = Math::cos(p_rot) * p_scale.x;
 	elements[1][1] = Math::cos(p_rot) * p_scale.y;
-	elements[1][0] = -Math::sin(p_rot) * p_scale.y;
-	elements[0][1] = Math::sin(p_rot) * p_scale.x;
+	elements[0][1] = -Math::sin(p_rot) * p_scale.x;
+	elements[1][0] = Math::sin(p_rot) * p_scale.y;
 }
 
-Rect2 Transform2D::xform_inv(const Rect2 &p_rect) const {
+Rect2 Matrix32::xform_inv(const Rect2 &p_rect) const {
 
 	Vector2 ends[4] = {
-		xform_inv(p_rect.position),
-		xform_inv(Vector2(p_rect.position.x, p_rect.position.y + p_rect.size.y)),
-		xform_inv(Vector2(p_rect.position.x + p_rect.size.x, p_rect.position.y + p_rect.size.y)),
-		xform_inv(Vector2(p_rect.position.x + p_rect.size.x, p_rect.position.y))
+		xform_inv(p_rect.pos),
+		xform_inv(Vector2(p_rect.pos.x, p_rect.pos.y + p_rect.size.y)),
+		xform_inv(Vector2(p_rect.pos.x + p_rect.size.x, p_rect.pos.y + p_rect.size.y)),
+		xform_inv(Vector2(p_rect.pos.x + p_rect.size.x, p_rect.pos.y))
 	};
 
 	Rect2 new_rect;
-	new_rect.position = ends[0];
+	new_rect.pos = ends[0];
 	new_rect.expand_to(ends[1]);
 	new_rect.expand_to(ends[2]);
 	new_rect.expand_to(ends[3]);

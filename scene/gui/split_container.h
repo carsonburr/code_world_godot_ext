@@ -34,7 +34,7 @@
 
 class SplitContainer : public Container {
 
-	GDCLASS(SplitContainer, Container)
+	OBJ_TYPE(SplitContainer, Container);
 
 public:
 	enum DraggerVisibility {
@@ -59,7 +59,7 @@ private:
 	void _resort();
 
 protected:
-	void _gui_input(const Ref<InputEvent> &p_event);
+	void _input_event(const InputEvent &p_event);
 	void _notification(int p_what);
 	static void _bind_methods();
 
@@ -84,7 +84,7 @@ VARIANT_ENUM_CAST(SplitContainer::DraggerVisibility);
 
 class HSplitContainer : public SplitContainer {
 
-	GDCLASS(HSplitContainer, SplitContainer);
+	OBJ_TYPE(HSplitContainer, SplitContainer);
 
 public:
 	HSplitContainer()
@@ -93,7 +93,7 @@ public:
 
 class VSplitContainer : public SplitContainer {
 
-	GDCLASS(VSplitContainer, SplitContainer);
+	OBJ_TYPE(VSplitContainer, SplitContainer);
 
 public:
 	VSplitContainer()

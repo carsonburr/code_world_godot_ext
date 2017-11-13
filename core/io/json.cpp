@@ -51,9 +51,9 @@ String JSON::_print_var(const Variant &p_var) {
 		case Variant::BOOL: return p_var.operator bool() ? "true" : "false";
 		case Variant::INT: return itos(p_var);
 		case Variant::REAL: return rtos(p_var);
-		case Variant::POOL_INT_ARRAY:
-		case Variant::POOL_REAL_ARRAY:
-		case Variant::POOL_STRING_ARRAY:
+		case Variant::INT_ARRAY:
+		case Variant::REAL_ARRAY:
+		case Variant::STRING_ARRAY:
 		case Variant::ARRAY: {
 
 			String s = "[";
@@ -89,20 +89,20 @@ String JSON::_print_var(const Variant &p_var) {
 	}
 }
 
-String JSON::print(const Variant &p_var) {
+String JSON::print(const Dictionary &p_dict) {
 
-	return _print_var(p_var);
+	return _print_var(p_dict);
 }
 
-Error JSON::_get_token(const CharType *p_str, int &index, int p_len, Token &r_token, int &line, String &r_err_str) {
+Error JSON::_get_token(const CharType *p_str, int &idx, int p_len, Token &r_token, int &line, String &r_err_str) {
 
-	while (p_len > 0) {
-		switch (p_str[index]) {
+	while (true) {
+		switch (p_str[idx]) {
 
 			case '\n': {
 
 				line++;
-				index++;
+				idx++;
 				break;
 			};
 			case 0: {
@@ -112,54 +112,54 @@ Error JSON::_get_token(const CharType *p_str, int &index, int p_len, Token &r_to
 			case '{': {
 
 				r_token.type = TK_CURLY_BRACKET_OPEN;
-				index++;
+				idx++;
 				return OK;
 			};
 			case '}': {
 
 				r_token.type = TK_CURLY_BRACKET_CLOSE;
-				index++;
+				idx++;
 				return OK;
 			};
 			case '[': {
 
 				r_token.type = TK_BRACKET_OPEN;
-				index++;
+				idx++;
 				return OK;
 			};
 			case ']': {
 
 				r_token.type = TK_BRACKET_CLOSE;
-				index++;
+				idx++;
 				return OK;
 			};
 			case ':': {
 
 				r_token.type = TK_COLON;
-				index++;
+				idx++;
 				return OK;
 			};
 			case ',': {
 
 				r_token.type = TK_COMMA;
-				index++;
+				idx++;
 				return OK;
 			};
 			case '"': {
 
-				index++;
+				idx++;
 				String str;
 				while (true) {
-					if (p_str[index] == 0) {
+					if (p_str[idx] == 0) {
 						r_err_str = "Unterminated String";
 						return ERR_PARSE_ERROR;
-					} else if (p_str[index] == '"') {
-						index++;
+					} else if (p_str[idx] == '"') {
+						idx++;
 						break;
-					} else if (p_str[index] == '\\') {
+					} else if (p_str[idx] == '\\') {
 						//escaped characters...
-						index++;
-						CharType next = p_str[index];
+						idx++;
+						CharType next = p_str[idx];
 						if (next == 0) {
 							r_err_str = "Unterminated String";
 							return ERR_PARSE_ERROR;
@@ -177,7 +177,7 @@ Error JSON::_get_token(const CharType *p_str, int &index, int p_len, Token &r_to
 								//hexnumbarh - oct is deprecated
 
 								for (int j = 0; j < 4; j++) {
-									CharType c = p_str[index + j + 1];
+									CharType c = p_str[idx + j + 1];
 									if (c == 0) {
 										r_err_str = "Unterminated String";
 										return ERR_PARSE_ERROR;
@@ -204,7 +204,7 @@ Error JSON::_get_token(const CharType *p_str, int &index, int p_len, Token &r_to
 									res <<= 4;
 									res |= v;
 								}
-								index += 4; //will add at the end anyway
+								idx += 4; //will add at the end anyway
 
 							} break;
 							//case '\"': res='\"'; break;
@@ -220,11 +220,11 @@ Error JSON::_get_token(const CharType *p_str, int &index, int p_len, Token &r_to
 						str += res;
 
 					} else {
-						if (p_str[index] == '\n')
+						if (p_str[idx] == '\n')
 							line++;
-						str += p_str[index];
+						str += p_str[idx];
 					}
-					index++;
+					idx++;
 				}
 
 				r_token.type = TK_STRING;
@@ -234,28 +234,28 @@ Error JSON::_get_token(const CharType *p_str, int &index, int p_len, Token &r_to
 			} break;
 			default: {
 
-				if (p_str[index] <= 32) {
-					index++;
+				if (p_str[idx] <= 32) {
+					idx++;
 					break;
 				}
 
-				if (p_str[index] == '-' || (p_str[index] >= '0' && p_str[index] <= '9')) {
+				if (p_str[idx] == '-' || (p_str[idx] >= '0' && p_str[idx] <= '9')) {
 					//a number
 					const CharType *rptr;
-					double number = String::to_double(&p_str[index], &rptr);
-					index += (rptr - &p_str[index]);
+					double number = String::to_double(&p_str[idx], &rptr);
+					idx += (rptr - &p_str[idx]);
 					r_token.type = TK_NUMBER;
 					r_token.value = number;
 					return OK;
 
-				} else if ((p_str[index] >= 'A' && p_str[index] <= 'Z') || (p_str[index] >= 'a' && p_str[index] <= 'z')) {
+				} else if ((p_str[idx] >= 'A' && p_str[idx] <= 'Z') || (p_str[idx] >= 'a' && p_str[idx] <= 'z')) {
 
 					String id;
 
-					while ((p_str[index] >= 'A' && p_str[index] <= 'Z') || (p_str[index] >= 'a' && p_str[index] <= 'z')) {
+					while ((p_str[idx] >= 'A' && p_str[idx] <= 'Z') || (p_str[idx] >= 'a' && p_str[idx] <= 'z')) {
 
-						id += p_str[index];
-						index++;
+						id += p_str[idx];
+						idx++;
 					}
 
 					r_token.type = TK_IDENTIFIER;
@@ -276,7 +276,7 @@ Error JSON::_parse_value(Variant &value, Token &token, const CharType *p_str, in
 
 	if (token.type == TK_CURLY_BRACKET_OPEN) {
 
-		Dictionary d;
+		Dictionary d(true);
 		Error err = _parse_object(d, p_str, index, p_len, line, r_err_str);
 		if (err)
 			return err;
@@ -284,7 +284,7 @@ Error JSON::_parse_value(Variant &value, Token &token, const CharType *p_str, in
 		return OK;
 	} else if (token.type == TK_BRACKET_OPEN) {
 
-		Array a;
+		Array a(true);
 		Error err = _parse_array(a, p_str, index, p_len, line, r_err_str);
 		if (err)
 			return err;
@@ -429,20 +429,24 @@ Error JSON::_parse_object(Dictionary &object, const CharType *p_str, int &index,
 	return ERR_PARSE_ERROR;
 }
 
-Error JSON::parse(const String &p_json, Variant &r_ret, String &r_err_str, int &r_err_line) {
+Error JSON::parse(const String &p_json, Dictionary &r_ret, String &r_err_str, int &r_err_line) {
 
 	const CharType *str = p_json.ptr();
 	int idx = 0;
 	int len = p_json.length();
 	Token token;
-	r_err_line = 0;
+	int line = 0;
 	String aux_key;
 
-	Error err = _get_token(str, idx, len, token, r_err_line, r_err_str);
+	Error err = _get_token(str, idx, len, token, line, r_err_str);
 	if (err)
 		return err;
 
-	err = _parse_value(r_ret, token, str, idx, len, r_err_line, r_err_str);
+	if (token.type != TK_CURLY_BRACKET_OPEN) {
 
-	return err;
+		r_err_str = "Expected '{'";
+		return ERR_PARSE_ERROR;
+	}
+
+	return _parse_object(r_ret, str, idx, len, r_err_line, r_err_str);
 }

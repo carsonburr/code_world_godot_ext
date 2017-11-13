@@ -28,9 +28,6 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 #include "physics_body.h"
-
-#include "engine.h"
-#include "method_bind_ext.gen.inc"
 #include "scene/scene_string_names.h"
 
 void PhysicsBody::_notification(int p_what) {
@@ -61,15 +58,15 @@ float PhysicsBody::get_inverse_mass() const {
 	return 0;
 }
 
-void PhysicsBody::set_collision_layer(uint32_t p_layer) {
+void PhysicsBody::set_layer_mask(uint32_t p_mask) {
 
-	collision_layer = p_layer;
-	PhysicsServer::get_singleton()->body_set_collision_layer(get_rid(), p_layer);
+	layer_mask = p_mask;
+	PhysicsServer::get_singleton()->body_set_layer_mask(get_rid(), p_mask);
 }
 
-uint32_t PhysicsBody::get_collision_layer() const {
+uint32_t PhysicsBody::get_layer_mask() const {
 
-	return collision_layer;
+	return layer_mask;
 }
 
 void PhysicsBody::set_collision_mask(uint32_t p_mask) {
@@ -98,25 +95,25 @@ bool PhysicsBody::get_collision_mask_bit(int p_bit) const {
 	return get_collision_mask() & (1 << p_bit);
 }
 
-void PhysicsBody::set_collision_layer_bit(int p_bit, bool p_value) {
+void PhysicsBody::set_layer_mask_bit(int p_bit, bool p_value) {
 
-	uint32_t mask = get_collision_layer();
+	uint32_t mask = get_layer_mask();
 	if (p_value)
 		mask |= 1 << p_bit;
 	else
 		mask &= ~(1 << p_bit);
-	set_collision_layer(mask);
+	set_layer_mask(mask);
 }
 
-bool PhysicsBody::get_collision_layer_bit(int p_bit) const {
+bool PhysicsBody::get_layer_mask_bit(int p_bit) const {
 
-	return get_collision_layer() & (1 << p_bit);
+	return get_layer_mask() & (1 << p_bit);
 }
 
 void PhysicsBody::add_collision_exception_with(Node *p_node) {
 
 	ERR_FAIL_NULL(p_node);
-	PhysicsBody *physics_body = Object::cast_to<PhysicsBody>(p_node);
+	PhysicsBody *physics_body = p_node->cast_to<PhysicsBody>();
 	if (!physics_body) {
 		ERR_EXPLAIN("Collision exception only works between two objects of PhysicsBody type");
 	}
@@ -127,7 +124,7 @@ void PhysicsBody::add_collision_exception_with(Node *p_node) {
 void PhysicsBody::remove_collision_exception_with(Node *p_node) {
 
 	ERR_FAIL_NULL(p_node);
-	PhysicsBody *physics_body = Object::cast_to<PhysicsBody>(p_node);
+	PhysicsBody *physics_body = p_node->cast_to<PhysicsBody>();
 	if (!physics_body) {
 		ERR_EXPLAIN("Collision exception only works between two objects of PhysicsBody type");
 	}
@@ -136,40 +133,40 @@ void PhysicsBody::remove_collision_exception_with(Node *p_node) {
 }
 
 void PhysicsBody::_set_layers(uint32_t p_mask) {
-	set_collision_layer(p_mask);
+	set_layer_mask(p_mask);
 	set_collision_mask(p_mask);
 }
 
 uint32_t PhysicsBody::_get_layers() const {
 
-	return get_collision_layer();
+	return get_layer_mask();
 }
 
 void PhysicsBody::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("set_collision_layer", "layer"), &PhysicsBody::set_collision_layer);
-	ClassDB::bind_method(D_METHOD("get_collision_layer"), &PhysicsBody::get_collision_layer);
+	ObjectTypeDB::bind_method(_MD("set_layer_mask", "mask"), &PhysicsBody::set_layer_mask);
+	ObjectTypeDB::bind_method(_MD("get_layer_mask"), &PhysicsBody::get_layer_mask);
 
-	ClassDB::bind_method(D_METHOD("set_collision_mask", "mask"), &PhysicsBody::set_collision_mask);
-	ClassDB::bind_method(D_METHOD("get_collision_mask"), &PhysicsBody::get_collision_mask);
+	ObjectTypeDB::bind_method(_MD("set_collision_mask", "mask"), &PhysicsBody::set_collision_mask);
+	ObjectTypeDB::bind_method(_MD("get_collision_mask"), &PhysicsBody::get_collision_mask);
 
-	ClassDB::bind_method(D_METHOD("set_collision_mask_bit", "bit", "value"), &PhysicsBody::set_collision_mask_bit);
-	ClassDB::bind_method(D_METHOD("get_collision_mask_bit", "bit"), &PhysicsBody::get_collision_mask_bit);
+	ObjectTypeDB::bind_method(_MD("set_collision_mask_bit", "bit", "value"), &PhysicsBody::set_collision_mask_bit);
+	ObjectTypeDB::bind_method(_MD("get_collision_mask_bit", "bit"), &PhysicsBody::get_collision_mask_bit);
 
-	ClassDB::bind_method(D_METHOD("set_collision_layer_bit", "bit", "value"), &PhysicsBody::set_collision_layer_bit);
-	ClassDB::bind_method(D_METHOD("get_collision_layer_bit", "bit"), &PhysicsBody::get_collision_layer_bit);
+	ObjectTypeDB::bind_method(_MD("set_layer_mask_bit", "bit", "value"), &PhysicsBody::set_layer_mask_bit);
+	ObjectTypeDB::bind_method(_MD("get_layer_mask_bit", "bit"), &PhysicsBody::get_layer_mask_bit);
 
-	ClassDB::bind_method(D_METHOD("_set_layers", "mask"), &PhysicsBody::_set_layers);
-	ClassDB::bind_method(D_METHOD("_get_layers"), &PhysicsBody::_get_layers);
+	ObjectTypeDB::bind_method(_MD("_set_layers", "mask"), &PhysicsBody::_set_layers);
+	ObjectTypeDB::bind_method(_MD("_get_layers"), &PhysicsBody::_get_layers);
 
-	ADD_GROUP("Collision", "collision_");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "collision_layer", PROPERTY_HINT_LAYERS_3D_PHYSICS), "set_collision_layer", "get_collision_layer");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "collision_mask", PROPERTY_HINT_LAYERS_3D_PHYSICS), "set_collision_mask", "get_collision_mask");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "layers", PROPERTY_HINT_ALL_FLAGS, "", 0), _SCS("_set_layers"), _SCS("_get_layers")); //for backwards compat
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "collision/layers", PROPERTY_HINT_ALL_FLAGS), _SCS("set_layer_mask"), _SCS("get_layer_mask"));
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "collision/mask", PROPERTY_HINT_ALL_FLAGS), _SCS("set_collision_mask"), _SCS("get_collision_mask"));
 }
 
 PhysicsBody::PhysicsBody(PhysicsServer::BodyMode p_mode)
 	: CollisionObject(PhysicsServer::get_singleton()->body_create(p_mode), false) {
 
-	collision_layer = 1;
+	layer_mask = 1;
 	collision_mask = 1;
 }
 
@@ -220,25 +217,25 @@ Vector3 StaticBody::get_constant_angular_velocity() const {
 
 void StaticBody::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("set_constant_linear_velocity", "vel"), &StaticBody::set_constant_linear_velocity);
-	ClassDB::bind_method(D_METHOD("set_constant_angular_velocity", "vel"), &StaticBody::set_constant_angular_velocity);
-	ClassDB::bind_method(D_METHOD("get_constant_linear_velocity"), &StaticBody::get_constant_linear_velocity);
-	ClassDB::bind_method(D_METHOD("get_constant_angular_velocity"), &StaticBody::get_constant_angular_velocity);
+	ObjectTypeDB::bind_method(_MD("set_constant_linear_velocity", "vel"), &StaticBody::set_constant_linear_velocity);
+	ObjectTypeDB::bind_method(_MD("set_constant_angular_velocity", "vel"), &StaticBody::set_constant_angular_velocity);
+	ObjectTypeDB::bind_method(_MD("get_constant_linear_velocity"), &StaticBody::get_constant_linear_velocity);
+	ObjectTypeDB::bind_method(_MD("get_constant_angular_velocity"), &StaticBody::get_constant_angular_velocity);
 
-	ClassDB::bind_method(D_METHOD("set_friction", "friction"), &StaticBody::set_friction);
-	ClassDB::bind_method(D_METHOD("get_friction"), &StaticBody::get_friction);
+	ObjectTypeDB::bind_method(_MD("set_friction", "friction"), &StaticBody::set_friction);
+	ObjectTypeDB::bind_method(_MD("get_friction"), &StaticBody::get_friction);
 
-	ClassDB::bind_method(D_METHOD("set_bounce", "bounce"), &StaticBody::set_bounce);
-	ClassDB::bind_method(D_METHOD("get_bounce"), &StaticBody::get_bounce);
+	ObjectTypeDB::bind_method(_MD("set_bounce", "bounce"), &StaticBody::set_bounce);
+	ObjectTypeDB::bind_method(_MD("get_bounce"), &StaticBody::get_bounce);
 
-	ClassDB::bind_method(D_METHOD("add_collision_exception_with", "body"), &PhysicsBody::add_collision_exception_with);
-	ClassDB::bind_method(D_METHOD("remove_collision_exception_with", "body"), &PhysicsBody::remove_collision_exception_with);
+	ObjectTypeDB::bind_method(_MD("add_collision_exception_with", "body:PhysicsBody"), &PhysicsBody::add_collision_exception_with);
+	ObjectTypeDB::bind_method(_MD("remove_collision_exception_with", "body:PhysicsBody"), &PhysicsBody::remove_collision_exception_with);
 
-	ADD_PROPERTY(PropertyInfo(Variant::REAL, "friction", PROPERTY_HINT_RANGE, "0,1,0.01"), "set_friction", "get_friction");
-	ADD_PROPERTY(PropertyInfo(Variant::REAL, "bounce", PROPERTY_HINT_RANGE, "0,1,0.01"), "set_bounce", "get_bounce");
+	ADD_PROPERTY(PropertyInfo(Variant::REAL, "friction", PROPERTY_HINT_RANGE, "0,1,0.01"), _SCS("set_friction"), _SCS("get_friction"));
+	ADD_PROPERTY(PropertyInfo(Variant::REAL, "bounce", PROPERTY_HINT_RANGE, "0,1,0.01"), _SCS("set_bounce"), _SCS("get_bounce"));
 
-	ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "constant_linear_velocity"), "set_constant_linear_velocity", "get_constant_linear_velocity");
-	ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "constant_angular_velocity"), "set_constant_angular_velocity", "get_constant_angular_velocity");
+	ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "constant_linear_velocity"), _SCS("set_constant_linear_velocity"), _SCS("get_constant_linear_velocity"));
+	ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "constant_angular_velocity"), _SCS("set_constant_angular_velocity"), _SCS("get_constant_angular_velocity"));
 }
 
 StaticBody::StaticBody()
@@ -254,7 +251,7 @@ StaticBody::~StaticBody() {
 void RigidBody::_body_enter_tree(ObjectID p_id) {
 
 	Object *obj = ObjectDB::get_instance(p_id);
-	Node *node = Object::cast_to<Node>(obj);
+	Node *node = obj ? obj->cast_to<Node>() : NULL;
 	ERR_FAIL_COND(!node);
 
 	Map<ObjectID, BodyState>::Element *E = contact_monitor->body_map.find(p_id);
@@ -265,11 +262,11 @@ void RigidBody::_body_enter_tree(ObjectID p_id) {
 
 	contact_monitor->locked = true;
 
-	emit_signal(SceneStringNames::get_singleton()->body_entered, node);
+	emit_signal(SceneStringNames::get_singleton()->body_enter, node);
 
 	for (int i = 0; i < E->get().shapes.size(); i++) {
 
-		emit_signal(SceneStringNames::get_singleton()->body_shape_entered, p_id, node, E->get().shapes[i].body_shape, E->get().shapes[i].local_shape);
+		emit_signal(SceneStringNames::get_singleton()->body_enter_shape, p_id, node, E->get().shapes[i].body_shape, E->get().shapes[i].local_shape);
 	}
 
 	contact_monitor->locked = false;
@@ -278,7 +275,7 @@ void RigidBody::_body_enter_tree(ObjectID p_id) {
 void RigidBody::_body_exit_tree(ObjectID p_id) {
 
 	Object *obj = ObjectDB::get_instance(p_id);
-	Node *node = Object::cast_to<Node>(obj);
+	Node *node = obj ? obj->cast_to<Node>() : NULL;
 	ERR_FAIL_COND(!node);
 	Map<ObjectID, BodyState>::Element *E = contact_monitor->body_map.find(p_id);
 	ERR_FAIL_COND(!E);
@@ -287,11 +284,11 @@ void RigidBody::_body_exit_tree(ObjectID p_id) {
 
 	contact_monitor->locked = true;
 
-	emit_signal(SceneStringNames::get_singleton()->body_exited, node);
+	emit_signal(SceneStringNames::get_singleton()->body_exit, node);
 
 	for (int i = 0; i < E->get().shapes.size(); i++) {
 
-		emit_signal(SceneStringNames::get_singleton()->body_shape_exited, p_id, node, E->get().shapes[i].body_shape, E->get().shapes[i].local_shape);
+		emit_signal(SceneStringNames::get_singleton()->body_exit_shape, p_id, node, E->get().shapes[i].body_shape, E->get().shapes[i].local_shape);
 	}
 
 	contact_monitor->locked = false;
@@ -303,7 +300,7 @@ void RigidBody::_body_inout(int p_status, ObjectID p_instance, int p_body_shape,
 	ObjectID objid = p_instance;
 
 	Object *obj = ObjectDB::get_instance(objid);
-	Node *node = Object::cast_to<Node>(obj);
+	Node *node = obj ? obj->cast_to<Node>() : NULL;
 
 	Map<ObjectID, BodyState>::Element *E = contact_monitor->body_map.find(objid);
 
@@ -316,10 +313,10 @@ void RigidBody::_body_inout(int p_status, ObjectID p_instance, int p_body_shape,
 			//E->get().rc=0;
 			E->get().in_tree = node && node->is_inside_tree();
 			if (node) {
-				node->connect(SceneStringNames::get_singleton()->tree_entered, this, SceneStringNames::get_singleton()->_body_enter_tree, make_binds(objid));
-				node->connect(SceneStringNames::get_singleton()->tree_exited, this, SceneStringNames::get_singleton()->_body_exit_tree, make_binds(objid));
+				node->connect(SceneStringNames::get_singleton()->enter_tree, this, SceneStringNames::get_singleton()->_body_enter_tree, make_binds(objid));
+				node->connect(SceneStringNames::get_singleton()->exit_tree, this, SceneStringNames::get_singleton()->_body_exit_tree, make_binds(objid));
 				if (E->get().in_tree) {
-					emit_signal(SceneStringNames::get_singleton()->body_entered, node);
+					emit_signal(SceneStringNames::get_singleton()->body_enter, node);
 				}
 			}
 		}
@@ -328,7 +325,7 @@ void RigidBody::_body_inout(int p_status, ObjectID p_instance, int p_body_shape,
 			E->get().shapes.insert(ShapePair(p_body_shape, p_local_shape));
 
 		if (E->get().in_tree) {
-			emit_signal(SceneStringNames::get_singleton()->body_shape_entered, objid, node, p_body_shape, p_local_shape);
+			emit_signal(SceneStringNames::get_singleton()->body_enter_shape, objid, node, p_body_shape, p_local_shape);
 		}
 
 	} else {
@@ -343,16 +340,16 @@ void RigidBody::_body_inout(int p_status, ObjectID p_instance, int p_body_shape,
 		if (E->get().shapes.empty()) {
 
 			if (node) {
-				node->disconnect(SceneStringNames::get_singleton()->tree_entered, this, SceneStringNames::get_singleton()->_body_enter_tree);
-				node->disconnect(SceneStringNames::get_singleton()->tree_exited, this, SceneStringNames::get_singleton()->_body_exit_tree);
+				node->disconnect(SceneStringNames::get_singleton()->enter_tree, this, SceneStringNames::get_singleton()->_body_enter_tree);
+				node->disconnect(SceneStringNames::get_singleton()->exit_tree, this, SceneStringNames::get_singleton()->_body_exit_tree);
 				if (in_tree)
-					emit_signal(SceneStringNames::get_singleton()->body_exited, obj);
+					emit_signal(SceneStringNames::get_singleton()->body_exit, obj);
 			}
 
 			contact_monitor->body_map.erase(E);
 		}
 		if (node && in_tree) {
-			emit_signal(SceneStringNames::get_singleton()->body_shape_exited, objid, obj, p_body_shape, p_local_shape);
+			emit_signal(SceneStringNames::get_singleton()->body_exit_shape, objid, obj, p_body_shape, p_local_shape);
 		}
 	}
 }
@@ -369,7 +366,7 @@ void RigidBody::_direct_state_changed(Object *p_state) {
 //eh.. fuck
 #ifdef DEBUG_ENABLED
 
-	state = Object::cast_to<PhysicsDirectBodyState>(p_state);
+	state = p_state->cast_to<PhysicsDirectBodyState>();
 #else
 	state = (PhysicsDirectBodyState *)p_state; //trust it
 #endif
@@ -414,7 +411,7 @@ void RigidBody::_direct_state_changed(Object *p_state) {
 			int local_shape = state->get_contact_local_shape(i);
 			int shape = state->get_contact_collider_shape(i);
 
-			//bool found=false;
+			//			bool found=false;
 
 			Map<ObjectID, BodyState>::Element *E = contact_monitor->body_map.find(obj);
 			if (!E) {
@@ -478,13 +475,13 @@ void RigidBody::_notification(int p_what) {
 
 #ifdef TOOLS_ENABLED
 	if (p_what == NOTIFICATION_ENTER_TREE) {
-		if (Engine::get_singleton()->is_editor_hint()) {
+		if (get_tree()->is_editor_hint()) {
 			set_notify_local_transform(true); //used for warnings and only in editor
 		}
 	}
 
 	if (p_what == NOTIFICATION_LOCAL_TRANSFORM_CHANGED) {
-		if (Engine::get_singleton()->is_editor_hint()) {
+		if (get_tree()->is_editor_hint()) {
 			update_configuration_warning();
 		}
 	}
@@ -537,11 +534,11 @@ real_t RigidBody::get_mass() const {
 
 void RigidBody::set_weight(real_t p_weight) {
 
-	set_mass(p_weight / real_t(GLOBAL_DEF("physics/3d/default_gravity", 9.8)));
+	set_mass(p_weight / 9.8);
 }
 real_t RigidBody::get_weight() const {
 
-	return mass * real_t(GLOBAL_DEF("physics/3d/default_gravity", 9.8));
+	return mass * 9.8;
 }
 
 void RigidBody::set_friction(real_t p_friction) {
@@ -782,103 +779,96 @@ String RigidBody::get_configuration_warning() const {
 
 void RigidBody::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("set_mode", "mode"), &RigidBody::set_mode);
-	ClassDB::bind_method(D_METHOD("get_mode"), &RigidBody::get_mode);
+	ObjectTypeDB::bind_method(_MD("set_mode", "mode"), &RigidBody::set_mode);
+	ObjectTypeDB::bind_method(_MD("get_mode"), &RigidBody::get_mode);
 
-	ClassDB::bind_method(D_METHOD("set_mass", "mass"), &RigidBody::set_mass);
-	ClassDB::bind_method(D_METHOD("get_mass"), &RigidBody::get_mass);
+	ObjectTypeDB::bind_method(_MD("set_mass", "mass"), &RigidBody::set_mass);
+	ObjectTypeDB::bind_method(_MD("get_mass"), &RigidBody::get_mass);
 
-	ClassDB::bind_method(D_METHOD("set_weight", "weight"), &RigidBody::set_weight);
-	ClassDB::bind_method(D_METHOD("get_weight"), &RigidBody::get_weight);
+	ObjectTypeDB::bind_method(_MD("set_weight", "weight"), &RigidBody::set_weight);
+	ObjectTypeDB::bind_method(_MD("get_weight"), &RigidBody::get_weight);
 
-	ClassDB::bind_method(D_METHOD("set_friction", "friction"), &RigidBody::set_friction);
-	ClassDB::bind_method(D_METHOD("get_friction"), &RigidBody::get_friction);
+	ObjectTypeDB::bind_method(_MD("set_friction", "friction"), &RigidBody::set_friction);
+	ObjectTypeDB::bind_method(_MD("get_friction"), &RigidBody::get_friction);
 
-	ClassDB::bind_method(D_METHOD("set_bounce", "bounce"), &RigidBody::set_bounce);
-	ClassDB::bind_method(D_METHOD("get_bounce"), &RigidBody::get_bounce);
+	ObjectTypeDB::bind_method(_MD("set_bounce", "bounce"), &RigidBody::set_bounce);
+	ObjectTypeDB::bind_method(_MD("get_bounce"), &RigidBody::get_bounce);
 
-	ClassDB::bind_method(D_METHOD("set_linear_velocity", "linear_velocity"), &RigidBody::set_linear_velocity);
-	ClassDB::bind_method(D_METHOD("get_linear_velocity"), &RigidBody::get_linear_velocity);
+	ObjectTypeDB::bind_method(_MD("set_linear_velocity", "linear_velocity"), &RigidBody::set_linear_velocity);
+	ObjectTypeDB::bind_method(_MD("get_linear_velocity"), &RigidBody::get_linear_velocity);
 
-	ClassDB::bind_method(D_METHOD("set_angular_velocity", "angular_velocity"), &RigidBody::set_angular_velocity);
-	ClassDB::bind_method(D_METHOD("get_angular_velocity"), &RigidBody::get_angular_velocity);
+	ObjectTypeDB::bind_method(_MD("set_angular_velocity", "angular_velocity"), &RigidBody::set_angular_velocity);
+	ObjectTypeDB::bind_method(_MD("get_angular_velocity"), &RigidBody::get_angular_velocity);
 
-	ClassDB::bind_method(D_METHOD("set_gravity_scale", "gravity_scale"), &RigidBody::set_gravity_scale);
-	ClassDB::bind_method(D_METHOD("get_gravity_scale"), &RigidBody::get_gravity_scale);
+	ObjectTypeDB::bind_method(_MD("set_gravity_scale", "gravity_scale"), &RigidBody::set_gravity_scale);
+	ObjectTypeDB::bind_method(_MD("get_gravity_scale"), &RigidBody::get_gravity_scale);
 
-	ClassDB::bind_method(D_METHOD("set_linear_damp", "linear_damp"), &RigidBody::set_linear_damp);
-	ClassDB::bind_method(D_METHOD("get_linear_damp"), &RigidBody::get_linear_damp);
+	ObjectTypeDB::bind_method(_MD("set_linear_damp", "linear_damp"), &RigidBody::set_linear_damp);
+	ObjectTypeDB::bind_method(_MD("get_linear_damp"), &RigidBody::get_linear_damp);
 
-	ClassDB::bind_method(D_METHOD("set_angular_damp", "angular_damp"), &RigidBody::set_angular_damp);
-	ClassDB::bind_method(D_METHOD("get_angular_damp"), &RigidBody::get_angular_damp);
+	ObjectTypeDB::bind_method(_MD("set_angular_damp", "angular_damp"), &RigidBody::set_angular_damp);
+	ObjectTypeDB::bind_method(_MD("get_angular_damp"), &RigidBody::get_angular_damp);
 
-	ClassDB::bind_method(D_METHOD("set_max_contacts_reported", "amount"), &RigidBody::set_max_contacts_reported);
-	ClassDB::bind_method(D_METHOD("get_max_contacts_reported"), &RigidBody::get_max_contacts_reported);
+	ObjectTypeDB::bind_method(_MD("set_max_contacts_reported", "amount"), &RigidBody::set_max_contacts_reported);
+	ObjectTypeDB::bind_method(_MD("get_max_contacts_reported"), &RigidBody::get_max_contacts_reported);
 
-	ClassDB::bind_method(D_METHOD("set_use_custom_integrator", "enable"), &RigidBody::set_use_custom_integrator);
-	ClassDB::bind_method(D_METHOD("is_using_custom_integrator"), &RigidBody::is_using_custom_integrator);
+	ObjectTypeDB::bind_method(_MD("set_use_custom_integrator", "enable"), &RigidBody::set_use_custom_integrator);
+	ObjectTypeDB::bind_method(_MD("is_using_custom_integrator"), &RigidBody::is_using_custom_integrator);
 
-	ClassDB::bind_method(D_METHOD("set_contact_monitor", "enabled"), &RigidBody::set_contact_monitor);
-	ClassDB::bind_method(D_METHOD("is_contact_monitor_enabled"), &RigidBody::is_contact_monitor_enabled);
+	ObjectTypeDB::bind_method(_MD("set_contact_monitor", "enabled"), &RigidBody::set_contact_monitor);
+	ObjectTypeDB::bind_method(_MD("is_contact_monitor_enabled"), &RigidBody::is_contact_monitor_enabled);
 
-	ClassDB::bind_method(D_METHOD("set_use_continuous_collision_detection", "enable"), &RigidBody::set_use_continuous_collision_detection);
-	ClassDB::bind_method(D_METHOD("is_using_continuous_collision_detection"), &RigidBody::is_using_continuous_collision_detection);
+	ObjectTypeDB::bind_method(_MD("set_use_continuous_collision_detection", "enable"), &RigidBody::set_use_continuous_collision_detection);
+	ObjectTypeDB::bind_method(_MD("is_using_continuous_collision_detection"), &RigidBody::is_using_continuous_collision_detection);
 
-	ClassDB::bind_method(D_METHOD("set_axis_velocity", "axis_velocity"), &RigidBody::set_axis_velocity);
-	ClassDB::bind_method(D_METHOD("apply_impulse", "position", "impulse"), &RigidBody::apply_impulse);
+	ObjectTypeDB::bind_method(_MD("set_axis_velocity", "axis_velocity"), &RigidBody::set_axis_velocity);
+	ObjectTypeDB::bind_method(_MD("apply_impulse", "pos", "impulse"), &RigidBody::apply_impulse);
 
-	ClassDB::bind_method(D_METHOD("set_sleeping", "sleeping"), &RigidBody::set_sleeping);
-	ClassDB::bind_method(D_METHOD("is_sleeping"), &RigidBody::is_sleeping);
+	ObjectTypeDB::bind_method(_MD("set_sleeping", "sleeping"), &RigidBody::set_sleeping);
+	ObjectTypeDB::bind_method(_MD("is_sleeping"), &RigidBody::is_sleeping);
 
-	ClassDB::bind_method(D_METHOD("set_can_sleep", "able_to_sleep"), &RigidBody::set_can_sleep);
-	ClassDB::bind_method(D_METHOD("is_able_to_sleep"), &RigidBody::is_able_to_sleep);
+	ObjectTypeDB::bind_method(_MD("set_can_sleep", "able_to_sleep"), &RigidBody::set_can_sleep);
+	ObjectTypeDB::bind_method(_MD("is_able_to_sleep"), &RigidBody::is_able_to_sleep);
 
-	ClassDB::bind_method(D_METHOD("_direct_state_changed"), &RigidBody::_direct_state_changed);
-	ClassDB::bind_method(D_METHOD("_body_enter_tree"), &RigidBody::_body_enter_tree);
-	ClassDB::bind_method(D_METHOD("_body_exit_tree"), &RigidBody::_body_exit_tree);
+	ObjectTypeDB::bind_method(_MD("_direct_state_changed"), &RigidBody::_direct_state_changed);
+	ObjectTypeDB::bind_method(_MD("_body_enter_tree"), &RigidBody::_body_enter_tree);
+	ObjectTypeDB::bind_method(_MD("_body_exit_tree"), &RigidBody::_body_exit_tree);
 
-	ClassDB::bind_method(D_METHOD("set_axis_lock", "axis_lock"), &RigidBody::set_axis_lock);
-	ClassDB::bind_method(D_METHOD("get_axis_lock"), &RigidBody::get_axis_lock);
+	ObjectTypeDB::bind_method(_MD("set_axis_lock", "axis_lock"), &RigidBody::set_axis_lock);
+	ObjectTypeDB::bind_method(_MD("get_axis_lock"), &RigidBody::get_axis_lock);
 
-	ClassDB::bind_method(D_METHOD("get_colliding_bodies"), &RigidBody::get_colliding_bodies);
+	ObjectTypeDB::bind_method(_MD("get_colliding_bodies"), &RigidBody::get_colliding_bodies);
 
-	BIND_VMETHOD(MethodInfo("_integrate_forces", PropertyInfo(Variant::OBJECT, "state", PROPERTY_HINT_RESOURCE_TYPE, "PhysicsDirectBodyState")));
+	BIND_VMETHOD(MethodInfo("_integrate_forces", PropertyInfo(Variant::OBJECT, "state:PhysicsDirectBodyState")));
 
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "mode", PROPERTY_HINT_ENUM, "Rigid,Static,Character,Kinematic"), "set_mode", "get_mode");
-	ADD_PROPERTY(PropertyInfo(Variant::REAL, "mass", PROPERTY_HINT_EXP_RANGE, "0.01,65535,0.01"), "set_mass", "get_mass");
-	ADD_PROPERTY(PropertyInfo(Variant::REAL, "weight", PROPERTY_HINT_EXP_RANGE, "0.01,65535,0.01", PROPERTY_USAGE_EDITOR), "set_weight", "get_weight");
-	ADD_PROPERTY(PropertyInfo(Variant::REAL, "friction", PROPERTY_HINT_RANGE, "0,1,0.01"), "set_friction", "get_friction");
-	ADD_PROPERTY(PropertyInfo(Variant::REAL, "bounce", PROPERTY_HINT_RANGE, "0,1,0.01"), "set_bounce", "get_bounce");
-	ADD_PROPERTY(PropertyInfo(Variant::REAL, "gravity_scale", PROPERTY_HINT_RANGE, "-128,128,0.01"), "set_gravity_scale", "get_gravity_scale");
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "custom_integrator"), "set_use_custom_integrator", "is_using_custom_integrator");
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "continuous_cd"), "set_use_continuous_collision_detection", "is_using_continuous_collision_detection");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "contacts_reported"), "set_max_contacts_reported", "get_max_contacts_reported");
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "contact_monitor"), "set_contact_monitor", "is_contact_monitor_enabled");
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "sleeping"), "set_sleeping", "is_sleeping");
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "can_sleep"), "set_can_sleep", "is_able_to_sleep");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "axis_lock", PROPERTY_HINT_ENUM, "Disabled,Lock X,Lock Y,Lock Z"), "set_axis_lock", "get_axis_lock");
-	ADD_GROUP("Linear", "linear_");
-	ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "linear_velocity"), "set_linear_velocity", "get_linear_velocity");
-	ADD_PROPERTY(PropertyInfo(Variant::REAL, "linear_damp", PROPERTY_HINT_RANGE, "-1,128,0.01"), "set_linear_damp", "get_linear_damp");
-	ADD_GROUP("Angular", "angular_");
-	ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "angular_velocity"), "set_angular_velocity", "get_angular_velocity");
-	ADD_PROPERTY(PropertyInfo(Variant::REAL, "angular_damp", PROPERTY_HINT_RANGE, "-1,128,0.01"), "set_angular_damp", "get_angular_damp");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "mode", PROPERTY_HINT_ENUM, "Rigid,Static,Character,Kinematic"), _SCS("set_mode"), _SCS("get_mode"));
+	ADD_PROPERTY(PropertyInfo(Variant::REAL, "mass", PROPERTY_HINT_EXP_RANGE, "0.01,65535,0.01"), _SCS("set_mass"), _SCS("get_mass"));
+	ADD_PROPERTY(PropertyInfo(Variant::REAL, "weight", PROPERTY_HINT_EXP_RANGE, "0.01,65535,0.01", PROPERTY_USAGE_EDITOR), _SCS("set_weight"), _SCS("get_weight"));
+	ADD_PROPERTY(PropertyInfo(Variant::REAL, "friction", PROPERTY_HINT_RANGE, "0,1,0.01"), _SCS("set_friction"), _SCS("get_friction"));
+	ADD_PROPERTY(PropertyInfo(Variant::REAL, "bounce", PROPERTY_HINT_RANGE, "0,1,0.01"), _SCS("set_bounce"), _SCS("get_bounce"));
+	ADD_PROPERTY(PropertyInfo(Variant::REAL, "gravity_scale", PROPERTY_HINT_RANGE, "-128,128,0.01"), _SCS("set_gravity_scale"), _SCS("get_gravity_scale"));
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "custom_integrator"), _SCS("set_use_custom_integrator"), _SCS("is_using_custom_integrator"));
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "continuous_cd"), _SCS("set_use_continuous_collision_detection"), _SCS("is_using_continuous_collision_detection"));
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "contacts_reported"), _SCS("set_max_contacts_reported"), _SCS("get_max_contacts_reported"));
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "contact_monitor"), _SCS("set_contact_monitor"), _SCS("is_contact_monitor_enabled"));
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "sleeping"), _SCS("set_sleeping"), _SCS("is_sleeping"));
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "can_sleep"), _SCS("set_can_sleep"), _SCS("is_able_to_sleep"));
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "axis_lock", PROPERTY_HINT_ENUM, "Disabled,Lock X,Lock Y,Lock Z"), _SCS("set_axis_lock"), _SCS("get_axis_lock"));
+	ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "velocity/linear"), _SCS("set_linear_velocity"), _SCS("get_linear_velocity"));
+	ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "velocity/angular"), _SCS("set_angular_velocity"), _SCS("get_angular_velocity"));
+	ADD_PROPERTY(PropertyInfo(Variant::REAL, "damp_override/linear", PROPERTY_HINT_RANGE, "-1,128,0.01"), _SCS("set_linear_damp"), _SCS("get_linear_damp"));
+	ADD_PROPERTY(PropertyInfo(Variant::REAL, "damp_override/angular", PROPERTY_HINT_RANGE, "-1,128,0.01"), _SCS("set_angular_damp"), _SCS("get_angular_damp"));
 
-	ADD_SIGNAL(MethodInfo("body_shape_entered", PropertyInfo(Variant::INT, "body_id"), PropertyInfo(Variant::OBJECT, "body"), PropertyInfo(Variant::INT, "body_shape"), PropertyInfo(Variant::INT, "local_shape")));
-	ADD_SIGNAL(MethodInfo("body_shape_exited", PropertyInfo(Variant::INT, "body_id"), PropertyInfo(Variant::OBJECT, "body"), PropertyInfo(Variant::INT, "body_shape"), PropertyInfo(Variant::INT, "local_shape")));
-	ADD_SIGNAL(MethodInfo("body_entered", PropertyInfo(Variant::OBJECT, "body")));
-	ADD_SIGNAL(MethodInfo("body_exited", PropertyInfo(Variant::OBJECT, "body")));
+	ADD_SIGNAL(MethodInfo("body_enter_shape", PropertyInfo(Variant::INT, "body_id"), PropertyInfo(Variant::OBJECT, "body"), PropertyInfo(Variant::INT, "body_shape"), PropertyInfo(Variant::INT, "local_shape")));
+	ADD_SIGNAL(MethodInfo("body_exit_shape", PropertyInfo(Variant::INT, "body_id"), PropertyInfo(Variant::OBJECT, "body"), PropertyInfo(Variant::INT, "body_shape"), PropertyInfo(Variant::INT, "local_shape")));
+	ADD_SIGNAL(MethodInfo("body_enter", PropertyInfo(Variant::OBJECT, "body")));
+	ADD_SIGNAL(MethodInfo("body_exit", PropertyInfo(Variant::OBJECT, "body")));
 	ADD_SIGNAL(MethodInfo("sleeping_state_changed"));
 
-	BIND_ENUM_CONSTANT(MODE_RIGID);
-	BIND_ENUM_CONSTANT(MODE_STATIC);
-	BIND_ENUM_CONSTANT(MODE_CHARACTER);
-	BIND_ENUM_CONSTANT(MODE_KINEMATIC);
-
-	BIND_ENUM_CONSTANT(AXIS_LOCK_DISABLED);
-	BIND_ENUM_CONSTANT(AXIS_LOCK_X);
-	BIND_ENUM_CONSTANT(AXIS_LOCK_Y);
-	BIND_ENUM_CONSTANT(AXIS_LOCK_Z);
+	BIND_CONSTANT(MODE_STATIC);
+	BIND_CONSTANT(MODE_KINEMATIC);
+	BIND_CONSTANT(MODE_RIGID);
+	BIND_CONSTANT(MODE_CHARACTER);
 }
 
 RigidBody::RigidBody()
@@ -917,299 +907,394 @@ RigidBody::~RigidBody() {
 //////////////////////////////////////////////////////
 //////////////////////////
 
-Ref<KinematicCollision> KinematicBody::_move(const Vector3 &p_motion) {
+Variant KinematicBody::_get_collider() const {
 
-	Collision col;
-	if (move_and_collide(p_motion, col)) {
-		if (motion_cache.is_null()) {
-			motion_cache.instance();
-			motion_cache->owner = this;
+	ObjectID oid = get_collider();
+	if (oid == 0)
+		return Variant();
+	Object *obj = ObjectDB::get_instance(oid);
+	if (!obj)
+		return Variant();
+
+	Reference *ref = obj->cast_to<Reference>();
+	if (ref) {
+		return Ref<Reference>(ref);
+	}
+
+	return obj;
+}
+
+bool KinematicBody::_ignores_mode(PhysicsServer::BodyMode p_mode) const {
+
+	switch (p_mode) {
+		case PhysicsServer::BODY_MODE_STATIC: return !collide_static;
+		case PhysicsServer::BODY_MODE_KINEMATIC: return !collide_kinematic;
+		case PhysicsServer::BODY_MODE_RIGID: return !collide_rigid;
+		case PhysicsServer::BODY_MODE_CHARACTER: return !collide_character;
+	}
+
+	return true;
+}
+
+Vector3 KinematicBody::move(const Vector3 &p_motion) {
+
+	//give me back regular physics engine logic
+	//this is madness
+	//and most people using this function will think
+	//what it does is simpler than using physics
+	//this took about a week to get right..
+	//but is it right? who knows at this point..
+
+	colliding = false;
+	ERR_FAIL_COND_V(!is_inside_tree(), Vector3());
+	PhysicsDirectSpaceState *dss = PhysicsServer::get_singleton()->space_get_direct_state(get_world()->get_space());
+	ERR_FAIL_COND_V(!dss, Vector3());
+	const int max_shapes = 32;
+	Vector3 sr[max_shapes * 2];
+	int res_shapes;
+
+	Set<RID> exclude;
+	exclude.insert(get_rid());
+
+	//recover first
+	int recover_attempts = 4;
+
+	bool collided = false;
+	uint32_t mask = 0;
+	if (collide_static)
+		mask |= PhysicsDirectSpaceState::TYPE_MASK_STATIC_BODY;
+	if (collide_kinematic)
+		mask |= PhysicsDirectSpaceState::TYPE_MASK_KINEMATIC_BODY;
+	if (collide_rigid)
+		mask |= PhysicsDirectSpaceState::TYPE_MASK_RIGID_BODY;
+	if (collide_character)
+		mask |= PhysicsDirectSpaceState::TYPE_MASK_CHARACTER_BODY;
+
+	//	print_line("motion: "+p_motion+" margin: "+rtos(margin));
+
+	//print_line("margin: "+rtos(margin));
+
+	float m = margin;
+	//m=0.001;
+
+	do {
+
+		//motion recover
+		for (int i = 0; i < get_shape_count(); i++) {
+
+			if (is_shape_set_as_trigger(i))
+				continue;
+
+			if (dss->collide_shape(get_shape(i)->get_rid(), get_global_transform() * get_shape_transform(i), m, sr, max_shapes, res_shapes, exclude, get_layer_mask(), mask)) {
+				collided = true;
+			}
 		}
 
-		motion_cache->collision = col;
+		if (!collided)
+			break;
 
-		return motion_cache;
-	}
+		//print_line("have to recover");
+		Vector3 recover_motion;
+		bool all_outside = true;
+		for (int j = 0; j < 8; j++) {
+			for (int i = 0; i < res_shapes; i++) {
 
-	return Ref<KinematicCollision>();
-}
+				Vector3 a = sr[i * 2 + 0];
+				Vector3 b = sr[i * 2 + 1];
+//print_line(String()+a+" -> "+b);
+#if 0
+				float d = a.distance_to(b);
 
-bool KinematicBody::move_and_collide(const Vector3 &p_motion, Collision &r_collision) {
-
-	Transform gt = get_global_transform();
-	PhysicsServer::MotionResult result;
-	bool colliding = PhysicsServer::get_singleton()->body_test_motion(get_rid(), gt, p_motion, margin, &result);
-
-	if (colliding) {
-		r_collision.collider_metadata = result.collider_metadata;
-		r_collision.collider_shape = result.collider_shape;
-		r_collision.collider_vel = result.collider_velocity;
-		r_collision.collision = result.collision_point;
-		r_collision.normal = result.collision_normal;
-		r_collision.collider = result.collider_id;
-		r_collision.travel = result.motion;
-		r_collision.remainder = result.remainder;
-		r_collision.local_shape = result.collision_local_shape;
-	}
-
-	gt.origin += result.motion;
-	set_global_transform(gt);
-
-	return colliding;
-}
-
-Vector3 KinematicBody::move_and_slide(const Vector3 &p_linear_velocity, const Vector3 &p_floor_direction, float p_slope_stop_min_velocity, int p_max_slides, float p_floor_max_angle) {
-
-	Vector3 motion = (floor_velocity + p_linear_velocity) * get_physics_process_delta_time();
-	Vector3 lv = p_linear_velocity;
-
-	on_floor = false;
-	on_ceiling = false;
-	on_wall = false;
-	colliders.clear();
-	floor_velocity = Vector3();
-
-	while (p_max_slides) {
-
-		Collision collision;
-
-		bool collided = move_and_collide(motion, collision);
-
-		if (collided) {
-
-			motion = collision.remainder;
-
-			if (p_floor_direction == Vector3()) {
-				//all is a wall
-				on_wall = true;
-			} else {
-				if (collision.normal.dot(p_floor_direction) >= Math::cos(p_floor_max_angle)) { //floor
-
-					on_floor = true;
-					floor_velocity = collision.collider_vel;
-
-					/*if (collision.travel.length() < 0.01 && ABS((lv.x - floor_velocity.x)) < p_slope_stop_min_velocity) {
-						Transform gt = get_global_transform();
-						gt.elements[2] -= collision.travel;
-						set_global_transform(gt);
-						return Vector3();
-					}*/
-				} else if (collision.normal.dot(-p_floor_direction) >= Math::cos(p_floor_max_angle)) { //ceiling
-					on_ceiling = true;
-				} else {
-					on_wall = true;
+				//if (d<margin)
+				///	continue;
+	   ///
+	   ///
+				recover_motion+=(b-a)*0.2;
+#else
+				float dist = a.distance_to(b);
+				if (dist > CMP_EPSILON) {
+					Vector3 norm = (b - a).normalized();
+					if (dist > margin * 0.5)
+						all_outside = false;
+					float adv = norm.dot(recover_motion);
+					//print_line(itos(i)+" dist: "+rtos(dist)+" adv: "+rtos(adv));
+					recover_motion += norm * MAX(dist - adv, 0) * 0.4;
 				}
+#endif
+			}
+		}
+
+		if (recover_motion == Vector3()) {
+			collided = false;
+			break;
+		}
+
+		//print_line("**** RECOVER: "+recover_motion);
+
+		Transform gt = get_global_transform();
+		gt.origin += recover_motion;
+		set_global_transform(gt);
+
+		recover_attempts--;
+
+		if (all_outside)
+			break;
+
+	} while (recover_attempts);
+
+	//move second
+	float safe = 1.0;
+	float unsafe = 1.0;
+	int best_shape = -1;
+
+	PhysicsDirectSpaceState::ShapeRestInfo rest;
+
+	//print_line("pos: "+get_global_transform().origin);
+	//print_line("motion: "+p_motion);
+
+	for (int i = 0; i < get_shape_count(); i++) {
+
+		if (is_shape_set_as_trigger(i))
+			continue;
+
+		float lsafe, lunsafe;
+		PhysicsDirectSpaceState::ShapeRestInfo lrest;
+		bool valid = dss->cast_motion(get_shape(i)->get_rid(), get_global_transform() * get_shape_transform(i), p_motion, 0, lsafe, lunsafe, exclude, get_layer_mask(), mask, &lrest);
+		//print_line("shape: "+itos(i)+" travel:"+rtos(ltravel));
+		if (!valid) {
+			safe = 0;
+			unsafe = 0;
+			best_shape = i; //sadly it's the best
+			//print_line("initial stuck");
+
+			break;
+		}
+		if (lsafe == 1.0) {
+			//print_line("initial free");
+			continue;
+		}
+		if (lsafe < safe) {
+
+			//print_line("initial at "+rtos(lsafe));
+			safe = lsafe;
+			safe = MAX(0, lsafe - 0.01);
+			unsafe = lunsafe;
+			best_shape = i;
+			rest = lrest;
+		}
+	}
+
+	//print_line("best shape: "+itos(best_shape)+" motion "+p_motion);
+
+	if (safe >= 1) {
+		//not collided
+		colliding = false;
+	} else {
+
+		colliding = true;
+
+		if (true || (safe == 0 && unsafe == 0)) { //use it always because it's more precise than GJK
+			//no advance, use rest info from collision
+			Transform ugt = get_global_transform();
+			ugt.origin += p_motion * unsafe;
+
+			PhysicsDirectSpaceState::ShapeRestInfo rest_info;
+			bool c2 = dss->rest_info(get_shape(best_shape)->get_rid(), ugt * get_shape_transform(best_shape), m, &rest, exclude, get_layer_mask(), mask);
+			if (!c2) {
+				//should not happen, but floating point precision is so weird..
+				colliding = false;
 			}
 
-			Vector3 n = collision.normal;
-			motion = motion.slide(n);
-			lv = lv.slide(n);
-
-			colliders.push_back(collision);
-
-		} else {
-			break;
+			//	print_line("Rest Travel: "+rest.normal);
 		}
 
-		p_max_slides--;
-		if (motion == Vector3())
-			break;
+		if (colliding) {
+
+			collision = rest.point;
+			normal = rest.normal;
+			collider = rest.collider_id;
+			collider_vel = rest.linear_velocity;
+			collider_shape = rest.shape;
+		}
 	}
 
-	return lv;
+	Vector3 motion = p_motion * safe;
+	//if (colliding)
+	//	motion+=normal*0.001;
+	Transform gt = get_global_transform();
+	gt.origin += motion;
+	set_global_transform(gt);
+
+	return p_motion - motion;
 }
 
-bool KinematicBody::is_on_floor() const {
+Vector3 KinematicBody::move_to(const Vector3 &p_position) {
 
-	return on_floor;
-}
-bool KinematicBody::is_on_wall() const {
-
-	return on_wall;
-}
-bool KinematicBody::is_on_ceiling() const {
-
-	return on_ceiling;
+	return move(p_position - get_global_transform().origin);
 }
 
-Vector3 KinematicBody::get_floor_velocity() const {
+bool KinematicBody::can_teleport_to(const Vector3 &p_position) {
 
-	return floor_velocity;
+	ERR_FAIL_COND_V(!is_inside_tree(), false);
+	PhysicsDirectSpaceState *dss = PhysicsServer::get_singleton()->space_get_direct_state(get_world()->get_space());
+	ERR_FAIL_COND_V(!dss, false);
+
+	uint32_t mask = 0;
+	if (collide_static)
+		mask |= PhysicsDirectSpaceState::TYPE_MASK_STATIC_BODY;
+	if (collide_kinematic)
+		mask |= PhysicsDirectSpaceState::TYPE_MASK_KINEMATIC_BODY;
+	if (collide_rigid)
+		mask |= PhysicsDirectSpaceState::TYPE_MASK_RIGID_BODY;
+	if (collide_character)
+		mask |= PhysicsDirectSpaceState::TYPE_MASK_CHARACTER_BODY;
+
+	Transform xform = get_global_transform();
+	xform.origin = p_position;
+
+	Set<RID> exclude;
+	exclude.insert(get_rid());
+
+	for (int i = 0; i < get_shape_count(); i++) {
+
+		if (is_shape_set_as_trigger(i))
+			continue;
+
+		bool col = dss->intersect_shape(get_shape(i)->get_rid(), xform * get_shape_transform(i), 0, NULL, 1, exclude, get_layer_mask(), mask);
+		if (col)
+			return false;
+	}
+
+	return true;
 }
 
-bool KinematicBody::test_move(const Transform &p_from, const Vector3 &p_motion) {
+bool KinematicBody::is_colliding() const {
 
 	ERR_FAIL_COND_V(!is_inside_tree(), false);
 
-	return PhysicsServer::get_singleton()->body_test_motion(get_rid(), p_from, p_motion, margin);
+	return colliding;
+}
+Vector3 KinematicBody::get_collision_pos() const {
+
+	ERR_FAIL_COND_V(!colliding, Vector3());
+	return collision;
+}
+Vector3 KinematicBody::get_collision_normal() const {
+
+	ERR_FAIL_COND_V(!colliding, Vector3());
+	return normal;
 }
 
-void KinematicBody::set_safe_margin(float p_margin) {
+Vector3 KinematicBody::get_collider_velocity() const {
+
+	return collider_vel;
+}
+
+ObjectID KinematicBody::get_collider() const {
+
+	ERR_FAIL_COND_V(!colliding, 0);
+	return collider;
+}
+int KinematicBody::get_collider_shape() const {
+
+	ERR_FAIL_COND_V(!colliding, -1);
+	return collider_shape;
+}
+void KinematicBody::set_collide_with_static_bodies(bool p_enable) {
+
+	collide_static = p_enable;
+}
+bool KinematicBody::can_collide_with_static_bodies() const {
+
+	return collide_static;
+}
+
+void KinematicBody::set_collide_with_rigid_bodies(bool p_enable) {
+
+	collide_rigid = p_enable;
+}
+bool KinematicBody::can_collide_with_rigid_bodies() const {
+
+	return collide_rigid;
+}
+
+void KinematicBody::set_collide_with_kinematic_bodies(bool p_enable) {
+
+	collide_kinematic = p_enable;
+}
+bool KinematicBody::can_collide_with_kinematic_bodies() const {
+
+	return collide_kinematic;
+}
+
+void KinematicBody::set_collide_with_character_bodies(bool p_enable) {
+
+	collide_character = p_enable;
+}
+bool KinematicBody::can_collide_with_character_bodies() const {
+
+	return collide_character;
+}
+
+void KinematicBody::set_collision_margin(float p_margin) {
 
 	margin = p_margin;
 }
 
-float KinematicBody::get_safe_margin() const {
+float KinematicBody::get_collision_margin() const {
 
 	return margin;
-}
-int KinematicBody::get_slide_count() const {
-
-	return colliders.size();
-}
-
-KinematicBody::Collision KinematicBody::get_slide_collision(int p_bounce) const {
-	ERR_FAIL_INDEX_V(p_bounce, colliders.size(), Collision());
-	return colliders[p_bounce];
-}
-
-Ref<KinematicCollision> KinematicBody::_get_slide_collision(int p_bounce) {
-
-	ERR_FAIL_INDEX_V(p_bounce, colliders.size(), Ref<KinematicCollision>());
-	if (p_bounce >= slide_colliders.size()) {
-		slide_colliders.resize(p_bounce + 1);
-	}
-
-	if (slide_colliders[p_bounce].is_null()) {
-		slide_colliders[p_bounce].instance();
-		slide_colliders[p_bounce]->owner = this;
-	}
-
-	slide_colliders[p_bounce]->collision = colliders[p_bounce];
-	return slide_colliders[p_bounce];
 }
 
 void KinematicBody::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("move_and_collide", "rel_vec"), &KinematicBody::_move);
-	ClassDB::bind_method(D_METHOD("move_and_slide", "linear_velocity", "floor_normal", "slope_stop_min_velocity", "max_slides", "floor_max_angle"), &KinematicBody::move_and_slide, DEFVAL(Vector3(0, 0, 0)), DEFVAL(0.05), DEFVAL(4), DEFVAL(Math::deg2rad((float)45)));
+	ObjectTypeDB::bind_method(_MD("move", "rel_vec"), &KinematicBody::move);
+	ObjectTypeDB::bind_method(_MD("move_to", "position"), &KinematicBody::move_to);
 
-	ClassDB::bind_method(D_METHOD("test_move", "from", "rel_vec"), &KinematicBody::test_move);
+	ObjectTypeDB::bind_method(_MD("can_teleport_to", "position"), &KinematicBody::can_teleport_to);
 
-	ClassDB::bind_method(D_METHOD("is_on_floor"), &KinematicBody::is_on_floor);
-	ClassDB::bind_method(D_METHOD("is_on_ceiling"), &KinematicBody::is_on_ceiling);
-	ClassDB::bind_method(D_METHOD("is_on_wall"), &KinematicBody::is_on_wall);
-	ClassDB::bind_method(D_METHOD("get_floor_velocity"), &KinematicBody::get_floor_velocity);
+	ObjectTypeDB::bind_method(_MD("is_colliding"), &KinematicBody::is_colliding);
 
-	ClassDB::bind_method(D_METHOD("set_safe_margin", "pixels"), &KinematicBody::set_safe_margin);
-	ClassDB::bind_method(D_METHOD("get_safe_margin"), &KinematicBody::get_safe_margin);
+	ObjectTypeDB::bind_method(_MD("get_collision_pos"), &KinematicBody::get_collision_pos);
+	ObjectTypeDB::bind_method(_MD("get_collision_normal"), &KinematicBody::get_collision_normal);
+	ObjectTypeDB::bind_method(_MD("get_collider_velocity"), &KinematicBody::get_collider_velocity);
+	ObjectTypeDB::bind_method(_MD("get_collider:Variant"), &KinematicBody::_get_collider);
+	ObjectTypeDB::bind_method(_MD("get_collider_shape"), &KinematicBody::get_collider_shape);
 
-	ClassDB::bind_method(D_METHOD("get_slide_count"), &KinematicBody::get_slide_count);
-	ClassDB::bind_method(D_METHOD("get_slide_collision", "slide_idx"), &KinematicBody::_get_slide_collision);
+	ObjectTypeDB::bind_method(_MD("set_collide_with_static_bodies", "enable"), &KinematicBody::set_collide_with_static_bodies);
+	ObjectTypeDB::bind_method(_MD("can_collide_with_static_bodies"), &KinematicBody::can_collide_with_static_bodies);
 
-	ADD_PROPERTY(PropertyInfo(Variant::REAL, "collision/safe_margin", PROPERTY_HINT_RANGE, "0.001,256,0.001"), "set_safe_margin", "get_safe_margin");
+	ObjectTypeDB::bind_method(_MD("set_collide_with_kinematic_bodies", "enable"), &KinematicBody::set_collide_with_kinematic_bodies);
+	ObjectTypeDB::bind_method(_MD("can_collide_with_kinematic_bodies"), &KinematicBody::can_collide_with_kinematic_bodies);
+
+	ObjectTypeDB::bind_method(_MD("set_collide_with_rigid_bodies", "enable"), &KinematicBody::set_collide_with_rigid_bodies);
+	ObjectTypeDB::bind_method(_MD("can_collide_with_rigid_bodies"), &KinematicBody::can_collide_with_rigid_bodies);
+
+	ObjectTypeDB::bind_method(_MD("set_collide_with_character_bodies", "enable"), &KinematicBody::set_collide_with_character_bodies);
+	ObjectTypeDB::bind_method(_MD("can_collide_with_character_bodies"), &KinematicBody::can_collide_with_character_bodies);
+
+	ObjectTypeDB::bind_method(_MD("set_collision_margin", "pixels"), &KinematicBody::set_collision_margin);
+	ObjectTypeDB::bind_method(_MD("get_collision_margin", "pixels"), &KinematicBody::get_collision_margin);
+
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "collide_with/static"), _SCS("set_collide_with_static_bodies"), _SCS("can_collide_with_static_bodies"));
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "collide_with/kinematic"), _SCS("set_collide_with_kinematic_bodies"), _SCS("can_collide_with_kinematic_bodies"));
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "collide_with/rigid"), _SCS("set_collide_with_rigid_bodies"), _SCS("can_collide_with_rigid_bodies"));
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "collide_with/character"), _SCS("set_collide_with_character_bodies"), _SCS("can_collide_with_character_bodies"));
+	ADD_PROPERTY(PropertyInfo(Variant::REAL, "collision/margin", PROPERTY_HINT_RANGE, "0.001,256,0.001"), _SCS("set_collision_margin"), _SCS("get_collision_margin"));
 }
 
 KinematicBody::KinematicBody()
 	: PhysicsBody(PhysicsServer::BODY_MODE_KINEMATIC) {
 
-	margin = 0.001;
+	collide_static = true;
+	collide_rigid = true;
+	collide_kinematic = true;
+	collide_character = true;
 
-	on_floor = false;
-	on_ceiling = false;
-	on_wall = false;
+	colliding = false;
+	collider = 0;
+	margin = 0.001;
+	collider_shape = 0;
 }
 KinematicBody::~KinematicBody() {
-
-	if (motion_cache.is_valid()) {
-		motion_cache->owner = NULL;
-	}
-
-	for (int i = 0; i < slide_colliders.size(); i++) {
-		if (slide_colliders[i].is_valid()) {
-			slide_colliders[i]->owner = NULL;
-		}
-	}
-}
-///////////////////////////////////////
-
-Vector3 KinematicCollision::get_position() const {
-
-	return collision.collision;
-}
-Vector3 KinematicCollision::get_normal() const {
-	return collision.normal;
-}
-Vector3 KinematicCollision::get_travel() const {
-	return collision.travel;
-}
-Vector3 KinematicCollision::get_remainder() const {
-	return collision.remainder;
-}
-Object *KinematicCollision::get_local_shape() const {
-	ERR_FAIL_COND_V(!owner, NULL);
-	uint32_t ownerid = owner->shape_find_owner(collision.local_shape);
-	return owner->shape_owner_get_owner(ownerid);
-}
-
-Object *KinematicCollision::get_collider() const {
-
-	if (collision.collider) {
-		return ObjectDB::get_instance(collision.collider);
-	}
-
-	return NULL;
-}
-ObjectID KinematicCollision::get_collider_id() const {
-
-	return collision.collider;
-}
-Object *KinematicCollision::get_collider_shape() const {
-
-	Object *collider = get_collider();
-	if (collider) {
-		CollisionObject *obj2d = Object::cast_to<CollisionObject>(collider);
-		if (obj2d) {
-			uint32_t ownerid = obj2d->shape_find_owner(collision.collider_shape);
-			return obj2d->shape_owner_get_owner(ownerid);
-		}
-	}
-
-	return NULL;
-}
-int KinematicCollision::get_collider_shape_index() const {
-
-	return collision.collider_shape;
-}
-Vector3 KinematicCollision::get_collider_velocity() const {
-
-	return collision.collider_vel;
-}
-Variant KinematicCollision::get_collider_metadata() const {
-
-	return Variant();
-}
-
-void KinematicCollision::_bind_methods() {
-
-	ClassDB::bind_method(D_METHOD("get_position"), &KinematicCollision::get_position);
-	ClassDB::bind_method(D_METHOD("get_normal"), &KinematicCollision::get_normal);
-	ClassDB::bind_method(D_METHOD("get_travel"), &KinematicCollision::get_travel);
-	ClassDB::bind_method(D_METHOD("get_remainder"), &KinematicCollision::get_remainder);
-	ClassDB::bind_method(D_METHOD("get_local_shape"), &KinematicCollision::get_local_shape);
-	ClassDB::bind_method(D_METHOD("get_collider"), &KinematicCollision::get_collider);
-	ClassDB::bind_method(D_METHOD("get_collider_id"), &KinematicCollision::get_collider_id);
-	ClassDB::bind_method(D_METHOD("get_collider_shape"), &KinematicCollision::get_collider_shape);
-	ClassDB::bind_method(D_METHOD("get_collider_shape_index"), &KinematicCollision::get_collider_shape_index);
-	ClassDB::bind_method(D_METHOD("get_collider_velocity"), &KinematicCollision::get_collider_velocity);
-	ClassDB::bind_method(D_METHOD("get_collider_metadata"), &KinematicCollision::get_collider_metadata);
-
-	ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "position"), "", "get_position");
-	ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "normal"), "", "get_normal");
-	ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "travel"), "", "get_travel");
-	ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "remainder"), "", "get_remainder");
-	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "local_shape"), "", "get_local_shape");
-	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "collider"), "", "get_collider");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "collider_id"), "", "get_collider_id");
-	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "collider_shape"), "", "get_collider_shape");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "collider_shape_index"), "", "get_collider_shape_index");
-	ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "collider_velocity"), "", "get_collider_velocity");
-	ADD_PROPERTY(PropertyInfo(Variant::NIL, "collider_metadata", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NIL_IS_VARIANT), "", "get_collider_metadata");
-}
-
-KinematicCollision::KinematicCollision() {
-	collision.collider = 0;
-	collision.collider_shape = 0;
-	collision.local_shape = 0;
-	owner = NULL;
 }

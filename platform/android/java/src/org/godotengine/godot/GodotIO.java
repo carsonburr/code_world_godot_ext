@@ -470,7 +470,7 @@ public class GodotIO {
 	}
 
 	/////////////////////////
-	// MISCELLANEOUS OS IO
+	// MISCELANEOUS OS IO
 	/////////////////////////
 
 

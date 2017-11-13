@@ -28,29 +28,26 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 #include "export.h"
-
-#include "editor/editor_export.h"
+#include "editor/editor_import_export.h"
 #include "platform/x11/logo.gen.h"
 #include "scene/resources/texture.h"
 
 void register_x11_exporter() {
 
-	Ref<EditorExportPlatformPC> platform;
-	platform.instance();
-
-	Ref<Image> img = memnew(Image(_x11_logo));
-	Ref<ImageTexture> logo;
-	logo.instance();
+	Image img(_x11_logo);
+	Ref<ImageTexture> logo = memnew(ImageTexture);
 	logo->create_from_image(img);
-	platform->set_logo(logo);
-	platform->set_name("Linux/X11");
-	platform->set_extension("bin");
-	platform->set_release_32("linux_x11_32_release");
-	platform->set_debug_32("linux_x11_32_debug");
-	platform->set_release_64("linux_x11_64_release");
-	platform->set_debug_64("linux_x11_64_debug");
-	platform->set_os_name("X11");
-	platform->set_chmod_flags(0755);
 
-	EditorExport::get_singleton()->add_export_platform(platform);
+	{
+		Ref<EditorExportPlatformPC> exporter = Ref<EditorExportPlatformPC>(memnew(EditorExportPlatformPC));
+		exporter->set_binary_extension("");
+		exporter->set_release_binary32("linux_x11_32_release");
+		exporter->set_debug_binary32("linux_x11_32_debug");
+		exporter->set_release_binary64("linux_x11_64_release");
+		exporter->set_debug_binary64("linux_x11_64_debug");
+		exporter->set_name("Linux X11");
+		exporter->set_logo(logo);
+		exporter->set_chmod_flags(0755);
+		EditorImportExport::get_singleton()->add_export_platform(exporter);
+	}
 }

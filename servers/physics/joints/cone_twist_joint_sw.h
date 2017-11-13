@@ -104,8 +104,8 @@ public:
 public:
 	virtual PhysicsServer::JointType get_type() const { return PhysicsServer::JOINT_CONE_TWIST; }
 
-	virtual bool setup(real_t p_timestep);
-	virtual void solve(real_t p_timestep);
+	virtual bool setup(float p_step);
+	virtual void solve(float p_step);
 
 	ConeTwistJointSW(BodySW *rbA, BodySW *rbB, const Transform &rbAFrame, const Transform &rbBFrame);
 
@@ -135,8 +135,8 @@ public:
 		return m_twistLimitSign;
 	}
 
-	void set_param(PhysicsServer::ConeTwistJointParam p_param, real_t p_value);
-	real_t get_param(PhysicsServer::ConeTwistJointParam p_param) const;
+	void set_param(PhysicsServer::ConeTwistJointParam p_param, float p_value);
+	float get_param(PhysicsServer::ConeTwistJointParam p_param) const;
 };
 
 #endif // CONE_TWIST_JOINT_SW_H

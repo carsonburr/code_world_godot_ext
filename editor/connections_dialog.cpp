@@ -29,15 +29,16 @@
 /*************************************************************************/
 #include "connections_dialog.h"
 
+#include "scene/gui/label.h"
+
 #include "editor_node.h"
 #include "editor_settings.h"
 #include "plugins/script_editor_plugin.h"
 #include "print_string.h"
-#include "scene/gui/label.h"
 
 class ConnectDialogBinds : public Object {
 
-	GDCLASS(ConnectDialogBinds, Object);
+	OBJ_TYPE(ConnectDialogBinds, Object);
 
 public:
 	Vector<Variant> params;
@@ -113,7 +114,33 @@ void ConnectDialog::_tree_node_selected() {
 		make_callback->hide();
 	else
 		make_callback->show();
+#if 0
+	List<MethodInfo> methods;
+	current->get_method_list(&methods);
+	for (List<MethodInfo>::Element *E=methods.front();E;E=E->next()) {
 
+		if (E->get().name.length() && E->get().name[0]=='_')
+			continue; // hidden method, not show!
+
+		if (ObjectTypeDB::has_method(node->get_type(),"Node") || ObjectTypeDB::has_method(node->get_type(),"Control",true))
+			continue; //avoid too much unnecesary stuff
+
+		String method=E->get().name+"(";
+		for(int i=0;i<E->get().arguments.size();i++) {
+
+			if (i!=0)
+				method+=", ";
+			method+=Variant::get_type_name(E->get().arguments[i].type);
+			if (E->get().arguments[i].name.length()) {
+				method+=" ";
+				method+=E->get().arguments[i].name;
+			}
+		}
+		method+=")";
+
+		//dst_method_list->get_popup()->add_item(method);
+	}
+#endif
 	dst_path->set_text(node->get_path_to(current));
 }
 
@@ -194,7 +221,7 @@ void ConnectDialog::_add_bind() {
 
 	if (cdbinds->params.size() >= VARIANT_ARG_MAX)
 		return;
-	Variant::Type vt = (Variant::Type)type_list->get_item_id(type_list->get_selected());
+	Variant::Type vt = (Variant::Type)type_list->get_item_ID(type_list->get_selected());
 
 	Variant value;
 
@@ -209,10 +236,11 @@ void ConnectDialog::_add_bind() {
 		case Variant::VECTOR3: value = Vector3(); break;
 		case Variant::PLANE: value = Plane(); break;
 		case Variant::QUAT: value = Quat(); break;
-		case Variant::RECT3: value = Rect3(); break;
-		case Variant::BASIS: value = Basis(); break;
+		case Variant::_AABB: value = AABB(); break;
+		case Variant::MATRIX3: value = Matrix3(); break;
 		case Variant::TRANSFORM: value = Transform(); break;
 		case Variant::COLOR: value = Color(); break;
+		case Variant::IMAGE: value = Image(); break;
 
 		default: { ERR_FAIL(); } break;
 	}
@@ -247,13 +275,13 @@ void ConnectDialog::set_dst_method(const StringName &p_method) {
 
 void ConnectDialog::_bind_methods() {
 
-	//ClassDB::bind_method("_ok",&ConnectDialog::_ok_pressed);
-	ClassDB::bind_method("_cancel", &ConnectDialog::_cancel_pressed);
-	//ClassDB::bind_method("_dst_method_list_selected",&ConnectDialog::_dst_method_list_selected);
-	ClassDB::bind_method("_tree_node_selected", &ConnectDialog::_tree_node_selected);
+	//ObjectTypeDB::bind_method("_ok",&ConnectDialog::_ok_pressed);
+	ObjectTypeDB::bind_method("_cancel", &ConnectDialog::_cancel_pressed);
+	//ObjectTypeDB::bind_method("_dst_method_list_selected",&ConnectDialog::_dst_method_list_selected);
+	ObjectTypeDB::bind_method("_tree_node_selected", &ConnectDialog::_tree_node_selected);
 
-	ClassDB::bind_method("_add_bind", &ConnectDialog::_add_bind);
-	ClassDB::bind_method("_remove_bind", &ConnectDialog::_remove_bind);
+	ObjectTypeDB::bind_method("_add_bind", &ConnectDialog::_add_bind);
+	ObjectTypeDB::bind_method("_remove_bind", &ConnectDialog::_remove_bind);
 
 	ADD_SIGNAL(MethodInfo("connected"));
 }
@@ -262,6 +290,7 @@ ConnectDialog::ConnectDialog() {
 
 	VBoxContainer *vbc = memnew(VBoxContainer);
 	add_child(vbc);
+	set_child_rect(vbc);
 
 	HBoxContainer *main_hb = memnew(HBoxContainer);
 	vbc->add_child(main_hb);
@@ -295,11 +324,12 @@ ConnectDialog::ConnectDialog() {
 	type_list->add_item("Vector3", Variant::VECTOR3);
 	type_list->add_item("Plane", Variant::PLANE);
 	type_list->add_item("Quat", Variant::QUAT);
-	type_list->add_item("Rect3", Variant::RECT3);
-	type_list->add_item("Basis", Variant::BASIS);
+	type_list->add_item("AABB", Variant::_AABB);
+	type_list->add_item("Matrix3", Variant::MATRIX3);
 	type_list->add_item("Transform", Variant::TRANSFORM);
 	//type_list->add_separator();
 	type_list->add_item("Color", Variant::COLOR);
+	type_list->add_item("Image", Variant::IMAGE);
 	type_list->select(0);
 
 	Button *add_bind = memnew(Button);
@@ -343,7 +373,7 @@ ConnectDialog::ConnectDialog() {
 
 	make_callback = memnew(CheckButton);
 	make_callback->set_toggle_mode(true);
-	make_callback->set_pressed(EDITOR_DEF("text_editor/tools/create_signal_callbacks", true));
+	make_callback->set_pressed(EDITOR_DEF("text_editor/create_signal_callbacks", true));
 	make_callback->set_text(TTR("Make Function"));
 	dstm_hb->add_child(make_callback);
 
@@ -366,7 +396,7 @@ ConnectDialog::ConnectDialog() {
 	add_child(realtime);
 */
 
-	//dst_method_list->get_popup()->connect("id_pressed", this,"_dst_method_list_selected");
+	//	dst_method_list->get_popup()->connect("item_pressed", this,"_dst_method_list_selected");
 	tree->connect("node_selected", this, "_tree_node_selected");
 
 	set_as_toplevel(true);
@@ -377,7 +407,7 @@ ConnectDialog::ConnectDialog() {
 	add_child(error);
 	error->get_ok()->set_text(TTR("Close"));
 	get_ok()->set_text(TTR("Connect"));
-	//error->get_cancel()->set_text("Close");
+	//	error->get_cancel()->set_text("Close");
 }
 
 ConnectDialog::~ConnectDialog() {
@@ -390,10 +420,6 @@ void ConnectionsDock::_notification(int p_what) {
 
 		//RID ci = get_canvas_item();
 		//get_stylebox("panel","PopupMenu")->draw(ci,Rect2(Point2(),get_size()));
-	}
-
-	if (p_what == EditorSettings::NOTIFICATION_EDITOR_SETTINGS_CHANGED) {
-		update_tree();
 	}
 }
 
@@ -416,7 +442,7 @@ void ConnectionsDock::_connect() {
 	bool defer = connect_dialog->get_deferred();
 	bool oshot = connect_dialog->get_oneshot();
 	Vector<Variant> binds = connect_dialog->get_binds();
-	PoolStringArray args = it->get_metadata(0).operator Dictionary()["args"];
+	StringArray args = it->get_metadata(0).operator Dictionary()["args"];
 	int flags = CONNECT_PERSIST | (defer ? CONNECT_DEFERRED : 0) | (oshot ? CONNECT_ONESHOT : 0);
 
 	undo_redo->create_action(vformat(TTR("Connect '%s' to '%s'"), signal, String(dst_method)));
@@ -550,7 +576,7 @@ void ConnectionsDock::update_tree() {
 
 	//node_signals.sort_custom<_ConnectionsDockMethodInfoSort>();
 	bool did_script = false;
-	StringName base = node->get_class();
+	StringName base = node->get_type();
 
 	while (base) {
 
@@ -566,16 +592,16 @@ void ConnectionsDock::update_tree() {
 				if (scr->get_path().is_resource_file())
 					name = scr->get_path().get_file();
 				else
-					name = scr->get_class();
+					name = scr->get_type();
 
-				if (has_icon(scr->get_class(), "EditorIcons")) {
-					icon = get_icon(scr->get_class(), "EditorIcons");
+				if (has_icon(scr->get_type(), "EditorIcons")) {
+					icon = get_icon(scr->get_type(), "EditorIcons");
 				}
 			}
 
 		} else {
 
-			ClassDB::get_signal_list(base, &node_signals, true);
+			ObjectTypeDB::get_signal_list(base, &node_signals, true);
 			if (has_icon(base, "EditorIcons")) {
 				icon = get_icon(base, "EditorIcons");
 			}
@@ -600,7 +626,7 @@ void ConnectionsDock::update_tree() {
 
 			String signaldesc;
 			signaldesc = mi.name + "(";
-			PoolStringArray argnames;
+			StringArray argnames;
 			if (mi.arguments.size()) {
 				signaldesc += " ";
 				for (int i = 0; i < mi.arguments.size(); i++) {
@@ -614,7 +640,7 @@ void ConnectionsDock::update_tree() {
 						tname = Variant::get_type_name(pi.type);
 					}
 					signaldesc += tname + " " + (pi.name == "" ? String("arg " + itos(i)) : pi.name);
-					argnames.push_back(pi.name + ":" + tname);
+					argnames.push_back(pi.name);
 				}
 				signaldesc += " ";
 			}
@@ -638,7 +664,7 @@ void ConnectionsDock::update_tree() {
 				if (!(c.flags & CONNECT_PERSIST))
 					continue;
 
-				Node *target = Object::cast_to<Node>(c.target);
+				Node *target = c.target->cast_to<Node>();
 				if (!target)
 					continue;
 
@@ -669,7 +695,7 @@ void ConnectionsDock::update_tree() {
 		if (!did_script) {
 			did_script = true;
 		} else {
-			base = ClassDB::get_parent_class(base);
+			base = ObjectTypeDB::type_inherits_from(base);
 		}
 	}
 
@@ -743,7 +769,7 @@ void ConnectionsDock::_something_activated() {
 
 		Ref<Script> script = c.target->get_script();
 
-		if (script.is_valid() && ScriptEditor::get_singleton()->script_goto_method(script, c.method)) {
+		if (script.is_valid() && ScriptEditor::get_singleton()->script_go_to_method(script, c.method)) {
 			editor->call("_editor_select", EditorNode::EDITOR_SCRIPT);
 		}
 	}
@@ -751,12 +777,12 @@ void ConnectionsDock::_something_activated() {
 
 void ConnectionsDock::_bind_methods() {
 
-	ClassDB::bind_method("_connect", &ConnectionsDock::_connect);
-	ClassDB::bind_method("_something_selected", &ConnectionsDock::_something_selected);
-	ClassDB::bind_method("_something_activated", &ConnectionsDock::_something_activated);
-	ClassDB::bind_method("_close", &ConnectionsDock::_close);
-	ClassDB::bind_method("_connect_pressed", &ConnectionsDock::_connect_pressed);
-	ClassDB::bind_method("update_tree", &ConnectionsDock::update_tree);
+	ObjectTypeDB::bind_method("_connect", &ConnectionsDock::_connect);
+	ObjectTypeDB::bind_method("_something_selected", &ConnectionsDock::_something_selected);
+	ObjectTypeDB::bind_method("_something_activated", &ConnectionsDock::_something_activated);
+	ObjectTypeDB::bind_method("_close", &ConnectionsDock::_close);
+	ObjectTypeDB::bind_method("_connect_pressed", &ConnectionsDock::_connect_pressed);
+	ObjectTypeDB::bind_method("update_tree", &ConnectionsDock::update_tree);
 }
 
 ConnectionsDock::ConnectionsDock(EditorNode *p_editor) {
@@ -774,13 +800,13 @@ ConnectionsDock::ConnectionsDock(EditorNode *p_editor) {
 	tree->set_v_size_flags(SIZE_EXPAND_FILL);
 
 	connect_button = memnew(Button);
-	connect_button->set_text(TTR("Connect"));
+	connect_button->set_text("Connect");
 	HBoxContainer *hb = memnew(HBoxContainer);
 	vbc->add_child(hb);
 	hb->add_spacer();
 	hb->add_child(connect_button);
 	connect_button->connect("pressed", this, "_connect_pressed");
-	//add_child(tree);
+	//	add_child(tree);
 
 	connect_dialog = memnew(ConnectDialog);
 	connect_dialog->set_as_toplevel(true);

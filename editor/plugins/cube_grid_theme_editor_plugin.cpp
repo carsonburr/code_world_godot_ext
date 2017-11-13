@@ -72,10 +72,10 @@ void MeshLibraryEditor::_import_scene(Node *p_scene, Ref<MeshLibrary> p_library,
 
 		Node *child = p_scene->get_child(i);
 
-		if (!Object::cast_to<MeshInstance>(child)) {
+		if (!child->cast_to<MeshInstance>()) {
 			if (child->get_child_count() > 0) {
 				child = child->get_child(0);
-				if (!Object::cast_to<MeshInstance>(child)) {
+				if (!child->cast_to<MeshInstance>()) {
 					continue;
 				}
 
@@ -83,12 +83,12 @@ void MeshLibraryEditor::_import_scene(Node *p_scene, Ref<MeshLibrary> p_library,
 				continue;
 		}
 
-		MeshInstance *mi = Object::cast_to<MeshInstance>(child);
+		MeshInstance *mi = child->cast_to<MeshInstance>();
 		Ref<Mesh> mesh = mi->get_mesh();
 		if (mesh.is_null())
 			continue;
 
-		int id = p_library->find_item_by_name(mi->get_name());
+		int id = p_library->find_item_name(mi->get_name());
 		if (id < 0) {
 
 			id = p_library->get_last_unused_item_id();
@@ -98,47 +98,32 @@ void MeshLibraryEditor::_import_scene(Node *p_scene, Ref<MeshLibrary> p_library,
 
 		p_library->set_item_mesh(id, mesh);
 
-		Vector<MeshLibrary::ShapeData> collisions;
+		Ref<Shape> collision;
 
 		for (int j = 0; j < mi->get_child_count(); j++) {
-
+#if 1
 			Node *child2 = mi->get_child(j);
-			if (!Object::cast_to<StaticBody>(child2))
+			if (!child2->cast_to<StaticBody>())
 				continue;
-
-			StaticBody *sb = Object::cast_to<StaticBody>(child2);
-			List<uint32_t> shapes;
-			sb->get_shape_owners(&shapes);
-
-			for (List<uint32_t>::Element *E = shapes.front(); E; E = E->next()) {
-				if (sb->is_shape_owner_disabled(E->get()))
-					continue;
-
-				//Transform shape_transform = sb->shape_owner_get_transform(E->get());
-
-				//shape_transform.set_origin(shape_transform.get_origin() - phys_offset);
-
-				for (int k = 0; k < sb->shape_owner_get_shape_count(E->get()); k++) {
-
-					Ref<Shape> collision = sb->shape_owner_get_shape(E->get(), k);
-					if (!collision.is_valid())
-						continue;
-					MeshLibrary::ShapeData shape_data;
-					shape_data.shape = collision;
-					shape_data.local_transform = sb->shape_owner_get_transform(E->get());
-					collisions.push_back(shape_data);
-				}
-			}
+			StaticBody *sb = child2->cast_to<StaticBody>();
+			if (sb->get_shape_count() == 0)
+				continue;
+			collision = sb->get_shape(0);
+			if (!collision.is_null())
+				break;
+#endif
 		}
 
-		p_library->set_item_shapes(id, collisions);
+		if (!collision.is_null()) {
 
+			p_library->set_item_shape(id, collision);
+		}
 		Ref<NavigationMesh> navmesh;
 		for (int j = 0; j < mi->get_child_count(); j++) {
 			Node *child2 = mi->get_child(j);
-			if (!Object::cast_to<NavigationMeshInstance>(child2))
+			if (!child2->cast_to<NavigationMeshInstance>())
 				continue;
-			NavigationMeshInstance *sb = Object::cast_to<NavigationMeshInstance>(child2);
+			NavigationMeshInstance *sb = child2->cast_to<NavigationMeshInstance>();
 			navmesh = sb->get_navigation_mesh();
 			if (!navmesh.is_null())
 				break;
@@ -151,17 +136,71 @@ void MeshLibraryEditor::_import_scene(Node *p_scene, Ref<MeshLibrary> p_library,
 	//generate previews!
 
 	if (1) {
-
-		Vector<Ref<Mesh> > meshes;
 		Vector<int> ids = p_library->get_item_list();
+		RID vp = VS::get_singleton()->viewport_create();
+		VS::ViewportRect vr;
+		vr.x = 0;
+		vr.y = 0;
+		vr.width = EditorSettings::get_singleton()->get("grid_map/preview_size");
+		vr.height = EditorSettings::get_singleton()->get("grid_map/preview_size");
+		VS::get_singleton()->viewport_set_rect(vp, vr);
+		VS::get_singleton()->viewport_set_as_render_target(vp, true);
+		VS::get_singleton()->viewport_set_render_target_update_mode(vp, VS::RENDER_TARGET_UPDATE_ALWAYS);
+		RID scen = VS::get_singleton()->scenario_create();
+		VS::get_singleton()->viewport_set_scenario(vp, scen);
+		RID cam = VS::get_singleton()->camera_create();
+		VS::get_singleton()->camera_set_transform(cam, Transform());
+		VS::get_singleton()->viewport_attach_camera(vp, cam);
+		RID light = VS::get_singleton()->light_create(VS::LIGHT_DIRECTIONAL);
+		RID lightinst = VS::get_singleton()->instance_create2(light, scen);
+		VS::get_singleton()->camera_set_orthogonal(cam, 1.0, 0.01, 1000.0);
+
+		EditorProgress ep("mlib", TTR("Creating Mesh Library"), ids.size());
+
 		for (int i = 0; i < ids.size(); i++) {
-			meshes.push_back(p_library->get_item_mesh(ids[i]));
+
+			int id = ids[i];
+			Ref<Mesh> mesh = p_library->get_item_mesh(id);
+			if (!mesh.is_valid())
+				continue;
+			AABB aabb = mesh->get_aabb();
+			print_line("aabb: " + aabb);
+			Vector3 ofs = aabb.pos + aabb.size * 0.5;
+			aabb.pos -= ofs;
+			Transform xform;
+			xform.basis = Matrix3().rotated(Vector3(0, 1, 0), Math_PI * 0.25);
+			xform.basis = Matrix3().rotated(Vector3(1, 0, 0), -Math_PI * 0.25) * xform.basis;
+			AABB rot_aabb = xform.xform(aabb);
+			print_line("rot_aabb: " + rot_aabb);
+			float m = MAX(rot_aabb.size.x, rot_aabb.size.y) * 0.5;
+			if (m == 0)
+				continue;
+			m = 1.0 / m;
+			m *= 0.5;
+			print_line("scale: " + rtos(m));
+			xform.basis.scale(Vector3(m, m, m));
+			xform.origin = -xform.basis.xform(ofs); //-ofs*m;
+			xform.origin.z -= rot_aabb.size.z * 2;
+			RID inst = VS::get_singleton()->instance_create2(mesh->get_rid(), scen);
+			VS::get_singleton()->instance_set_transform(inst, xform);
+			ep.step(TTR("Thumbnail.."), i);
+			VS::get_singleton()->viewport_queue_screen_capture(vp);
+			Main::iteration();
+			Image img = VS::get_singleton()->viewport_get_screen_capture(vp);
+			ERR_CONTINUE(img.empty());
+			Ref<ImageTexture> it(memnew(ImageTexture));
+			it->create_from_image(img);
+			p_library->set_item_preview(id, it);
+
+			//					print_line("loaded image, size: "+rtos(m)+" dist: "+rtos(dist)+" empty?"+itos(img.empty())+" w: "+itos(it->get_width())+" h: "+itos(it->get_height()));
+			VS::get_singleton()->free(inst);
 		}
 
-		Vector<Ref<Texture> > textures = EditorInterface::get_singleton()->make_mesh_previews(meshes, EditorSettings::get_singleton()->get("editors/grid_map/preview_size"));
-		for (int i = 0; i < ids.size(); i++) {
-			p_library->set_item_preview(ids[i], textures[i]);
-		}
+		VS::get_singleton()->free(lightinst);
+		VS::get_singleton()->free(light);
+		VS::get_singleton()->free(vp);
+		VS::get_singleton()->free(cam);
+		VS::get_singleton()->free(scen);
 	}
 }
 
@@ -219,9 +258,9 @@ void MeshLibraryEditor::_menu_cbk(int p_option) {
 
 void MeshLibraryEditor::_bind_methods() {
 
-	ClassDB::bind_method("_menu_cbk", &MeshLibraryEditor::_menu_cbk);
-	ClassDB::bind_method("_menu_confirm", &MeshLibraryEditor::_menu_confirm);
-	ClassDB::bind_method("_import_scene_cbk", &MeshLibraryEditor::_import_scene_cbk);
+	ObjectTypeDB::bind_method("_menu_cbk", &MeshLibraryEditor::_menu_cbk);
+	ObjectTypeDB::bind_method("_menu_confirm", &MeshLibraryEditor::_menu_confirm);
+	ObjectTypeDB::bind_method("_import_scene_cbk", &MeshLibraryEditor::_import_scene_cbk);
 }
 
 MeshLibraryEditor::MeshLibraryEditor(EditorNode *p_editor) {
@@ -241,11 +280,11 @@ MeshLibraryEditor::MeshLibraryEditor(EditorNode *p_editor) {
 	file->connect("file_selected", this, "_import_scene_cbk");
 
 	Panel *panel = memnew(Panel);
-	panel->set_anchors_and_margins_preset(Control::PRESET_WIDE);
+	panel->set_area_as_parent_rect();
 	add_child(panel);
 	MenuButton *options = memnew(MenuButton);
 	panel->add_child(options);
-	options->set_position(Point2(1, 1));
+	options->set_pos(Point2(1, 1));
 	options->set_text("Theme");
 	options->get_popup()->add_item(TTR("Add Item"), MENU_OPTION_ADD_ITEM);
 	options->get_popup()->add_item(TTR("Remove Selected Item"), MENU_OPTION_REMOVE_ITEM);
@@ -253,7 +292,7 @@ MeshLibraryEditor::MeshLibraryEditor(EditorNode *p_editor) {
 	options->get_popup()->add_item(TTR("Import from Scene"), MENU_OPTION_IMPORT_FROM_SCENE);
 	options->get_popup()->add_item(TTR("Update from Scene"), MENU_OPTION_UPDATE_FROM_SCENE);
 	options->get_popup()->set_item_disabled(options->get_popup()->get_item_index(MENU_OPTION_UPDATE_FROM_SCENE), true);
-	options->get_popup()->connect("id_pressed", this, "_menu_cbk");
+	options->get_popup()->connect("item_pressed", this, "_menu_cbk");
 	menu = options;
 	editor = p_editor;
 	cd = memnew(ConfirmationDialog);
@@ -263,8 +302,8 @@ MeshLibraryEditor::MeshLibraryEditor(EditorNode *p_editor) {
 
 void MeshLibraryEditorPlugin::edit(Object *p_node) {
 
-	if (Object::cast_to<MeshLibrary>(p_node)) {
-		theme_editor->edit(Object::cast_to<MeshLibrary>(p_node));
+	if (p_node && p_node->cast_to<MeshLibrary>()) {
+		theme_editor->edit(p_node->cast_to<MeshLibrary>());
 		theme_editor->show();
 	} else
 		theme_editor->hide();
@@ -272,7 +311,7 @@ void MeshLibraryEditorPlugin::edit(Object *p_node) {
 
 bool MeshLibraryEditorPlugin::handles(Object *p_node) const {
 
-	return p_node->is_class("MeshLibrary");
+	return p_node->is_type("MeshLibrary");
 }
 
 void MeshLibraryEditorPlugin::make_visible(bool p_visible) {
@@ -285,11 +324,12 @@ void MeshLibraryEditorPlugin::make_visible(bool p_visible) {
 
 MeshLibraryEditorPlugin::MeshLibraryEditorPlugin(EditorNode *p_node) {
 
-	EDITOR_DEF("editors/grid_map/preview_size", 64);
+	EDITOR_DEF("grid_map/preview_size", 64);
 	theme_editor = memnew(MeshLibraryEditor(p_node));
 
 	p_node->get_viewport()->add_child(theme_editor);
-	theme_editor->set_anchors_and_margins_preset(Control::PRESET_WIDE);
+	theme_editor->set_area_as_parent_rect();
+	theme_editor->set_anchor(MARGIN_RIGHT, Control::ANCHOR_END);
 	theme_editor->set_anchor(MARGIN_BOTTOM, Control::ANCHOR_BEGIN);
 	theme_editor->set_end(Point2(0, 22));
 	theme_editor->hide();

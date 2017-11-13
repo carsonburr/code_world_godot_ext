@@ -40,7 +40,7 @@
 
 /*
 
-[03:57] <reduz> yessopie, so i don't havemak to rely on unicows
+[03:57] <reduz> yessopie, so i dont havemak to rely on unicows
 [03:58] <yessopie> reduz- yeah, all of the functions fail, and then you can call GetLastError () which will return 120
 [03:58] <drumstick> CategoryApl, hehe, what? :)
 [03:59] <CategoryApl> didn't Verona lead to some trouble
@@ -60,7 +60,7 @@ struct DirAccessWindowsPrivate {
 
 // CreateFolderAsync
 
-Error DirAccessWindows::list_dir_begin() {
+bool DirAccessWindows::list_dir_begin() {
 
 	_cisdir = false;
 	_cishidden = false;
@@ -68,7 +68,7 @@ Error DirAccessWindows::list_dir_begin() {
 	list_dir_end();
 	p->h = FindFirstFileExW((current_dir + "\\*").c_str(), FindExInfoStandard, &p->fu, FindExSearchNameMatch, NULL, 0);
 
-	return (p->h == INVALID_HANDLE_VALUE) ? ERR_CANT_OPEN : OK;
+	return (p->h == INVALID_HANDLE_VALUE);
 }
 
 String DirAccessWindows::get_next() {
@@ -162,10 +162,10 @@ Error DirAccessWindows::make_dir(String p_dir) {
 
 	GLOBAL_LOCK_FUNCTION
 
-	p_dir = fix_path(p_dir);
 	if (p_dir.is_rel_path())
-		p_dir = current_dir.plus_file(p_dir);
+		p_dir = get_current_dir().plus_file(p_dir);
 
+	p_dir = fix_path(p_dir);
 	p_dir = p_dir.replace("/", "\\");
 
 	bool success;
@@ -336,7 +336,7 @@ DirAccessWindows::DirAccessWindows() {
 
 	drive_count = 0;
 
-#ifdef UWP_ENABLED
+#ifdef WINRT_ENABLED
 	Windows::Storage::StorageFolder ^ install_folder = Windows::ApplicationModel::Package::Current->InstalledLocation;
 	change_dir(install_folder->Path->Data());
 

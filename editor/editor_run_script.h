@@ -30,12 +30,12 @@
 #ifndef EDITOR_RUN_SCRIPT_H
 #define EDITOR_RUN_SCRIPT_H
 
-#include "editor_plugin.h"
 #include "reference.h"
+
 class EditorNode;
 class EditorScript : public Reference {
 
-	GDCLASS(EditorScript, Reference);
+	OBJ_TYPE(EditorScript, Reference);
 
 	EditorNode *editor;
 
@@ -45,7 +45,7 @@ protected:
 public:
 	void add_root_node(Node *p_node);
 	Node *get_scene();
-	EditorInterface *get_editor_interface();
+
 	virtual void _run();
 
 	void set_editor(EditorNode *p_editor);

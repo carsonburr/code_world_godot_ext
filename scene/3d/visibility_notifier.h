@@ -35,11 +35,11 @@
 class Camera;
 class VisibilityNotifier : public Spatial {
 
-	GDCLASS(VisibilityNotifier, Spatial);
+	OBJ_TYPE(VisibilityNotifier, Spatial);
 
 	Set<Camera *> cameras;
 
-	Rect3 aabb;
+	AABB aabb;
 
 protected:
 	virtual void _screen_enter() {}
@@ -53,8 +53,8 @@ protected:
 	void _exit_camera(Camera *p_camera);
 
 public:
-	void set_aabb(const Rect3 &p_aabb);
-	Rect3 get_aabb() const;
+	void set_aabb(const AABB &p_aabb);
+	AABB get_aabb() const;
 	bool is_on_screen() const;
 
 	VisibilityNotifier();
@@ -62,7 +62,7 @@ public:
 
 class VisibilityEnabler : public VisibilityNotifier {
 
-	GDCLASS(VisibilityEnabler, VisibilityNotifier);
+	OBJ_TYPE(VisibilityEnabler, VisibilityNotifier);
 
 public:
 	enum Enabler {

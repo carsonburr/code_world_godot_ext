@@ -28,16 +28,14 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 #include "shape_sw.h"
-
 #include "geometry.h"
 #include "quick_hull.h"
 #include "sort.h"
-
 #define _POINT_SNAP 0.001953125
-#define _EDGE_IS_VALID_SUPPORT_THRESHOLD 0.0002
-#define _FACE_IS_VALID_SUPPORT_THRESHOLD 0.9998
+#define _EDGE_IS_VALID_SUPPORT_TRESHOLD 0.0002
+#define _FACE_IS_VALID_SUPPORT_TRESHOLD 0.9998
 
-void ShapeSW::configure(const Rect3 &p_aabb) {
+void ShapeSW::configure(const AABB &p_aabb) {
 	aabb = p_aabb;
 	configured = true;
 	for (Map<ShapeOwnerSW *, int>::Element *E = owners.front(); E; E = E->next()) {
@@ -119,21 +117,7 @@ bool PlaneShapeSW::intersect_segment(const Vector3 &p_begin, const Vector3 &p_en
 	return inters;
 }
 
-bool PlaneShapeSW::intersect_point(const Vector3 &p_point) const {
-
-	return plane.distance_to(p_point) < 0;
-}
-
-Vector3 PlaneShapeSW::get_closest_point_to(const Vector3 &p_point) const {
-
-	if (plane.is_point_over(p_point)) {
-		return plane.project(p_point);
-	} else {
-		return p_point;
-	}
-}
-
-Vector3 PlaneShapeSW::get_moment_of_inertia(real_t p_mass) const {
+Vector3 PlaneShapeSW::get_moment_of_inertia(float p_mass) const {
 
 	return Vector3(); //wtf
 }
@@ -141,7 +125,7 @@ Vector3 PlaneShapeSW::get_moment_of_inertia(real_t p_mass) const {
 void PlaneShapeSW::_setup(const Plane &p_plane) {
 
 	plane = p_plane;
-	configure(Rect3(Vector3(-1e4, -1e4, -1e4), Vector3(1e4 * 2, 1e4 * 2, 1e4 * 2)));
+	configure(AABB(Vector3(-1e4, -1e4, -1e4), Vector3(1e4 * 2, 1e4 * 2, 1e4 * 2)));
 }
 
 void PlaneShapeSW::set_data(const Variant &p_data) {
@@ -159,7 +143,7 @@ PlaneShapeSW::PlaneShapeSW() {
 
 //
 
-real_t RayShapeSW::get_length() const {
+float RayShapeSW::get_length() const {
 
 	return length;
 }
@@ -181,12 +165,13 @@ Vector3 RayShapeSW::get_support(const Vector3 &p_normal) const {
 
 void RayShapeSW::get_supports(const Vector3 &p_normal, int p_max, Vector3 *r_supports, int &r_amount) const {
 
-	if (Math::abs(p_normal.z) < _EDGE_IS_VALID_SUPPORT_THRESHOLD) {
+	if (Math::abs(p_normal.z) < _EDGE_IS_VALID_SUPPORT_TRESHOLD) {
 
 		r_amount = 2;
 		r_supports[0] = Vector3(0, 0, 0);
 		r_supports[1] = Vector3(0, 0, length);
-	} else if (p_normal.z > 0) {
+	}
+	if (p_normal.z > 0) {
 		r_amount = 1;
 		*r_supports = Vector3(0, 0, length);
 	} else {
@@ -200,30 +185,15 @@ bool RayShapeSW::intersect_segment(const Vector3 &p_begin, const Vector3 &p_end,
 	return false; //simply not possible
 }
 
-bool RayShapeSW::intersect_point(const Vector3 &p_point) const {
-
-	return false; //simply not possible
-}
-
-Vector3 RayShapeSW::get_closest_point_to(const Vector3 &p_point) const {
-
-	Vector3 s[2] = {
-		Vector3(0, 0, 0),
-		Vector3(0, 0, length)
-	};
-
-	return Geometry::get_closest_point_to_segment(p_point, s);
-}
-
-Vector3 RayShapeSW::get_moment_of_inertia(real_t p_mass) const {
+Vector3 RayShapeSW::get_moment_of_inertia(float p_mass) const {
 
 	return Vector3();
 }
 
-void RayShapeSW::_setup(real_t p_length) {
+void RayShapeSW::_setup(float p_length) {
 
 	length = p_length;
-	configure(Rect3(Vector3(0, 0, 0), Vector3(0.1, 0.1, length)));
+	configure(AABB(Vector3(0, 0, 0), Vector3(0.1, 0.1, length)));
 }
 
 void RayShapeSW::set_data(const Variant &p_data) {
@@ -250,11 +220,11 @@ real_t SphereShapeSW::get_radius() const {
 
 void SphereShapeSW::project_range(const Vector3 &p_normal, const Transform &p_transform, real_t &r_min, real_t &r_max) const {
 
-	real_t d = p_normal.dot(p_transform.origin);
+	float d = p_normal.dot(p_transform.origin);
 
 	// figure out scale at point
 	Vector3 local_normal = p_transform.basis.xform_inv(p_normal);
-	real_t scale = local_normal.length();
+	float scale = local_normal.length();
 
 	r_min = d - (radius)*scale;
 	r_max = d + (radius)*scale;
@@ -276,30 +246,16 @@ bool SphereShapeSW::intersect_segment(const Vector3 &p_begin, const Vector3 &p_e
 	return Geometry::segment_intersects_sphere(p_begin, p_end, Vector3(), radius, &r_result, &r_normal);
 }
 
-bool SphereShapeSW::intersect_point(const Vector3 &p_point) const {
+Vector3 SphereShapeSW::get_moment_of_inertia(float p_mass) const {
 
-	return p_point.length() < radius;
-}
-
-Vector3 SphereShapeSW::get_closest_point_to(const Vector3 &p_point) const {
-
-	Vector3 p = p_point;
-	float l = p.length();
-	if (l < radius)
-		return p_point;
-	return (p / l) * radius;
-}
-
-Vector3 SphereShapeSW::get_moment_of_inertia(real_t p_mass) const {
-
-	real_t s = 0.4 * p_mass * radius * radius;
+	float s = 0.4 * p_mass * radius * radius;
 	return Vector3(s, s, s);
 }
 
 void SphereShapeSW::_setup(real_t p_radius) {
 
 	radius = p_radius;
-	configure(Rect3(Vector3(-radius, -radius, -radius), Vector3(radius * 2.0, radius * 2.0, radius * 2.0)));
+	configure(AABB(Vector3(-radius, -radius, -radius), Vector3(radius * 2.0, radius * 2.0, radius * 2.0)));
 }
 
 void SphereShapeSW::set_data(const Variant &p_data) {
@@ -324,8 +280,8 @@ void BoxShapeSW::project_range(const Vector3 &p_normal, const Transform &p_trans
 	// no matter the angle, the box is mirrored anyway
 	Vector3 local_normal = p_transform.basis.xform_inv(p_normal);
 
-	real_t length = local_normal.abs().dot(half_extents);
-	real_t distance = p_normal.dot(p_transform.origin);
+	float length = local_normal.abs().dot(half_extents);
+	float distance = p_normal.dot(p_transform.origin);
 
 	r_min = distance - length;
 	r_max = distance + length;
@@ -350,8 +306,8 @@ void BoxShapeSW::get_supports(const Vector3 &p_normal, int p_max, Vector3 *r_sup
 
 		Vector3 axis;
 		axis[i] = 1.0;
-		real_t dot = p_normal.dot(axis);
-		if (Math::abs(dot) > _FACE_IS_VALID_SUPPORT_THRESHOLD) {
+		float dot = p_normal.dot(axis);
+		if (Math::abs(dot) > _FACE_IS_VALID_SUPPORT_TRESHOLD) {
 
 			//Vector3 axis_b;
 
@@ -364,7 +320,7 @@ void BoxShapeSW::get_supports(const Vector3 &p_normal, int p_max, Vector3 *r_sup
 			int i_n = next[i];
 			int i_n2 = next2[i];
 
-			static const real_t sign[4][2] = {
+			static const float sign[4][2] = {
 
 				{ -1.0, 1.0 },
 				{ 1.0, 1.0 },
@@ -395,7 +351,7 @@ void BoxShapeSW::get_supports(const Vector3 &p_normal, int p_max, Vector3 *r_sup
 		Vector3 axis;
 		axis[i] = 1.0;
 
-		if (Math::abs(p_normal.dot(axis)) < _EDGE_IS_VALID_SUPPORT_THRESHOLD) {
+		if (Math::abs(p_normal.dot(axis)) < _EDGE_IS_VALID_SUPPORT_TRESHOLD) {
 
 			r_amount = 2;
 
@@ -430,72 +386,16 @@ void BoxShapeSW::get_supports(const Vector3 &p_normal, int p_max, Vector3 *r_sup
 
 bool BoxShapeSW::intersect_segment(const Vector3 &p_begin, const Vector3 &p_end, Vector3 &r_result, Vector3 &r_normal) const {
 
-	Rect3 aabb(-half_extents, half_extents * 2.0);
+	AABB aabb(-half_extents, half_extents * 2.0);
 
 	return aabb.intersects_segment(p_begin, p_end, &r_result, &r_normal);
 }
 
-bool BoxShapeSW::intersect_point(const Vector3 &p_point) const {
+Vector3 BoxShapeSW::get_moment_of_inertia(float p_mass) const {
 
-	return (Math::abs(p_point.x) < half_extents.x && Math::abs(p_point.y) < half_extents.y && Math::abs(p_point.z) < half_extents.z);
-}
-
-Vector3 BoxShapeSW::get_closest_point_to(const Vector3 &p_point) const {
-
-	int outside = 0;
-	Vector3 min_point;
-
-	for (int i = 0; i < 3; i++) {
-
-		if (Math::abs(p_point[i]) > half_extents[i]) {
-			outside++;
-			if (outside == 1) {
-				//use plane if only one side matches
-				Vector3 n;
-				n[i] = SGN(p_point[i]);
-
-				Plane p(n, half_extents[i]);
-				min_point = p.project(p_point);
-			}
-		}
-	}
-
-	if (!outside)
-		return p_point; //it's inside, don't do anything else
-
-	if (outside == 1) //if only above one plane, this plane clearly wins
-		return min_point;
-
-	//check segments
-	float min_distance = 1e20;
-	Vector3 closest_vertex = half_extents * p_point.sign();
-	Vector3 s[2] = {
-		closest_vertex,
-		closest_vertex
-	};
-
-	for (int i = 0; i < 3; i++) {
-
-		s[1] = closest_vertex;
-		s[1][i] = -s[1][i]; //edge
-
-		Vector3 closest_edge = Geometry::get_closest_point_to_segment(p_point, s);
-
-		float d = p_point.distance_to(closest_edge);
-		if (d < min_distance) {
-			min_point = closest_edge;
-			min_distance = d;
-		}
-	}
-
-	return min_point;
-}
-
-Vector3 BoxShapeSW::get_moment_of_inertia(real_t p_mass) const {
-
-	real_t lx = half_extents.x;
-	real_t ly = half_extents.y;
-	real_t lz = half_extents.z;
+	float lx = half_extents.x;
+	float ly = half_extents.y;
+	float lz = half_extents.z;
 
 	return Vector3((p_mass / 3.0) * (ly * ly + lz * lz), (p_mass / 3.0) * (lx * lx + lz * lz), (p_mass / 3.0) * (lx * lx + ly * ly));
 }
@@ -504,7 +404,7 @@ void BoxShapeSW::_setup(const Vector3 &p_half_extents) {
 
 	half_extents = p_half_extents.abs();
 
-	configure(Rect3(-half_extents, half_extents * 2));
+	configure(AABB(-half_extents, half_extents * 2));
 }
 
 void BoxShapeSW::set_data(const Variant &p_data) {
@@ -525,7 +425,7 @@ BoxShapeSW::BoxShapeSW() {
 void CapsuleShapeSW::project_range(const Vector3 &p_normal, const Transform &p_transform, real_t &r_min, real_t &r_max) const {
 
 	Vector3 n = p_transform.basis.xform_inv(p_normal).normalized();
-	real_t h = (n.z > 0) ? height : -height;
+	float h = (n.z > 0) ? height : -height;
 
 	n *= radius;
 	n.z += h * 0.5;
@@ -536,8 +436,8 @@ void CapsuleShapeSW::project_range(const Vector3 &p_normal, const Transform &p_t
 
 	n = p_transform.basis.xform(n);
 
-	real_t distance = p_normal.dot(p_transform.origin);
-	real_t length = Math::abs(p_normal.dot(n));
+	float distance = p_normal.dot(p_transform.origin);
+	float length = Math::abs(p_normal.dot(n));
 	r_min = distance - length;
 	r_max = distance + length;
 
@@ -548,7 +448,7 @@ Vector3 CapsuleShapeSW::get_support(const Vector3 &p_normal) const {
 
 	Vector3 n = p_normal;
 
-	real_t h = (n.z > 0) ? height : -height;
+	float h = (n.z > 0) ? height : -height;
 
 	n *= radius;
 	n.z += h * 0.5;
@@ -559,9 +459,9 @@ void CapsuleShapeSW::get_supports(const Vector3 &p_normal, int p_max, Vector3 *r
 
 	Vector3 n = p_normal;
 
-	real_t d = n.z;
+	float d = n.z;
 
-	if (Math::abs(d) < _EDGE_IS_VALID_SUPPORT_THRESHOLD) {
+	if (Math::abs(d) < _EDGE_IS_VALID_SUPPORT_TRESHOLD) {
 
 		// make it flat
 		n.z = 0.0;
@@ -576,7 +476,7 @@ void CapsuleShapeSW::get_supports(const Vector3 &p_normal, int p_max, Vector3 *r
 
 	} else {
 
-		real_t h = (d > 0) ? height : -height;
+		float h = (d > 0) ? height : -height;
 
 		n *= radius;
 		n.z += h * 0.5;
@@ -588,7 +488,7 @@ void CapsuleShapeSW::get_supports(const Vector3 &p_normal, int p_max, Vector3 *r
 bool CapsuleShapeSW::intersect_segment(const Vector3 &p_begin, const Vector3 &p_end, Vector3 &r_result, Vector3 &r_normal) const {
 
 	Vector3 norm = (p_end - p_begin).normalized();
-	real_t min_d = 1e20;
+	float min_d = 1e20;
 
 	Vector3 res, n;
 	bool collision = false;
@@ -601,7 +501,7 @@ bool CapsuleShapeSW::intersect_segment(const Vector3 &p_begin, const Vector3 &p_
 	collided = Geometry::segment_intersects_cylinder(p_begin, p_end, height, radius, &auxres, &auxn);
 
 	if (collided) {
-		real_t d = norm.dot(auxres);
+		float d = norm.dot(auxres);
 		if (d < min_d) {
 			min_d = d;
 			res = auxres;
@@ -613,7 +513,7 @@ bool CapsuleShapeSW::intersect_segment(const Vector3 &p_begin, const Vector3 &p_
 	collided = Geometry::segment_intersects_sphere(p_begin, p_end, Vector3(0, 0, height * 0.5), radius, &auxres, &auxn);
 
 	if (collided) {
-		real_t d = norm.dot(auxres);
+		float d = norm.dot(auxres);
 		if (d < min_d) {
 			min_d = d;
 			res = auxres;
@@ -625,7 +525,7 @@ bool CapsuleShapeSW::intersect_segment(const Vector3 &p_begin, const Vector3 &p_
 	collided = Geometry::segment_intersects_sphere(p_begin, p_end, Vector3(0, 0, height * -0.5), radius, &auxres, &auxn);
 
 	if (collided) {
-		real_t d = norm.dot(auxres);
+		float d = norm.dot(auxres);
 
 		if (d < min_d) {
 			min_d = d;
@@ -643,33 +543,7 @@ bool CapsuleShapeSW::intersect_segment(const Vector3 &p_begin, const Vector3 &p_
 	return collision;
 }
 
-bool CapsuleShapeSW::intersect_point(const Vector3 &p_point) const {
-
-	if (Math::abs(p_point.z) < height * 0.5) {
-		return Vector3(p_point.x, p_point.y, 0).length() < radius;
-	} else {
-		Vector3 p = p_point;
-		p.z = Math::abs(p.z) - height * 0.5;
-		return p.length() < radius;
-	}
-}
-
-Vector3 CapsuleShapeSW::get_closest_point_to(const Vector3 &p_point) const {
-
-	Vector3 s[2] = {
-		Vector3(0, 0, -height * 0.5),
-		Vector3(0, 0, height * 0.5),
-	};
-
-	Vector3 p = Geometry::get_closest_point_to_segment(p_point, s);
-
-	if (p.distance_to(p_point) < radius)
-		return p_point;
-
-	return p + (p_point - p).normalized() * radius;
-}
-
-Vector3 CapsuleShapeSW::get_moment_of_inertia(real_t p_mass) const {
+Vector3 CapsuleShapeSW::get_moment_of_inertia(float p_mass) const {
 
 	// use crappy AABB approximation
 	Vector3 extents = get_aabb().size * 0.5;
@@ -684,7 +558,7 @@ void CapsuleShapeSW::_setup(real_t p_height, real_t p_radius) {
 
 	height = p_height;
 	radius = p_radius;
-	configure(Rect3(Vector3(-radius, -radius, -height * 0.5 - radius), Vector3(radius * 2, radius * 2, height + radius * 2.0)));
+	configure(AABB(Vector3(-radius, -radius, -height * 0.5 - radius), Vector3(radius * 2, radius * 2, height + radius * 2.0)));
 }
 
 void CapsuleShapeSW::set_data(const Variant &p_data) {
@@ -720,7 +594,7 @@ void ConvexPolygonShapeSW::project_range(const Vector3 &p_normal, const Transfor
 
 	for (int i = 0; i < vertex_count; i++) {
 
-		real_t d = p_normal.dot(p_transform.xform(vrts[i]));
+		float d = p_normal.dot(p_transform.xform(vrts[i]));
 
 		if (i == 0 || d > r_max)
 			r_max = d;
@@ -734,7 +608,7 @@ Vector3 ConvexPolygonShapeSW::get_support(const Vector3 &p_normal) const {
 	Vector3 n = p_normal;
 
 	int vert_support_idx = -1;
-	real_t support_max = 0;
+	float support_max;
 
 	int vertex_count = mesh.vertices.size();
 	if (vertex_count == 0)
@@ -744,7 +618,7 @@ Vector3 ConvexPolygonShapeSW::get_support(const Vector3 &p_normal) const {
 
 	for (int i = 0; i < vertex_count; i++) {
 
-		real_t d = n.dot(vrts[i]);
+		float d = n.dot(vrts[i]);
 
 		if (i == 0 || d > support_max) {
 			support_max = d;
@@ -767,12 +641,12 @@ void ConvexPolygonShapeSW::get_supports(const Vector3 &p_normal, int p_max, Vect
 	int vc = mesh.vertices.size();
 
 	//find vertex first
-	real_t max = 0;
-	int vtx = 0;
+	real_t max;
+	int vtx;
 
 	for (int i = 0; i < vc; i++) {
 
-		real_t d = p_normal.dot(vertices[i]);
+		float d = p_normal.dot(vertices[i]);
 
 		if (i == 0 || d > max) {
 			max = d;
@@ -782,7 +656,7 @@ void ConvexPolygonShapeSW::get_supports(const Vector3 &p_normal, int p_max, Vect
 
 	for (int i = 0; i < fc; i++) {
 
-		if (faces[i].plane.normal.dot(p_normal) > _FACE_IS_VALID_SUPPORT_THRESHOLD) {
+		if (faces[i].plane.normal.dot(p_normal) > _FACE_IS_VALID_SUPPORT_TRESHOLD) {
 
 			int ic = faces[i].indices.size();
 			const int *ind = faces[i].indices.ptr();
@@ -810,9 +684,9 @@ void ConvexPolygonShapeSW::get_supports(const Vector3 &p_normal, int p_max, Vect
 
 	for (int i = 0; i < ec; i++) {
 
-		real_t dot = (vertices[edges[i].a] - vertices[edges[i].b]).normalized().dot(p_normal);
+		float dot = (vertices[edges[i].a] - vertices[edges[i].b]).normalized().dot(p_normal);
 		dot = ABS(dot);
-		if (dot < _EDGE_IS_VALID_SUPPORT_THRESHOLD && (edges[i].a == vtx || edges[i].b == vtx)) {
+		if (dot < _EDGE_IS_VALID_SUPPORT_TRESHOLD && (edges[i].a == vtx || edges[i].b == vtx)) {
 
 			r_amount = 2;
 			r_supports[0] = vertices[edges[i].a];
@@ -833,7 +707,7 @@ bool ConvexPolygonShapeSW::intersect_segment(const Vector3 &p_begin, const Vecto
 	const Vector3 *vertices = mesh.vertices.ptr();
 
 	Vector3 n = p_end - p_begin;
-	real_t min = 1e20;
+	float min = 1e20;
 	bool col = false;
 
 	for (int i = 0; i < fc; i++) {
@@ -849,7 +723,7 @@ bool ConvexPolygonShapeSW::intersect_segment(const Vector3 &p_begin, const Vecto
 			Face3 f(vertices[ind[0]], vertices[ind[j]], vertices[ind[j + 1]]);
 			Vector3 result;
 			if (f.intersects_segment(p_begin, p_end, &result)) {
-				real_t d = n.dot(result);
+				float d = n.dot(result);
 				if (d < min) {
 					min = d;
 					r_result = result;
@@ -865,82 +739,7 @@ bool ConvexPolygonShapeSW::intersect_segment(const Vector3 &p_begin, const Vecto
 	return col;
 }
 
-bool ConvexPolygonShapeSW::intersect_point(const Vector3 &p_point) const {
-
-	const Geometry::MeshData::Face *faces = mesh.faces.ptr();
-	int fc = mesh.faces.size();
-
-	for (int i = 0; i < fc; i++) {
-
-		if (faces[i].plane.distance_to(p_point) >= 0)
-			return false;
-	}
-
-	return true;
-}
-
-Vector3 ConvexPolygonShapeSW::get_closest_point_to(const Vector3 &p_point) const {
-
-	const Geometry::MeshData::Face *faces = mesh.faces.ptr();
-	int fc = mesh.faces.size();
-	const Vector3 *vertices = mesh.vertices.ptr();
-
-	bool all_inside = true;
-	for (int i = 0; i < fc; i++) {
-
-		if (!faces[i].plane.is_point_over(p_point))
-			continue;
-
-		all_inside = false;
-		bool is_inside = true;
-		int ic = faces[i].indices.size();
-		const int *indices = faces[i].indices.ptr();
-
-		for (int j = 0; j < ic; j++) {
-
-			Vector3 a = vertices[indices[j]];
-			Vector3 b = vertices[indices[(j + 1) % ic]];
-			Vector3 n = (a - b).cross(faces[i].plane.normal).normalized();
-			if (Plane(a, n).is_point_over(p_point)) {
-				is_inside = false;
-				break;
-			}
-		}
-
-		if (is_inside) {
-			return faces[i].plane.project(p_point);
-		}
-	}
-
-	if (all_inside) {
-		return p_point;
-	}
-
-	float min_distance = 1e20;
-	Vector3 min_point;
-
-	//check edges
-	const Geometry::MeshData::Edge *edges = mesh.edges.ptr();
-	int ec = mesh.edges.size();
-	for (int i = 0; i < ec; i++) {
-
-		Vector3 s[2] = {
-			vertices[edges[i].a],
-			vertices[edges[i].b]
-		};
-
-		Vector3 closest = Geometry::get_closest_point_to_segment(p_point, s);
-		float d = closest.distance_to(p_point);
-		if (d < min_distance) {
-			min_distance = d;
-			min_point = closest;
-		}
-	}
-
-	return min_point;
-}
-
-Vector3 ConvexPolygonShapeSW::get_moment_of_inertia(real_t p_mass) const {
+Vector3 ConvexPolygonShapeSW::get_moment_of_inertia(float p_mass) const {
 
 	// use crappy AABB approximation
 	Vector3 extents = get_aabb().size * 0.5;
@@ -954,15 +753,12 @@ Vector3 ConvexPolygonShapeSW::get_moment_of_inertia(real_t p_mass) const {
 void ConvexPolygonShapeSW::_setup(const Vector<Vector3> &p_vertices) {
 
 	Error err = QuickHull::build(p_vertices, mesh);
-	if (err != OK)
-		ERR_PRINT("Failed to build QuickHull");
-
-	Rect3 _aabb;
+	AABB _aabb;
 
 	for (int i = 0; i < mesh.vertices.size(); i++) {
 
 		if (i == 0)
-			_aabb.position = mesh.vertices[i];
+			_aabb.pos = mesh.vertices[i];
 		else
 			_aabb.expand_to(mesh.vertices[i]);
 	}
@@ -990,7 +786,7 @@ void FaceShapeSW::project_range(const Vector3 &p_normal, const Transform &p_tran
 	for (int i = 0; i < 3; i++) {
 
 		Vector3 v = p_transform.xform(vertex[i]);
-		real_t d = p_normal.dot(v);
+		float d = p_normal.dot(v);
 
 		if (i == 0 || d > r_max)
 			r_max = d;
@@ -1003,11 +799,11 @@ void FaceShapeSW::project_range(const Vector3 &p_normal, const Transform &p_tran
 Vector3 FaceShapeSW::get_support(const Vector3 &p_normal) const {
 
 	int vert_support_idx = -1;
-	real_t support_max = 0;
+	float support_max;
 
 	for (int i = 0; i < 3; i++) {
 
-		real_t d = p_normal.dot(vertex[i]);
+		float d = p_normal.dot(vertex[i]);
 
 		if (i == 0 || d > support_max) {
 			support_max = d;
@@ -1023,7 +819,7 @@ void FaceShapeSW::get_supports(const Vector3 &p_normal, int p_max, Vector3 *r_su
 	Vector3 n = p_normal;
 
 	/** TEST FACE AS SUPPORT **/
-	if (normal.dot(n) > _FACE_IS_VALID_SUPPORT_THRESHOLD) {
+	if (normal.dot(n) > _FACE_IS_VALID_SUPPORT_TRESHOLD) {
 
 		r_amount = 3;
 		for (int i = 0; i < 3; i++) {
@@ -1036,11 +832,11 @@ void FaceShapeSW::get_supports(const Vector3 &p_normal, int p_max, Vector3 *r_su
 	/** FIND SUPPORT VERTEX **/
 
 	int vert_support_idx = -1;
-	real_t support_max;
+	float support_max;
 
 	for (int i = 0; i < 3; i++) {
 
-		real_t d = n.dot(vertex[i]);
+		float d = n.dot(vertex[i]);
 
 		if (i == 0 || d > support_max) {
 			support_max = d;
@@ -1057,9 +853,9 @@ void FaceShapeSW::get_supports(const Vector3 &p_normal, int p_max, Vector3 *r_su
 			continue;
 
 		// check if edge is valid as a support
-		real_t dot = (vertex[i] - vertex[nx]).normalized().dot(n);
+		float dot = (vertex[i] - vertex[nx]).normalized().dot(n);
 		dot = ABS(dot);
-		if (dot < _EDGE_IS_VALID_SUPPORT_THRESHOLD) {
+		if (dot < _EDGE_IS_VALID_SUPPORT_TRESHOLD) {
 
 			r_amount = 2;
 			r_supports[0] = vertex[i];
@@ -1085,29 +881,19 @@ bool FaceShapeSW::intersect_segment(const Vector3 &p_begin, const Vector3 &p_end
 	return c;
 }
 
-bool FaceShapeSW::intersect_point(const Vector3 &p_point) const {
-
-	return false; //face is flat
-}
-
-Vector3 FaceShapeSW::get_closest_point_to(const Vector3 &p_point) const {
-
-	return Face3(vertex[0], vertex[1], vertex[2]).get_closest_point_to(p_point);
-}
-
-Vector3 FaceShapeSW::get_moment_of_inertia(real_t p_mass) const {
+Vector3 FaceShapeSW::get_moment_of_inertia(float p_mass) const {
 
 	return Vector3(); // Sorry, but i don't think anyone cares, FaceShape!
 }
 
 FaceShapeSW::FaceShapeSW() {
 
-	configure(Rect3());
+	configure(AABB());
 }
 
-PoolVector<Vector3> ConcavePolygonShapeSW::get_faces() const {
+DVector<Vector3> ConcavePolygonShapeSW::get_faces() const {
 
-	PoolVector<Vector3> rfaces;
+	DVector<Vector3> rfaces;
 	rfaces.resize(faces.size() * 3);
 
 	for (int i = 0; i < faces.size(); i++) {
@@ -1131,12 +917,12 @@ void ConcavePolygonShapeSW::project_range(const Vector3 &p_normal, const Transfo
 		r_max = 0;
 		return;
 	}
-	PoolVector<Vector3>::Read r = vertices.read();
+	DVector<Vector3>::Read r = vertices.read();
 	const Vector3 *vptr = r.ptr();
 
 	for (int i = 0; i < count; i++) {
 
-		real_t d = p_normal.dot(p_transform.xform(vptr[i]));
+		float d = p_normal.dot(p_transform.xform(vptr[i]));
 
 		if (i == 0 || d > r_max)
 			r_max = d;
@@ -1151,17 +937,17 @@ Vector3 ConcavePolygonShapeSW::get_support(const Vector3 &p_normal) const {
 	if (count == 0)
 		return Vector3();
 
-	PoolVector<Vector3>::Read r = vertices.read();
+	DVector<Vector3>::Read r = vertices.read();
 	const Vector3 *vptr = r.ptr();
 
 	Vector3 n = p_normal;
 
 	int vert_support_idx = -1;
-	real_t support_max = 0;
+	float support_max;
 
 	for (int i = 0; i < count; i++) {
 
-		real_t d = n.dot(vptr[i]);
+		float d = n.dot(vptr[i]);
 
 		if (i == 0 || d > support_max) {
 			support_max = d;
@@ -1176,10 +962,8 @@ void ConcavePolygonShapeSW::_cull_segment(int p_idx, _SegmentCullParams *p_param
 
 	const BVH *bvh = &p_params->bvh[p_idx];
 
-	/*
-	if (p_params->dir.dot(bvh->aabb.get_support(-p_params->dir))>p_params->min_d)
-		return; //test against whole AABB, which isn't very costly
-	*/
+	//if (p_params->dir.dot(bvh->aabb.get_support(-p_params->dir))>p_params->min_d)
+	//	return; //test against whole AABB, which isn't very costly
 
 	//printf("addr: %p\n",bvh);
 	if (!bvh->aabb.intersects_segment(p_params->from, p_params->to)) {
@@ -1204,7 +988,7 @@ void ConcavePolygonShapeSW::_cull_segment(int p_idx, _SegmentCullParams *p_param
 					vertices[2],
 					&res)) {
 
-			real_t d = p_params->dir.dot(res) - p_params->dir.dot(p_params->from);
+			float d = p_params->dir.dot(res) - p_params->dir.dot(p_params->from);
 			//TODO, seems segmen/triangle intersection is broken :(
 			if (d > 0 && d < p_params->min_d) {
 
@@ -1230,9 +1014,9 @@ bool ConcavePolygonShapeSW::intersect_segment(const Vector3 &p_begin, const Vect
 		return false;
 
 	// unlock data
-	PoolVector<Face>::Read fr = faces.read();
-	PoolVector<Vector3>::Read vr = vertices.read();
-	PoolVector<BVH>::Read br = bvh.read();
+	DVector<Face>::Read fr = faces.read();
+	DVector<Vector3>::Read vr = vertices.read();
+	DVector<BVH>::Read br = bvh.read();
 
 	_SegmentCullParams params;
 	params.from = p_begin;
@@ -1257,16 +1041,6 @@ bool ConcavePolygonShapeSW::intersect_segment(const Vector3 &p_begin, const Vect
 
 		return false;
 	}
-}
-
-bool ConcavePolygonShapeSW::intersect_point(const Vector3 &p_point) const {
-
-	return false; //face is flat
-}
-
-Vector3 ConcavePolygonShapeSW::get_closest_point_to(const Vector3 &p_point) const {
-
-	return Vector3();
 }
 
 void ConcavePolygonShapeSW::_cull(int p_idx, _CullParams *p_params) const {
@@ -1300,18 +1074,18 @@ void ConcavePolygonShapeSW::_cull(int p_idx, _CullParams *p_params) const {
 	}
 }
 
-void ConcavePolygonShapeSW::cull(const Rect3 &p_local_aabb, Callback p_callback, void *p_userdata) const {
+void ConcavePolygonShapeSW::cull(const AABB &p_local_aabb, Callback p_callback, void *p_userdata) const {
 
 	// make matrix local to concave
 	if (faces.size() == 0)
 		return;
 
-	Rect3 local_aabb = p_local_aabb;
+	AABB local_aabb = p_local_aabb;
 
 	// unlock data
-	PoolVector<Face>::Read fr = faces.read();
-	PoolVector<Vector3>::Read vr = vertices.read();
-	PoolVector<BVH>::Read br = bvh.read();
+	DVector<Face>::Read fr = faces.read();
+	DVector<Vector3>::Read vr = vertices.read();
+	DVector<BVH>::Read br = bvh.read();
 
 	FaceShapeSW face; // use this to send in the callback
 
@@ -1328,7 +1102,7 @@ void ConcavePolygonShapeSW::cull(const Rect3 &p_local_aabb, Callback p_callback,
 	_cull(0, &params);
 }
 
-Vector3 ConcavePolygonShapeSW::get_moment_of_inertia(real_t p_mass) const {
+Vector3 ConcavePolygonShapeSW::get_moment_of_inertia(float p_mass) const {
 
 	// use crappy AABB approximation
 	Vector3 extents = get_aabb().size * 0.5;
@@ -1341,7 +1115,7 @@ Vector3 ConcavePolygonShapeSW::get_moment_of_inertia(real_t p_mass) const {
 
 struct _VolumeSW_BVH_Element {
 
-	Rect3 aabb;
+	AABB aabb;
 	Vector3 center;
 	int face_index;
 };
@@ -1372,7 +1146,7 @@ struct _VolumeSW_BVH_CompareZ {
 
 struct _VolumeSW_BVH {
 
-	Rect3 aabb;
+	AABB aabb;
 	_VolumeSW_BVH *left;
 	_VolumeSW_BVH *right;
 
@@ -1396,7 +1170,7 @@ _VolumeSW_BVH *_volume_sw_build_bvh(_VolumeSW_BVH_Element *p_elements, int p_siz
 		bvh->face_index = -1;
 	}
 
-	Rect3 aabb;
+	AABB aabb;
 	for (int i = 0; i < p_size; i++) {
 
 		if (i == 0)
@@ -1429,7 +1203,7 @@ _VolumeSW_BVH *_volume_sw_build_bvh(_VolumeSW_BVH_Element *p_elements, int p_siz
 	bvh->left = _volume_sw_build_bvh(p_elements, split, count);
 	bvh->right = _volume_sw_build_bvh(&p_elements[split], p_size - split, count);
 
-	//printf("branch at %p - %i: %i\n",bvh,count,bvh->face_index);
+	//	printf("branch at %p - %i: %i\n",bvh,count,bvh->face_index);
 	count++;
 	return bvh;
 }
@@ -1440,7 +1214,7 @@ void ConcavePolygonShapeSW::_fill_bvh(_VolumeSW_BVH *p_bvh_tree, BVH *p_bvh_arra
 
 	p_bvh_array[idx].aabb = p_bvh_tree->aabb;
 	p_bvh_array[idx].face_index = p_bvh_tree->face_index;
-	//printf("%p - %i: %i(%p)  -- %p:%p\n",%p_bvh_array[idx],p_idx,p_bvh_array[i]->face_index,&p_bvh_tree->face_index,p_bvh_tree->left,p_bvh_tree->right);
+	//	printf("%p - %i: %i(%p)  -- %p:%p\n",%p_bvh_array[idx],p_idx,p_bvh_array[i]->face_index,&p_bvh_tree->face_index,p_bvh_tree->left,p_bvh_tree->right);
 
 	if (p_bvh_tree->left) {
 		p_bvh_array[idx].left = ++p_idx;
@@ -1463,42 +1237,155 @@ void ConcavePolygonShapeSW::_fill_bvh(_VolumeSW_BVH *p_bvh_tree, BVH *p_bvh_arra
 	memdelete(p_bvh_tree);
 }
 
-void ConcavePolygonShapeSW::_setup(PoolVector<Vector3> p_faces) {
+void ConcavePolygonShapeSW::_setup(DVector<Vector3> p_faces) {
 
 	int src_face_count = p_faces.size();
 	if (src_face_count == 0) {
-		configure(Rect3());
+		configure(AABB());
 		return;
 	}
 	ERR_FAIL_COND(src_face_count % 3);
 	src_face_count /= 3;
 
-	PoolVector<Vector3>::Read r = p_faces.read();
+	DVector<Vector3>::Read r = p_faces.read();
 	const Vector3 *facesr = r.ptr();
 
-	PoolVector<_VolumeSW_BVH_Element> bvh_array;
+#if 0
+	Map<Vector3,int> point_map;
+	List<Face> face_list;
+
+
+	for(int i=0;i<src_face_count;i++) {
+
+		Face3 faceaux;
+
+		for(int j=0;j<3;j++) {
+
+			faceaux.vertex[j]=facesr[i*3+j].snapped(_POINT_SNAP);
+			//faceaux.vertex[j]=facesr[i*3+j];//facesr[i*3+j].snapped(_POINT_SNAP);
+		}
+
+		ERR_CONTINUE( faceaux.is_degenerate() );
+
+		Face face;
+
+		for(int j=0;j<3;j++) {
+
+
+			Map<Vector3,int>::Element *E=point_map.find(faceaux.vertex[j]);
+			if (E) {
+
+				face.indices[j]=E->value();
+			} else {
+
+				face.indices[j]=point_map.size();
+				point_map.insert(faceaux.vertex[j],point_map.size());
+
+			}
+		}
+
+		face_list.push_back(face);
+	}
+
+	vertices.resize( point_map.size() );
+
+	DVector<Vector3>::Write vw = vertices.write();
+	Vector3 *verticesw=vw.ptr();
+
+	AABB _aabb;
+
+	for( Map<Vector3,int>::Element *E=point_map.front();E;E=E->next()) {
+
+		if (E==point_map.front()) {
+			_aabb.pos=E->key();
+		} else {
+
+			_aabb.expand_to(E->key());
+		}
+		verticesw[E->value()]=E->key();
+	}
+
+	point_map.clear(); // not needed anymore
+
+	faces.resize(face_list.size());
+	DVector<Face>::Write w = faces.write();
+	Face *facesw=w.ptr();
+
+	int fc=0;
+
+	for( List<Face>::Element *E=face_list.front();E;E=E->next()) {
+
+		facesw[fc++]=E->get();
+	}
+
+	face_list.clear();
+
+
+	DVector<_VolumeSW_BVH_Element> bvh_array;
+	bvh_array.resize( fc );
+
+	DVector<_VolumeSW_BVH_Element>::Write bvhw = bvh_array.write();
+	_VolumeSW_BVH_Element *bvh_arrayw=bvhw.ptr();
+
+
+	for(int i=0;i<fc;i++) {
+
+		AABB face_aabb;
+		face_aabb.pos=verticesw[facesw[i].indices[0]];
+		face_aabb.expand_to( verticesw[facesw[i].indices[1]] );
+		face_aabb.expand_to( verticesw[facesw[i].indices[2]] );
+
+		bvh_arrayw[i].face_index=i;
+		bvh_arrayw[i].aabb=face_aabb;
+		bvh_arrayw[i].center=face_aabb.pos+face_aabb.size*0.5;
+
+	}
+
+	w=DVector<Face>::Write();
+	vw=DVector<Vector3>::Write();
+
+
+	int count=0;
+	_VolumeSW_BVH *bvh_tree=_volume_sw_build_bvh(bvh_arrayw,fc,count);
+
+	ERR_FAIL_COND(count==0);
+
+	bvhw=DVector<_VolumeSW_BVH_Element>::Write();
+
+	bvh.resize( count+1 );
+
+	DVector<BVH>::Write bvhw2 = bvh.write();
+	BVH*bvh_arrayw2=bvhw2.ptr();
+
+	int idx=0;
+	_fill_bvh(bvh_tree,bvh_arrayw2,idx);
+
+	set_aabb(_aabb);
+
+#else
+	DVector<_VolumeSW_BVH_Element> bvh_array;
 	bvh_array.resize(src_face_count);
 
-	PoolVector<_VolumeSW_BVH_Element>::Write bvhw = bvh_array.write();
+	DVector<_VolumeSW_BVH_Element>::Write bvhw = bvh_array.write();
 	_VolumeSW_BVH_Element *bvh_arrayw = bvhw.ptr();
 
 	faces.resize(src_face_count);
-	PoolVector<Face>::Write w = faces.write();
+	DVector<Face>::Write w = faces.write();
 	Face *facesw = w.ptr();
 
 	vertices.resize(src_face_count * 3);
 
-	PoolVector<Vector3>::Write vw = vertices.write();
+	DVector<Vector3>::Write vw = vertices.write();
 	Vector3 *verticesw = vw.ptr();
 
-	Rect3 _aabb;
+	AABB _aabb;
 
 	for (int i = 0; i < src_face_count; i++) {
 
 		Face3 face(facesr[i * 3 + 0], facesr[i * 3 + 1], facesr[i * 3 + 2]);
 
 		bvh_arrayw[i].aabb = face.get_aabb();
-		bvh_arrayw[i].center = bvh_arrayw[i].aabb.position + bvh_arrayw[i].aabb.size * 0.5;
+		bvh_arrayw[i].center = bvh_arrayw[i].aabb.pos + bvh_arrayw[i].aabb.size * 0.5;
 		bvh_arrayw[i].face_index = i;
 		facesw[i].indices[0] = i * 3 + 0;
 		facesw[i].indices[1] = i * 3 + 1;
@@ -1513,21 +1400,23 @@ void ConcavePolygonShapeSW::_setup(PoolVector<Vector3> p_faces) {
 			_aabb.merge_with(bvh_arrayw[i].aabb);
 	}
 
-	w = PoolVector<Face>::Write();
-	vw = PoolVector<Vector3>::Write();
+	w = DVector<Face>::Write();
+	vw = DVector<Vector3>::Write();
 
 	int count = 0;
 	_VolumeSW_BVH *bvh_tree = _volume_sw_build_bvh(bvh_arrayw, src_face_count, count);
 
 	bvh.resize(count + 1);
 
-	PoolVector<BVH>::Write bvhw2 = bvh.write();
+	DVector<BVH>::Write bvhw2 = bvh.write();
 	BVH *bvh_arrayw2 = bvhw2.ptr();
 
 	int idx = 0;
 	_fill_bvh(bvh_tree, bvh_arrayw2, idx);
 
 	configure(_aabb); // this type of shape has no margin
+
+#endif
 }
 
 void ConcavePolygonShapeSW::set_data(const Variant &p_data) {
@@ -1545,7 +1434,7 @@ ConcavePolygonShapeSW::ConcavePolygonShapeSW() {
 
 /* HEIGHT MAP SHAPE */
 
-PoolVector<real_t> HeightMapShapeSW::get_heights() const {
+DVector<float> HeightMapShapeSW::get_heights() const {
 
 	return heights;
 }
@@ -1557,7 +1446,7 @@ int HeightMapShapeSW::get_depth() const {
 
 	return depth;
 }
-real_t HeightMapShapeSW::get_cell_size() const {
+float HeightMapShapeSW::get_cell_size() const {
 
 	return cell_size;
 }
@@ -1579,19 +1468,10 @@ bool HeightMapShapeSW::intersect_segment(const Vector3 &p_begin, const Vector3 &
 	return false;
 }
 
-bool HeightMapShapeSW::intersect_point(const Vector3 &p_point) const {
-	return false;
+void HeightMapShapeSW::cull(const AABB &p_local_aabb, Callback p_callback, void *p_userdata) const {
 }
 
-Vector3 HeightMapShapeSW::get_closest_point_to(const Vector3 &p_point) const {
-
-	return Vector3();
-}
-
-void HeightMapShapeSW::cull(const Rect3 &p_local_aabb, Callback p_callback, void *p_userdata) const {
-}
-
-Vector3 HeightMapShapeSW::get_moment_of_inertia(real_t p_mass) const {
+Vector3 HeightMapShapeSW::get_moment_of_inertia(float p_mass) const {
 
 	// use crappy AABB approximation
 	Vector3 extents = get_aabb().size * 0.5;
@@ -1602,26 +1482,26 @@ Vector3 HeightMapShapeSW::get_moment_of_inertia(real_t p_mass) const {
 			(p_mass / 3.0) * (extents.y * extents.y + extents.y * extents.y));
 }
 
-void HeightMapShapeSW::_setup(PoolVector<real_t> p_heights, int p_width, int p_depth, real_t p_cell_size) {
+void HeightMapShapeSW::_setup(DVector<real_t> p_heights, int p_width, int p_depth, real_t p_cell_size) {
 
 	heights = p_heights;
 	width = p_width;
 	depth = p_depth;
 	cell_size = p_cell_size;
 
-	PoolVector<real_t>::Read r = heights.read();
+	DVector<real_t>::Read r = heights.read();
 
-	Rect3 aabb;
+	AABB aabb;
 
 	for (int i = 0; i < depth; i++) {
 
 		for (int j = 0; j < width; j++) {
 
-			real_t h = r[i * width + j];
+			float h = r[i * width + j];
 
 			Vector3 pos(j * cell_size, h, i * cell_size);
 			if (i == 0 || j == 0)
-				aabb.position = pos;
+				aabb.pos = pos;
 			else
 				aabb.expand_to(pos);
 		}
@@ -1641,8 +1521,8 @@ void HeightMapShapeSW::set_data(const Variant &p_data) {
 
 	int width = d["width"];
 	int depth = d["depth"];
-	real_t cell_size = d["cell_size"];
-	PoolVector<real_t> heights = d["heights"];
+	float cell_size = d["cell_size"];
+	DVector<float> heights = d["heights"];
 
 	ERR_FAIL_COND(width <= 0);
 	ERR_FAIL_COND(depth <= 0);

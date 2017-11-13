@@ -36,7 +36,7 @@
 */
 class Label : public Control {
 
-	GDCLASS(Label, Control);
+	OBJ_TYPE(Label, Control);
 
 public:
 	enum Align {
@@ -59,7 +59,6 @@ private:
 	Align align;
 	VAlign valign;
 	String text;
-	String xl_text;
 	bool autowrap;
 	bool clip;
 	Size2 minsize;

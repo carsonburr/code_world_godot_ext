@@ -43,7 +43,7 @@
 */
 class FileDialog : public ConfirmationDialog {
 
-	GDCLASS(FileDialog, ConfirmationDialog);
+	OBJ_TYPE(FileDialog, ConfirmationDialog);
 
 public:
 	enum Access {
@@ -115,7 +115,7 @@ private:
 
 	void _update_drives();
 
-	void _unhandled_input(const Ref<InputEvent> &p_event);
+	void _unhandled_input(const InputEvent &p_event);
 
 	virtual void _post_popup();
 
@@ -161,7 +161,7 @@ public:
 
 class LineEditFileChooser : public HBoxContainer {
 
-	GDCLASS(LineEditFileChooser, HBoxContainer);
+	OBJ_TYPE(LineEditFileChooser, HBoxContainer);
 	Button *button;
 	LineEdit *line_edit;
 	FileDialog *dialog;

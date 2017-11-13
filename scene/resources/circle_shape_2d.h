@@ -33,7 +33,7 @@
 #include "scene/resources/shape_2d.h"
 
 class CircleShape2D : public Shape2D {
-	GDCLASS(CircleShape2D, Shape2D);
+	OBJ_TYPE(CircleShape2D, Shape2D);
 
 	real_t radius;
 	void _update_shape();

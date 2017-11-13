@@ -33,7 +33,7 @@
 
 Vector<Vector3> ConvexPolygonShape::_gen_debug_mesh_lines() {
 
-	PoolVector<Vector3> points = get_points();
+	DVector<Vector3> points = get_points();
 
 	if (points.size() > 3) {
 
@@ -61,24 +61,24 @@ void ConvexPolygonShape::_update_shape() {
 	emit_changed();
 }
 
-void ConvexPolygonShape::set_points(const PoolVector<Vector3> &p_points) {
+void ConvexPolygonShape::set_points(const DVector<Vector3> &p_points) {
 
 	points = p_points;
 	_update_shape();
 	notify_change_to_owners();
 }
 
-PoolVector<Vector3> ConvexPolygonShape::get_points() const {
+DVector<Vector3> ConvexPolygonShape::get_points() const {
 
 	return points;
 }
 
 void ConvexPolygonShape::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("set_points", "points"), &ConvexPolygonShape::set_points);
-	ClassDB::bind_method(D_METHOD("get_points"), &ConvexPolygonShape::get_points);
+	ObjectTypeDB::bind_method(_MD("set_points", "points"), &ConvexPolygonShape::set_points);
+	ObjectTypeDB::bind_method(_MD("get_points"), &ConvexPolygonShape::get_points);
 
-	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "points"), "set_points", "get_points");
+	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "points"), _SCS("set_points"), _SCS("get_points"));
 }
 
 ConvexPolygonShape::ConvexPolygonShape()

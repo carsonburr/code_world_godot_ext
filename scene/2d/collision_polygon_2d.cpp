@@ -30,15 +30,18 @@
 #include "collision_polygon_2d.h"
 
 #include "collision_object_2d.h"
-#include "engine.h"
 #include "scene/resources/concave_polygon_shape_2d.h"
 #include "scene/resources/convex_polygon_shape_2d.h"
 
 #include "thirdparty/misc/triangulator.h"
 
-void CollisionPolygon2D::_build_polygon() {
+void CollisionPolygon2D::_add_to_collision_object(Object *p_obj) {
 
-	parent->shape_owner_clear_shapes(owner_id);
+	if (unparenting || !can_update_body)
+		return;
+
+	CollisionObject2D *co = p_obj->cast_to<CollisionObject2D>();
+	ERR_FAIL_COND(!co);
 
 	if (polygon.size() == 0)
 		return;
@@ -50,35 +53,68 @@ void CollisionPolygon2D::_build_polygon() {
 		//here comes the sun, lalalala
 		//decompose concave into multiple convex polygons and add them
 		Vector<Vector<Vector2> > decomp = _decompose_in_convex();
+		shape_from = co->get_shape_count();
 		for (int i = 0; i < decomp.size(); i++) {
 			Ref<ConvexPolygonShape2D> convex = memnew(ConvexPolygonShape2D);
 			convex->set_points(decomp[i]);
-			parent->shape_owner_add_shape(owner_id, convex);
+			co->add_shape(convex, get_transform());
+			if (trigger)
+				co->set_shape_as_trigger(co->get_shape_count() - 1, true);
+		}
+		shape_to = co->get_shape_count() - 1;
+		if (shape_to < shape_from) {
+			shape_from = -1;
+			shape_to = -1;
 		}
 
 	} else {
 
 		Ref<ConcavePolygonShape2D> concave = memnew(ConcavePolygonShape2D);
 
-		PoolVector<Vector2> segments;
+		DVector<Vector2> segments;
 		segments.resize(polygon.size() * 2);
-		PoolVector<Vector2>::Write w = segments.write();
+		DVector<Vector2>::Write w = segments.write();
 
 		for (int i = 0; i < polygon.size(); i++) {
 			w[(i << 1) + 0] = polygon[i];
 			w[(i << 1) + 1] = polygon[(i + 1) % polygon.size()];
 		}
 
-		w = PoolVector<Vector2>::Write();
+		w = DVector<Vector2>::Write();
 		concave->set_segments(segments);
 
-		parent->shape_owner_add_shape(owner_id, concave);
+		co->add_shape(concave, get_transform());
+		if (trigger)
+			co->set_shape_as_trigger(co->get_shape_count() - 1, true);
+
+		shape_from = co->get_shape_count() - 1;
+		shape_to = co->get_shape_count() - 1;
 	}
+
+	//co->add_shape(shape,get_transform());
+}
+
+void CollisionPolygon2D::_update_parent() {
+
+	if (!can_update_body)
+		return;
+	Node *parent = get_parent();
+	if (!parent)
+		return;
+	CollisionObject2D *co = parent->cast_to<CollisionObject2D>();
+	if (!co)
+		return;
+	co->_update_shapes_from_children();
 }
 
 Vector<Vector<Vector2> > CollisionPolygon2D::_decompose_in_convex() {
 
 	Vector<Vector<Vector2> > decomp;
+#if 0
+	//fast but imprecise triangulator, gave us problems
+	decomp = Geometry::decompose_polygon(polygon);
+#else
+
 	List<TriangulatorPoly> in_poly, out_poly;
 
 	TriangulatorPoly inp;
@@ -111,48 +147,45 @@ Vector<Vector<Vector2> > CollisionPolygon2D::_decompose_in_convex() {
 		idx++;
 	}
 
+#endif
+
 	return decomp;
 }
 
 void CollisionPolygon2D::_notification(int p_what) {
 
 	switch (p_what) {
-		case NOTIFICATION_PARENTED: {
-
-			parent = Object::cast_to<CollisionObject2D>(get_parent());
-			if (parent) {
-				owner_id = parent->create_shape_owner(this);
-				_build_polygon();
-				parent->shape_owner_set_transform(owner_id, get_transform());
-				parent->shape_owner_set_disabled(owner_id, disabled);
-				parent->shape_owner_set_one_way_collision(owner_id, one_way_collision);
-			}
-
-			/*if (Engine::get_singleton()->is_editor_hint()) {
+		case NOTIFICATION_ENTER_TREE: {
+			unparenting = false;
+			can_update_body = get_tree()->is_editor_hint();
+			if (!get_tree()->is_editor_hint()) {
 				//display above all else
 				set_z_as_relative(false);
 				set_z(VS::CANVAS_ITEM_Z_MAX - 1);
-			}*/
+			}
 
+		} break;
+		case NOTIFICATION_EXIT_TREE: {
+			can_update_body = false;
 		} break;
 		case NOTIFICATION_LOCAL_TRANSFORM_CHANGED: {
 
-			if (parent) {
-				parent->shape_owner_set_transform(owner_id, get_transform());
+			if (!is_inside_tree())
+				break;
+			if (can_update_body) {
+				_update_parent();
+			} else if (shape_from >= 0 && shape_to >= 0) {
+				CollisionObject2D *co = get_parent()->cast_to<CollisionObject2D>();
+				for (int i = shape_from; i <= shape_to; i++) {
+					co->set_shape_transform(i, get_transform());
+				}
 			}
 
-		} break;
-		case NOTIFICATION_UNPARENTED: {
-			if (parent) {
-				parent->remove_shape_owner(owner_id);
-			}
-			owner_id = 0;
-			parent = NULL;
 		} break;
 
 		case NOTIFICATION_DRAW: {
 
-			if (!Engine::get_singleton()->is_editor_hint() && !get_tree()->is_debugging_collisions_hint()) {
+			if (!get_tree()->is_editor_hint() && !get_tree()->is_debugging_collisions_hint()) {
 				break;
 			}
 
@@ -177,22 +210,10 @@ void CollisionPolygon2D::_notification(int p_what) {
 			draw_colored_polygon(polygon, get_tree()->get_debug_collisions_color());
 #endif
 
-			if (one_way_collision) {
-				Color dcol = get_tree()->get_debug_collisions_color(); //0.9,0.2,0.2,0.4);
-				dcol.a = 1.0;
-				Vector2 line_to(0, 20);
-				draw_line(Vector2(), line_to, dcol, 3);
-				Vector<Vector2> pts;
-				float tsize = 8;
-				pts.push_back(line_to + (Vector2(0, tsize)));
-				pts.push_back(line_to + (Vector2(0.707 * tsize, 0)));
-				pts.push_back(line_to + (Vector2(-0.707 * tsize, 0)));
-				Vector<Color> cols;
-				for (int i = 0; i < 3; i++)
-					cols.push_back(dcol);
-
-				draw_primitive(pts, cols, Vector<Vector2>()); //small arrow
-			}
+		} break;
+		case NOTIFICATION_UNPARENTED: {
+			unparenting = true;
+			_update_parent();
 		} break;
 	}
 }
@@ -201,7 +222,7 @@ void CollisionPolygon2D::set_polygon(const Vector<Point2> &p_polygon) {
 
 	polygon = p_polygon;
 
-	{
+	if (can_update_body) {
 		for (int i = 0; i < polygon.size(); i++) {
 			if (i == 0)
 				aabb = Rect2(polygon[i], Size2());
@@ -212,13 +233,10 @@ void CollisionPolygon2D::set_polygon(const Vector<Point2> &p_polygon) {
 
 			aabb = Rect2(-10, -10, 20, 20);
 		} else {
-			aabb.position -= aabb.size * 0.3;
+			aabb.pos -= aabb.size * 0.3;
 			aabb.size += aabb.size * 0.6;
 		}
-	}
-
-	if (parent) {
-		_build_polygon();
+		_update_parent();
 	}
 	update();
 	update_configuration_warning();
@@ -233,9 +251,7 @@ void CollisionPolygon2D::set_build_mode(BuildMode p_mode) {
 
 	ERR_FAIL_INDEX(p_mode, 2);
 	build_mode = p_mode;
-	if (parent) {
-		_build_polygon();
-	}
+	_update_parent();
 }
 
 CollisionPolygon2D::BuildMode CollisionPolygon2D::get_build_mode() const {
@@ -248,9 +264,37 @@ Rect2 CollisionPolygon2D::get_item_rect() const {
 	return aabb;
 }
 
+void CollisionPolygon2D::set_trigger(bool p_trigger) {
+
+	trigger = p_trigger;
+	_update_parent();
+	if (!can_update_body && is_inside_tree() && shape_from >= 0 && shape_to >= 0) {
+		CollisionObject2D *co = get_parent()->cast_to<CollisionObject2D>();
+		for (int i = shape_from; i <= shape_to; i++) {
+			co->set_shape_as_trigger(i, p_trigger);
+		}
+	}
+}
+
+bool CollisionPolygon2D::is_trigger() const {
+
+	return trigger;
+}
+
+void CollisionPolygon2D::_set_shape_range(const Vector2 &p_range) {
+
+	shape_from = p_range.x;
+	shape_to = p_range.y;
+}
+
+Vector2 CollisionPolygon2D::_get_shape_range() const {
+
+	return Vector2(shape_from, shape_to);
+}
+
 String CollisionPolygon2D::get_configuration_warning() const {
 
-	if (!Object::cast_to<CollisionObject2D>(get_parent())) {
+	if (!get_parent()->cast_to<CollisionObject2D>()) {
 		return TTR("CollisionPolygon2D only serves to provide a collision shape to a CollisionObject2D derived node. Please only use it as a child of Area2D, StaticBody2D, RigidBody2D, KinematicBody2D, etc. to give them a shape.");
 	}
 
@@ -261,59 +305,38 @@ String CollisionPolygon2D::get_configuration_warning() const {
 	return String();
 }
 
-void CollisionPolygon2D::set_disabled(bool p_disabled) {
-	disabled = p_disabled;
-	update();
-	if (parent) {
-		parent->shape_owner_set_disabled(owner_id, p_disabled);
-	}
-}
-
-bool CollisionPolygon2D::is_disabled() const {
-	return disabled;
-}
-
-void CollisionPolygon2D::set_one_way_collision(bool p_enable) {
-	one_way_collision = p_enable;
-	update();
-	if (parent) {
-		parent->shape_owner_set_one_way_collision(owner_id, p_enable);
-	}
-}
-
-bool CollisionPolygon2D::is_one_way_collision_enabled() const {
-
-	return one_way_collision;
-}
-
 void CollisionPolygon2D::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("set_polygon", "polygon"), &CollisionPolygon2D::set_polygon);
-	ClassDB::bind_method(D_METHOD("get_polygon"), &CollisionPolygon2D::get_polygon);
+	ObjectTypeDB::bind_method(_MD("_add_to_collision_object"), &CollisionPolygon2D::_add_to_collision_object);
+	ObjectTypeDB::bind_method(_MD("set_polygon", "polygon"), &CollisionPolygon2D::set_polygon);
+	ObjectTypeDB::bind_method(_MD("get_polygon"), &CollisionPolygon2D::get_polygon);
 
-	ClassDB::bind_method(D_METHOD("set_build_mode", "build_mode"), &CollisionPolygon2D::set_build_mode);
-	ClassDB::bind_method(D_METHOD("get_build_mode"), &CollisionPolygon2D::get_build_mode);
-	ClassDB::bind_method(D_METHOD("set_disabled", "disabled"), &CollisionPolygon2D::set_disabled);
-	ClassDB::bind_method(D_METHOD("is_disabled"), &CollisionPolygon2D::is_disabled);
-	ClassDB::bind_method(D_METHOD("set_one_way_collision", "enabled"), &CollisionPolygon2D::set_one_way_collision);
-	ClassDB::bind_method(D_METHOD("is_one_way_collision_enabled"), &CollisionPolygon2D::is_one_way_collision_enabled);
+	ObjectTypeDB::bind_method(_MD("set_build_mode", "build_mode"), &CollisionPolygon2D::set_build_mode);
+	ObjectTypeDB::bind_method(_MD("get_build_mode"), &CollisionPolygon2D::get_build_mode);
 
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "build_mode", PROPERTY_HINT_ENUM, "Solids,Segments"), "set_build_mode", "get_build_mode");
-	ADD_PROPERTY(PropertyInfo(Variant::POOL_VECTOR2_ARRAY, "polygon"), "set_polygon", "get_polygon");
-	ADD_PROPERTYNZ(PropertyInfo(Variant::BOOL, "disabled"), "set_disabled", "is_disabled");
-	ADD_PROPERTYNZ(PropertyInfo(Variant::BOOL, "one_way_collision"), "set_one_way_collision", "is_one_way_collision_enabled");
+	ObjectTypeDB::bind_method(_MD("set_trigger", "trigger"), &CollisionPolygon2D::set_trigger);
+	ObjectTypeDB::bind_method(_MD("is_trigger"), &CollisionPolygon2D::is_trigger);
 
-	BIND_ENUM_CONSTANT(BUILD_SOLIDS);
-	BIND_ENUM_CONSTANT(BUILD_SEGMENTS);
+	ObjectTypeDB::bind_method(_MD("_set_shape_range", "shape_range"), &CollisionPolygon2D::_set_shape_range);
+	ObjectTypeDB::bind_method(_MD("_get_shape_range"), &CollisionPolygon2D::_get_shape_range);
+
+	ObjectTypeDB::bind_method(_MD("get_collision_object_first_shape"), &CollisionPolygon2D::get_collision_object_first_shape);
+	ObjectTypeDB::bind_method(_MD("get_collision_object_last_shape"), &CollisionPolygon2D::get_collision_object_last_shape);
+
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "build_mode", PROPERTY_HINT_ENUM, "Solids,Segments"), _SCS("set_build_mode"), _SCS("get_build_mode"));
+	ADD_PROPERTY(PropertyInfo(Variant::VECTOR2_ARRAY, "polygon"), _SCS("set_polygon"), _SCS("get_polygon"));
+	ADD_PROPERTY(PropertyInfo(Variant::VECTOR2, "shape_range", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR), _SCS("_set_shape_range"), _SCS("_get_shape_range"));
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "trigger"), _SCS("set_trigger"), _SCS("is_trigger"));
 }
 
 CollisionPolygon2D::CollisionPolygon2D() {
 
 	aabb = Rect2(-10, -10, 20, 20);
 	build_mode = BUILD_SOLIDS;
+	trigger = false;
+	unparenting = false;
+	shape_from = -1;
+	shape_to = -1;
+	can_update_body = false;
 	set_notify_local_transform(true);
-	parent = NULL;
-	owner_id = 0;
-	disabled = false;
-	one_way_collision = false;
 }

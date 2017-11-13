@@ -31,9 +31,7 @@
 
 #ifdef ALSA_ENABLED
 
-#include "os/os.h"
-#include "project_settings.h"
-
+#include "globals.h"
 #include <errno.h>
 
 Error AudioDriverALSA::init() {
@@ -45,8 +43,8 @@ Error AudioDriverALSA::init() {
 	samples_in = NULL;
 	samples_out = NULL;
 
-	mix_rate = GLOBAL_DEF("audio/mix_rate", DEFAULT_MIX_RATE);
-	speaker_mode = SPEAKER_MODE_STEREO;
+	mix_rate = GLOBAL_DEF("audio/mix_rate", 44100);
+	output_format = OUTPUT_STEREO;
 	channels = 2;
 
 	int status;
@@ -87,25 +85,19 @@ Error AudioDriverALSA::init() {
 	status = snd_pcm_hw_params_set_rate_near(pcm_handle, hwparams, &mix_rate, NULL);
 	CHECK_FAIL(status < 0);
 
-	// In ALSA the period size seems to be the one that will determine the actual latency
-	// Ref: https://www.alsa-project.org/main/index.php/FramesPeriods
-	unsigned int periods = 2;
-	int latency = GLOBAL_DEF("audio/output_latency", DEFAULT_OUTPUT_LATENCY);
-	buffer_frames = closest_power_of_2(latency * mix_rate / 1000);
-	buffer_size = buffer_frames * periods;
-	period_size = buffer_frames;
+	int latency = GLOBAL_DEF("audio/output_latency", 25);
+	buffer_size = closest_power_of_2(latency * mix_rate / 1000);
 
 	// set buffer size from project settings
 	status = snd_pcm_hw_params_set_buffer_size_near(pcm_handle, hwparams, &buffer_size);
 	CHECK_FAIL(status < 0);
 
+	// make period size 1/8
+	period_size = buffer_size >> 3;
 	status = snd_pcm_hw_params_set_period_size_near(pcm_handle, hwparams, &period_size, NULL);
 	CHECK_FAIL(status < 0);
 
-	if (OS::get_singleton()->is_stdout_verbose()) {
-		print_line("audio buffer frames: " + itos(period_size) + " calculated latency: " + itos(period_size * 1000 / mix_rate) + "ms");
-	}
-
+	unsigned int periods = 2;
 	status = snd_pcm_hw_params_set_periods_near(pcm_handle, hwparams, &periods, NULL);
 	CHECK_FAIL(status < 0);
 
@@ -207,18 +199,16 @@ int AudioDriverALSA::get_mix_rate() const {
 	return mix_rate;
 };
 
-AudioDriver::SpeakerMode AudioDriverALSA::get_speaker_mode() const {
+AudioDriverSW::OutputFormat AudioDriverALSA::get_output_format() const {
 
-	return speaker_mode;
+	return output_format;
 };
-
 void AudioDriverALSA::lock() {
 
 	if (!thread || !mutex)
 		return;
 	mutex->lock();
 };
-
 void AudioDriverALSA::unlock() {
 
 	if (!thread || !mutex)

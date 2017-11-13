@@ -30,11 +30,12 @@
 #ifndef VIDEO_STREAM_H
 #define VIDEO_STREAM_H
 
+#include "audio_stream_resampled.h"
 #include "scene/resources/texture.h"
 
 class VideoStreamPlayback : public Resource {
 
-	GDCLASS(VideoStreamPlayback, Resource);
+	OBJ_TYPE(VideoStreamPlayback, Resource);
 
 protected:
 	static void _bind_methods();
@@ -55,8 +56,8 @@ public:
 
 	virtual float get_length() const = 0;
 
-	virtual float get_playback_position() const = 0;
-	virtual void seek(float p_time) = 0;
+	virtual float get_pos() const = 0;
+	virtual void seek_pos(float p_time) = 0;
 
 	virtual void set_audio_track(int p_idx) = 0;
 
@@ -74,7 +75,7 @@ public:
 
 class VideoStream : public Resource {
 
-	GDCLASS(VideoStream, Resource);
+	OBJ_TYPE(VideoStream, Resource);
 	OBJ_SAVE_TYPE(VideoStream); //children are all saved as AudioStream, so they can be exchanged
 
 public:

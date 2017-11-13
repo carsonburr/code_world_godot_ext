@@ -51,7 +51,9 @@ bool BoneAttachment::_set(const StringName &p_name, const Variant &p_value) {
 }
 void BoneAttachment::_get_property_list(List<PropertyInfo> *p_list) const {
 
-	Skeleton *parent = Object::cast_to<Skeleton>(get_parent());
+	Skeleton *parent = NULL;
+	if (get_parent())
+		parent = get_parent()->cast_to<Skeleton>();
 
 	if (parent) {
 
@@ -71,9 +73,8 @@ void BoneAttachment::_get_property_list(List<PropertyInfo> *p_list) const {
 
 void BoneAttachment::_check_bind() {
 
-	Skeleton *sk = Object::cast_to<Skeleton>(get_parent());
-	if (sk) {
-
+	if (get_parent() && get_parent()->cast_to<Skeleton>()) {
+		Skeleton *sk = get_parent()->cast_to<Skeleton>();
 		int idx = sk->find_bone(bone_name);
 		if (idx != -1) {
 			sk->bind_child_node_to_bone(idx, this);
@@ -87,9 +88,8 @@ void BoneAttachment::_check_unbind() {
 
 	if (bound) {
 
-		Skeleton *sk = Object::cast_to<Skeleton>(get_parent());
-		if (sk) {
-
+		if (get_parent() && get_parent()->cast_to<Skeleton>()) {
+			Skeleton *sk = get_parent()->cast_to<Skeleton>();
 			int idx = sk->find_bone(bone_name);
 			if (idx != -1) {
 				sk->unbind_child_node_from_bone(idx, this);
@@ -135,6 +135,6 @@ BoneAttachment::BoneAttachment() {
 }
 
 void BoneAttachment::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("set_bone_name", "bone_name"), &BoneAttachment::set_bone_name);
-	ClassDB::bind_method(D_METHOD("get_bone_name"), &BoneAttachment::get_bone_name);
+	ObjectTypeDB::bind_method(_MD("set_bone_name", "bone_name"), &BoneAttachment::set_bone_name);
+	ObjectTypeDB::bind_method(_MD("get_bone_name"), &BoneAttachment::get_bone_name);
 }

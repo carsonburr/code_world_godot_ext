@@ -39,7 +39,7 @@
 
 class AudioStreamPlaybackOGGVorbis : public AudioStreamPlayback {
 
-	GDCLASS(AudioStreamPlaybackOGGVorbis, AudioStreamPlayback);
+	OBJ_TYPE(AudioStreamPlaybackOGGVorbis, AudioStreamPlayback);
 
 	enum {
 		MIN_MIX = 1024
@@ -96,8 +96,8 @@ public:
 
 	virtual int get_loop_count() const;
 
-	virtual float get_playback_position() const;
-	virtual void seek(float p_time);
+	virtual float get_pos() const;
+	virtual void seek_pos(float p_time);
 
 	virtual int get_channels() const { return stream_channels; }
 	virtual int get_mix_rate() const { return stream_srate; }
@@ -111,7 +111,7 @@ public:
 
 class AudioStreamOGGVorbis : public AudioStream {
 
-	GDCLASS(AudioStreamOGGVorbis, AudioStream);
+	OBJ_TYPE(AudioStreamOGGVorbis, AudioStream);
 
 	String file;
 

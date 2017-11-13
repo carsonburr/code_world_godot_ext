@@ -34,7 +34,7 @@
 
 class PanelContainer : public Container {
 
-	GDCLASS(PanelContainer, Container);
+	OBJ_TYPE(PanelContainer, Container);
 
 protected:
 	void _notification(int p_what);

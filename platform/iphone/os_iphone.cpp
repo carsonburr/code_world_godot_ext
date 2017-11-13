@@ -31,17 +31,18 @@
 
 #include "os_iphone.h"
 
-#include "drivers/gles3/rasterizer_gles3.h"
-#include "servers/visual/visual_server_raster.h"
-//#include "servers/visual/visual_server_wrap_mt.h"
+#include "drivers/gles2/rasterizer_gles2.h"
 
+#include "servers/visual/visual_server_raster.h"
+#include "servers/visual/visual_server_wrap_mt.h"
+
+#include "audio_driver_iphone.h"
 #include "main/main.h"
 
+#include "core/globals.h"
 #include "core/io/file_access_pack.h"
 #include "core/os/dir_access.h"
 #include "core/os/file_access.h"
-#include "core/project_settings.h"
-#include "drivers/unix/syslog_logger.h"
 
 #include "sem_iphone.h"
 
@@ -83,12 +84,12 @@ void OSIPhone::set_data_dir(String p_dir) {
 	memdelete(da);
 };
 
-void OSIPhone::set_unique_id(String p_ID) {
+void OSIPhone::set_unique_ID(String p_ID) {
 
 	unique_ID = p_ID;
 };
 
-String OSIPhone::get_unique_id() const {
+String OSIPhone::get_unique_ID() const {
 
 	return unique_ID;
 };
@@ -97,16 +98,7 @@ void OSIPhone::initialize_core() {
 
 	OS_Unix::initialize_core();
 	SemaphoreIphone::make_default();
-
-	set_data_dir(data_dir);
 };
-
-void OSIPhone::initialize_logger() {
-	Vector<Logger *> loggers;
-	loggers.push_back(memnew(SyslogLogger));
-	loggers.push_back(memnew(RotatedFileLogger("user://logs/log.txt")));
-	_set_logger(memnew(CompositeLogger(loggers)));
-}
 
 void OSIPhone::initialize(const VideoMode &p_desired, int p_video_driver, int p_audio_driver) {
 
@@ -116,27 +108,34 @@ void OSIPhone::initialize(const VideoMode &p_desired, int p_video_driver, int p_
 	supported_orientations |= ((GLOBAL_DEF("video_mode/allow_vertical", false) ? 1 : 0) << PortraitDown);
 	supported_orientations |= ((GLOBAL_DEF("video_mode/allow_vertical_flipped", false) ? 1 : 0) << PortraitUp);
 
-	RasterizerGLES3::register_config();
-	RasterizerGLES3::make_current();
+	rasterizer_gles22 = memnew(RasterizerGLES2(false, false, false));
+	rasterizer = rasterizer_gles22;
+	rasterizer_gles22->set_base_framebuffer(gl_view_base_fb);
 
-	visual_server = memnew(VisualServerRaster());
-	/*
-		FIXME: Reimplement threaded rendering? Or remove?
+	visual_server = memnew(VisualServerRaster(rasterizer));
 	if (get_render_thread_mode() != RENDER_THREAD_UNSAFE) {
+
 		visual_server = memnew(VisualServerWrapMT(visual_server, false));
 	};
-	*/
+	visual_server->init();
 
 	visual_server->init();
-	//	visual_server->cursor_set_visible(false, 0);
+	visual_server->cursor_set_visible(false, 0);
 
-	// reset this to what it should be, it will have been set to 0 after visual_server->init() is called
-	RasterizerStorageGLES3::system_fbo = gl_view_base_fb;
+	audio_driver = memnew(AudioDriverIphone);
+	audio_driver->set_singleton();
+	audio_driver->init();
 
-	AudioDriverManager::add_driver(&audio_driver);
-	AudioDriverManager::initialize(p_audio_driver);
+	sample_manager = memnew(SampleManagerMallocSW);
+	audio_server = memnew(AudioServerSW(sample_manager));
+	audio_server->init();
+	spatial_sound_server = memnew(SpatialSoundServerSW);
+	spatial_sound_server->init();
 
-	// init physics servers
+	spatial_sound_2d_server = memnew(SpatialSound2DServerSW);
+	spatial_sound_2d_server->init();
+
+	//
 	physics_server = memnew(PhysicsServerSW);
 	physics_server->init();
 	//physics_2d_server = memnew( Physics2DServerSW );
@@ -148,28 +147,28 @@ void OSIPhone::initialize(const VideoMode &p_desired, int p_video_driver, int p_
 /*
 #ifdef IOS_SCORELOOP_ENABLED
 	scoreloop = memnew(ScoreloopIOS);
-	ProjectSettings::get_singleton()->add_singleton(ProjectSettings::Singleton("Scoreloop", scoreloop));
+	Globals::get_singleton()->add_singleton(Globals::Singleton("Scoreloop", scoreloop));
 	scoreloop->connect();
 #endif
 	*/
 
 #ifdef GAME_CENTER_ENABLED
 	game_center = memnew(GameCenter);
-	ProjectSettings::get_singleton()->add_singleton(ProjectSettings::Singleton("GameCenter", game_center));
+	Globals::get_singleton()->add_singleton(Globals::Singleton("GameCenter", game_center));
 	game_center->connect();
 #endif
 
 #ifdef STOREKIT_ENABLED
 	store_kit = memnew(InAppStore);
-	ProjectSettings::get_singleton()->add_singleton(ProjectSettings::Singleton("InAppStore", store_kit));
+	Globals::get_singleton()->add_singleton(Globals::Singleton("InAppStore", store_kit));
 #endif
 
 #ifdef ICLOUD_ENABLED
 	icloud = memnew(ICloud);
-	ProjectSettings::get_singleton()->add_singleton(ProjectSettings::Singleton("ICloud", icloud));
+	Globals::get_singleton()->add_singleton(Globals::Singleton("ICloud", icloud));
 //icloud->connect();
 #endif
-	ProjectSettings::get_singleton()->add_singleton(ProjectSettings::Singleton("iOS", memnew(iOS)));
+	Globals::get_singleton()->add_singleton(Globals::Singleton("iOS", memnew(iOS)));
 };
 
 MainLoop *OSIPhone::get_main_loop() const {
@@ -205,24 +204,26 @@ bool OSIPhone::iterate() {
 
 void OSIPhone::key(uint32_t p_key, bool p_pressed) {
 
-	Ref<InputEventKey> ev;
-	ev.instance();
-	ev->set_echo(false);
-	ev->set_pressed(p_pressed);
-	ev->set_scancode(p_key);
-	ev->set_unicode(p_key);
+	InputEvent ev;
+	ev.type = InputEvent::KEY;
+	ev.ID = ++last_event_id;
+	ev.key.echo = false;
+	ev.key.pressed = p_pressed;
+	ev.key.scancode = p_key;
+	ev.key.unicode = p_key;
 	queue_event(ev);
 };
 
 void OSIPhone::mouse_button(int p_idx, int p_x, int p_y, bool p_pressed, bool p_doubleclick, bool p_use_as_mouse) {
 
 	if (!GLOBAL_DEF("debug/disable_touch", false)) {
-		Ref<InputEventScreenTouch> ev;
-		ev.instance();
-
-		ev->set_index(p_idx);
-		ev->set_pressed(p_pressed);
-		ev->set_position(Vector2(p_x, p_y));
+		InputEvent ev;
+		ev.type = InputEvent::SCREEN_TOUCH;
+		ev.ID = ++last_event_id;
+		ev.screen_touch.index = p_idx;
+		ev.screen_touch.pressed = p_pressed;
+		ev.screen_touch.x = p_x;
+		ev.screen_touch.y = p_y;
 		queue_event(ev);
 	};
 
@@ -230,18 +231,24 @@ void OSIPhone::mouse_button(int p_idx, int p_x, int p_y, bool p_pressed, bool p_
 
 	if (p_use_as_mouse) {
 
-		Ref<InputEventMouseButton> ev;
-		ev.instance();
+		InputEvent ev;
+		ev.type = InputEvent::MOUSE_BUTTON;
+		ev.device = 0;
+		ev.mouse_button.pointer_index = p_idx;
+		ev.ID = ++last_event_id;
 
-		ev->set_position(Vector2(p_x, p_y));
-		ev->set_global_position(Vector2(p_x, p_y));
+		// swaped it for tilted screen
+		//ev.mouse_button.x = ev.mouse_button.global_x = video_mode.height - p_y;
+		//ev.mouse_button.y = ev.mouse_button.global_y = p_x;
+		ev.mouse_button.x = ev.mouse_button.global_x = p_x;
+		ev.mouse_button.y = ev.mouse_button.global_y = p_y;
 
 		//mouse_list.pressed[p_idx] = p_pressed;
 
-		input->set_mouse_position(ev->get_position());
-		ev->set_button_index(BUTTON_LEFT);
-		ev->set_doubleclick(p_doubleclick);
-		ev->set_pressed(p_pressed);
+		input->set_mouse_pos(Point2(ev.mouse_motion.x, ev.mouse_motion.y));
+		ev.mouse_button.button_index = BUTTON_LEFT;
+		ev.mouse_button.doubleclick = p_doubleclick;
+		ev.mouse_button.pressed = p_pressed;
 
 		queue_event(ev);
 	};
@@ -251,31 +258,48 @@ void OSIPhone::mouse_move(int p_idx, int p_prev_x, int p_prev_y, int p_x, int p_
 
 	if (!GLOBAL_DEF("debug/disable_touch", false)) {
 
-		Ref<InputEventScreenDrag> ev;
-		ev.instance();
-		ev->set_index(p_idx);
-		ev->set_position(Vector2(p_x, p_y));
-		ev->set_relative(Vector2(p_x - p_prev_x, p_y - p_prev_y));
+		InputEvent ev;
+		ev.type = InputEvent::SCREEN_DRAG;
+		ev.ID = ++last_event_id;
+		ev.screen_drag.index = p_idx;
+		ev.screen_drag.x = p_x;
+		ev.screen_drag.y = p_y;
+		ev.screen_drag.relative_x = p_x - p_prev_x;
+		ev.screen_drag.relative_y = p_y - p_prev_y;
 		queue_event(ev);
 	};
 
 	if (p_use_as_mouse) {
-		Ref<InputEventMouseMotion> ev;
-		ev.instance();
+		InputEvent ev;
+		ev.type = InputEvent::MOUSE_MOTION;
+		ev.device = 0;
+		ev.mouse_motion.pointer_index = p_idx;
+		ev.ID = ++last_event_id;
 
-		ev->set_position(Vector2(p_x, p_y));
-		ev->set_global_position(Vector2(p_x, p_y));
-		ev->set_relative(Vector2(p_x - p_prev_x, p_y - p_prev_y));
+		if (true) { // vertical
 
-		input->set_mouse_position(ev->get_position());
-		ev->set_speed(input->get_last_mouse_speed());
-		ev->set_button_mask(BUTTON_LEFT); // pressed
+			ev.mouse_motion.x = ev.mouse_button.global_x = p_x;
+			ev.mouse_motion.y = ev.mouse_button.global_y = p_y;
+			ev.mouse_motion.relative_x = ev.mouse_motion.x - p_prev_x;
+			ev.mouse_motion.relative_y = ev.mouse_motion.y - p_prev_y;
+
+		} else { // horizontal?
+			ev.mouse_motion.x = ev.mouse_button.global_x = video_mode.height - p_y;
+			ev.mouse_motion.y = ev.mouse_button.global_y = p_x;
+			ev.mouse_motion.relative_x = ev.mouse_motion.x - (video_mode.height - p_prev_x);
+			ev.mouse_motion.relative_y = ev.mouse_motion.y - p_prev_x;
+		};
+
+		input->set_mouse_pos(Point2(ev.mouse_motion.x, ev.mouse_motion.y));
+		ev.mouse_motion.speed_x = input->get_mouse_speed().x;
+		ev.mouse_motion.speed_y = input->get_mouse_speed().y;
+		ev.mouse_motion.button_mask = 1; // pressed
 
 		queue_event(ev);
 	};
 };
 
-void OSIPhone::queue_event(const Ref<InputEvent> &p_event) {
+void OSIPhone::queue_event(const InputEvent &p_event) {
 
 	ERR_FAIL_INDEX(event_count, MAX_EVENTS);
 
@@ -304,39 +328,6 @@ void OSIPhone::update_accelerometer(float p_x, float p_y, float p_z) {
 
 	// Found out the Z should not be negated! Pass as is!
 	input->set_accelerometer(Vector3(p_x / (float)ACCEL_RANGE, p_y / (float)ACCEL_RANGE, p_z / (float)ACCEL_RANGE));
-
-	/*
-	if (p_x != last_accel.x) {
-		//printf("updating accel x %f\n", p_x);
-		InputEvent ev;
-		ev.type = InputEvent::JOYPAD_MOTION;
-		ev.device = 0;
-		ev.joy_motion.axis = JOY_ANALOG_0;
-		ev.joy_motion.axis_value = (p_x / (float)ACCEL_RANGE);
-		last_accel.x = p_x;
-		queue_event(ev);
-	};
-	if (p_y != last_accel.y) {
-		//printf("updating accel y %f\n", p_y);
-		InputEvent ev;
-		ev.type = InputEvent::JOYPAD_MOTION;
-		ev.device = 0;
-		ev.joy_motion.axis = JOY_ANALOG_1;
-		ev.joy_motion.axis_value = (p_y / (float)ACCEL_RANGE);
-		last_accel.y = p_y;
-		queue_event(ev);
-	};
-	if (p_z != last_accel.z) {
-		//printf("updating accel z %f\n", p_z);
-		InputEvent ev;
-		ev.type = InputEvent::JOYPAD_MOTION;
-		ev.device = 0;
-		ev.joy_motion.axis = JOY_ANALOG_2;
-		ev.joy_motion.axis_value = ( (1.0 - p_z) / (float)ACCEL_RANGE);
-		last_accel.z = p_z;
-		queue_event(ev);
-	};
-	*/
 };
 
 void OSIPhone::update_magnetometer(float p_x, float p_y, float p_z) {
@@ -356,11 +347,13 @@ void OSIPhone::joy_connection_changed(int p_idx, bool p_connected, String p_name
 };
 
 void OSIPhone::joy_button(int p_device, int p_button, bool p_pressed) {
-	input->joy_button(p_device, p_button, p_pressed);
+	// p_last_id is being retired..
+	uint32_t last_id = input->joy_button(0, p_device, p_button, p_pressed);
 };
 
 void OSIPhone::joy_axis(int p_device, int p_axis, const InputDefault::JoyAxis &p_value) {
-	input->joy_axis(p_device, p_axis, p_value);
+	// p_last_id is being retired..
+	uint32_t last_id = input->joy_axis(0, p_device, p_axis, p_value);
 };
 
 void OSIPhone::delete_main_loop() {
@@ -378,9 +371,17 @@ void OSIPhone::finalize() {
 	if (main_loop) // should not happen?
 		memdelete(main_loop);
 
+	spatial_sound_server->finish();
+	memdelete(spatial_sound_server);
+	spatial_sound_2d_server->finish();
+	memdelete(spatial_sound_2d_server);
+
+	audio_server->finish();
+	memdelete(audio_server);
+
 	visual_server->finish();
 	memdelete(visual_server);
-	//	memdelete(rasterizer);
+	memdelete(rasterizer);
 
 	physics_server->finish();
 	memdelete(physics_server);
@@ -399,7 +400,7 @@ bool OSIPhone::is_mouse_grab_enabled() const {
 	return true;
 };
 
-Point2 OSIPhone::get_mouse_position() const {
+Point2 OSIPhone::get_mouse_pos() const {
 
 	return Point2();
 };
@@ -442,9 +443,9 @@ bool OSIPhone::can_draw() const {
 
 int OSIPhone::set_base_framebuffer(int p_fb) {
 
-	// gl_view_base_fb has not been updated yet
-	RasterizerStorageGLES3::system_fbo = p_fb;
-
+	if (rasterizer_gles22) {
+		rasterizer_gles22->set_base_framebuffer(p_fb);
+	};
 	return 0;
 };
 
@@ -464,14 +465,6 @@ void OSIPhone::show_virtual_keyboard(const String &p_existing_text, const Rect2 
 void OSIPhone::hide_virtual_keyboard() {
 	_hide_keyboard();
 };
-
-void OSIPhone::set_virtual_keyboard_height(int p_height) {
-	virtual_keyboard_height = p_height;
-}
-
-int OSIPhone::get_virtual_keyboard_height() const {
-	return virtual_keyboard_height;
-}
 
 Error OSIPhone::shell_open(String p_uri) {
 	return _shell_open(p_uri);
@@ -534,7 +527,7 @@ Error OSIPhone::native_video_play(String p_path, float p_volume, String p_audio_
 			print("Unable to play %S using the native player as it resides in a .pck file\n", p_path.c_str());
 			return ERR_INVALID_PARAMETER;
 		} else {
-			p_path = p_path.replace("res:/", ProjectSettings::get_singleton()->get_resource_path());
+			p_path = p_path.replace("res:/", Globals::get_singleton()->get_resource_path());
 		}
 	} else if (p_path.begins_with("user://"))
 		p_path = p_path.replace("user:/", get_data_dir());
@@ -569,15 +562,12 @@ void OSIPhone::native_video_stop() {
 		_stop_video();
 }
 
-bool OSIPhone::_check_internal_feature_support(const String &p_feature) {
+OSIPhone::OSIPhone(int width, int height) {
 
-	return p_feature == "mobile" || p_feature == "etc" || p_feature == "pvrtc" || p_feature == "etc2";
-}
-
-OSIPhone::OSIPhone(int width, int height, String p_data_dir) {
-
+	rasterizer_gles22 = NULL;
 	main_loop = NULL;
 	visual_server = NULL;
+	rasterizer = NULL;
 
 	VideoMode vm;
 	vm.fullscreen = true;
@@ -586,13 +576,7 @@ OSIPhone::OSIPhone(int width, int height, String p_data_dir) {
 	vm.resizable = false;
 	set_video_mode(vm);
 	event_count = 0;
-	virtual_keyboard_height = 0;
-
-	// can't call set_data_dir from here, since it requires DirAccess
-	// which is initialized in initialize_core
-	data_dir = p_data_dir;
-
-	_set_logger(memnew(SyslogLogger));
+	last_event_id = 0;
 };
 
 OSIPhone::~OSIPhone() {

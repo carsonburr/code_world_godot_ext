@@ -33,7 +33,7 @@
 #define collision_solver sat_2d_calculate_penetration
 //#define collision_solver gjk_epa_calculate_penetration
 
-bool CollisionSolver2DSW::solve_static_line(const Shape2DSW *p_shape_A, const Transform2D &p_transform_A, const Shape2DSW *p_shape_B, const Transform2D &p_transform_B, CallbackResult p_result_callback, void *p_userdata, bool p_swap_result) {
+bool CollisionSolver2DSW::solve_static_line(const Shape2DSW *p_shape_A, const Matrix32 &p_transform_A, const Shape2DSW *p_shape_B, const Matrix32 &p_transform_B, CallbackResult p_result_callback, void *p_userdata, bool p_swap_result) {
 
 	const LineShape2DSW *line = static_cast<const LineShape2DSW *>(p_shape_A);
 	if (p_shape_B->get_type() == Physics2DServer::SHAPE_LINE)
@@ -71,7 +71,7 @@ bool CollisionSolver2DSW::solve_static_line(const Shape2DSW *p_shape_A, const Tr
 	return found;
 }
 
-bool CollisionSolver2DSW::solve_raycast(const Shape2DSW *p_shape_A, const Transform2D &p_transform_A, const Shape2DSW *p_shape_B, const Transform2D &p_transform_B, CallbackResult p_result_callback, void *p_userdata, bool p_swap_result, Vector2 *sep_axis) {
+bool CollisionSolver2DSW::solve_raycast(const Shape2DSW *p_shape_A, const Matrix32 &p_transform_A, const Shape2DSW *p_shape_B, const Matrix32 &p_transform_B, CallbackResult p_result_callback, void *p_userdata, bool p_swap_result, Vector2 *sep_axis) {
 
 	const RayShape2DSW *ray = static_cast<const RayShape2DSW *>(p_shape_A);
 	if (p_shape_B->get_type() == Physics2DServer::SHAPE_RAY)
@@ -81,7 +81,7 @@ bool CollisionSolver2DSW::solve_raycast(const Shape2DSW *p_shape_A, const Transf
 	Vector2 to = from + p_transform_A[1] * ray->get_length();
 	Vector2 support_A = to;
 
-	Transform2D invb = p_transform_B.affine_inverse();
+	Matrix32 invb = p_transform_B.affine_inverse();
 	from = invb.xform(from);
 	to = invb.xform(to);
 
@@ -135,9 +135,9 @@ bool CollisionSolver2DSW::solve_ray(const Shape2DSW *p_shape_A,const Matrix32& p
 
 struct _ConcaveCollisionInfo2D {
 
-	const Transform2D *transform_A;
+	const Matrix32 *transform_A;
 	const Shape2DSW *shape_A;
-	const Transform2D *transform_B;
+	const Matrix32 *transform_B;
 	Vector2 motion_A;
 	Vector2 motion_B;
 	real_t margin_A;
@@ -166,7 +166,7 @@ void CollisionSolver2DSW::concave_callback(void *p_userdata, Shape2DSW *p_convex
 	cinfo.collisions++;
 }
 
-bool CollisionSolver2DSW::solve_concave(const Shape2DSW *p_shape_A, const Transform2D &p_transform_A, const Vector2 &p_motion_A, const Shape2DSW *p_shape_B, const Transform2D &p_transform_B, const Vector2 &p_motion_B, CallbackResult p_result_callback, void *p_userdata, bool p_swap_result, Vector2 *sep_axis, real_t p_margin_A, real_t p_margin_B) {
+bool CollisionSolver2DSW::solve_concave(const Shape2DSW *p_shape_A, const Matrix32 &p_transform_A, const Vector2 &p_motion_A, const Shape2DSW *p_shape_B, const Matrix32 &p_transform_B, const Vector2 &p_motion_B, CallbackResult p_result_callback, void *p_userdata, bool p_swap_result, Vector2 *sep_axis, float p_margin_A, float p_margin_B) {
 
 	const ConcaveShape2DSW *concave_B = static_cast<const ConcaveShape2DSW *>(p_shape_B);
 
@@ -186,8 +186,8 @@ bool CollisionSolver2DSW::solve_concave(const Shape2DSW *p_shape_A, const Transf
 
 	cinfo.aabb_tests = 0;
 
-	Transform2D rel_transform = p_transform_A;
-	rel_transform.elements[2] -= p_transform_B.get_origin();
+	Matrix32 rel_transform = p_transform_A;
+	rel_transform.elements[2] -= p_transform_B.elements[2];
 
 	//quickly compute a local Rect2
 
@@ -195,25 +195,25 @@ bool CollisionSolver2DSW::solve_concave(const Shape2DSW *p_shape_A, const Transf
 	for (int i = 0; i < 2; i++) {
 
 		Vector2 axis(p_transform_B.elements[i]);
-		real_t axis_scale = 1.0 / axis.length();
+		float axis_scale = 1.0 / axis.length();
 		axis *= axis_scale;
 
-		real_t smin, smax;
+		float smin, smax;
 		p_shape_A->project_rangev(axis, rel_transform, smin, smax);
 		smin *= axis_scale;
 		smax *= axis_scale;
 
-		local_aabb.position[i] = smin;
+		local_aabb.pos[i] = smin;
 		local_aabb.size[i] = smax - smin;
 	}
 
 	concave_B->cull(local_aabb, concave_callback, &cinfo);
 
-	//print_line("Rect2 TESTS: "+itos(cinfo.aabb_tests));
+	//	print_line("Rect2 TESTS: "+itos(cinfo.aabb_tests));
 	return cinfo.collided;
 }
 
-bool CollisionSolver2DSW::solve(const Shape2DSW *p_shape_A, const Transform2D &p_transform_A, const Vector2 &p_motion_A, const Shape2DSW *p_shape_B, const Transform2D &p_transform_B, const Vector2 &p_motion_B, CallbackResult p_result_callback, void *p_userdata, Vector2 *sep_axis, real_t p_margin_A, real_t p_margin_B) {
+bool CollisionSolver2DSW::solve(const Shape2DSW *p_shape_A, const Matrix32 &p_transform_A, const Vector2 &p_motion_A, const Shape2DSW *p_shape_B, const Matrix32 &p_transform_B, const Vector2 &p_motion_B, CallbackResult p_result_callback, void *p_userdata, Vector2 *sep_axis, float p_margin_A, float p_margin_B) {
 
 	Physics2DServer::ShapeType type_A = p_shape_A->get_type();
 	Physics2DServer::ShapeType type_B = p_shape_B->get_type();
@@ -234,11 +234,9 @@ bool CollisionSolver2DSW::solve(const Shape2DSW *p_shape_A, const Transform2D &p
 
 		if (type_B == Physics2DServer::SHAPE_LINE || type_B == Physics2DServer::SHAPE_RAY) {
 			return false;
+			//if (type_B==Physics2DServer::SHAPE_RAY) {
+			//	return false;
 		}
-		/*
-		if (type_B==Physics2DServer::SHAPE_RAY) {
-			return false;
-		*/
 
 		if (swap) {
 			return solve_static_line(p_shape_B, p_transform_B, p_shape_A, p_transform_A, p_result_callback, p_userdata, true);

@@ -135,7 +135,7 @@ void StreamPeerTCPPosix::set_socket(int p_sockfd, IP_Address p_host, int p_port,
 	peer_port = p_port;
 };
 
-Error StreamPeerTCPPosix::connect_to_host(const IP_Address &p_host, uint16_t p_port) {
+Error StreamPeerTCPPosix::connect(const IP_Address &p_host, uint16_t p_port) {
 
 	ERR_FAIL_COND_V(!p_host.is_valid(), ERR_INVALID_PARAMETER);
 
@@ -143,7 +143,7 @@ Error StreamPeerTCPPosix::connect_to_host(const IP_Address &p_host, uint16_t p_p
 	sockfd = _socket_create(sock_type, SOCK_STREAM, IPPROTO_TCP);
 	if (sockfd == -1) {
 		ERR_PRINT("Socket creation failed!");
-		disconnect_from_host();
+		disconnect();
 		//perror("socket");
 		return FAILED;
 	};
@@ -162,7 +162,7 @@ Error StreamPeerTCPPosix::connect_to_host(const IP_Address &p_host, uint16_t p_p
 	if (::connect(sockfd, (struct sockaddr *)&their_addr, addr_size) == -1 && errno != EINPROGRESS) {
 
 		ERR_PRINT("Connection to remote host failed!");
-		disconnect_from_host();
+		disconnect();
 		return FAILED;
 	};
 
@@ -214,7 +214,7 @@ Error StreamPeerTCPPosix::write(const uint8_t *p_data, int p_bytes, int &r_sent,
 			if (errno != EAGAIN) {
 
 				perror("shit?");
-				disconnect_from_host();
+				disconnect();
 				ERR_PRINT("Server disconnected!\n");
 				return FAILED;
 			};
@@ -240,7 +240,7 @@ Error StreamPeerTCPPosix::write(const uint8_t *p_data, int p_bytes, int &r_sent,
 
 Error StreamPeerTCPPosix::read(uint8_t *p_buffer, int p_bytes, int &r_received, bool p_block) {
 
-	if (!is_connected_to_host()) {
+	if (!is_connected()) {
 
 		return FAILED;
 	};
@@ -271,7 +271,7 @@ Error StreamPeerTCPPosix::read(uint8_t *p_buffer, int p_bytes, int &r_received, 
 			if (errno != EAGAIN) {
 
 				perror("shit?");
-				disconnect_from_host();
+				disconnect();
 				ERR_PRINT("Server disconnected!\n");
 				return FAILED;
 			};
@@ -305,12 +305,12 @@ Error StreamPeerTCPPosix::read(uint8_t *p_buffer, int p_bytes, int &r_received, 
 
 void StreamPeerTCPPosix::set_nodelay(bool p_enabled) {
 
-	ERR_FAIL_COND(!is_connected_to_host());
+	ERR_FAIL_COND(!is_connected());
 	int flag = p_enabled ? 1 : 0;
 	setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, (char *)&flag, sizeof(int));
 }
 
-bool StreamPeerTCPPosix::is_connected_to_host() const {
+bool StreamPeerTCPPosix::is_connected() const {
 
 	if (status == STATUS_NONE || status == STATUS_ERROR) {
 
@@ -332,7 +332,7 @@ StreamPeerTCP::Status StreamPeerTCPPosix::get_status() const {
 	return status;
 };
 
-void StreamPeerTCPPosix::disconnect_from_host() {
+void StreamPeerTCPPosix::disconnect() {
 
 	if (sockfd != -1)
 		close(sockfd);
@@ -394,7 +394,7 @@ StreamPeerTCPPosix::StreamPeerTCPPosix() {
 
 StreamPeerTCPPosix::~StreamPeerTCPPosix() {
 
-	disconnect_from_host();
+	disconnect();
 };
 
 #endif

@@ -34,7 +34,6 @@ int ScriptServer::_language_count = 0;
 
 bool ScriptServer::scripting_enabled = true;
 bool ScriptServer::reload_scripts_on_save = false;
-ScriptEditRequestFunction ScriptServer::edit_request_func = NULL;
 
 void Script::_notification(int p_what) {
 
@@ -47,17 +46,13 @@ void Script::_notification(int p_what) {
 
 void Script::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("can_instance"), &Script::can_instance);
-	//ClassDB::bind_method(D_METHOD("instance_create","base_object"),&Script::instance_create);
-	ClassDB::bind_method(D_METHOD("instance_has", "base_object"), &Script::instance_has);
-	ClassDB::bind_method(D_METHOD("has_source_code"), &Script::has_source_code);
-	ClassDB::bind_method(D_METHOD("get_source_code"), &Script::get_source_code);
-	ClassDB::bind_method(D_METHOD("set_source_code", "source"), &Script::set_source_code);
-	ClassDB::bind_method(D_METHOD("reload", "keep_state"), &Script::reload, DEFVAL(false));
-
-	ClassDB::bind_method(D_METHOD("has_script_signal", "signal_name"), &Script::has_script_signal);
-
-	ClassDB::bind_method(D_METHOD("is_tool"), &Script::is_tool);
+	ObjectTypeDB::bind_method(_MD("can_instance"), &Script::can_instance);
+	//ObjectTypeDB::bind_method(_MD("instance_create","base_object"),&Script::instance_create);
+	ObjectTypeDB::bind_method(_MD("instance_has", "base_object"), &Script::instance_has);
+	ObjectTypeDB::bind_method(_MD("has_source_code"), &Script::has_source_code);
+	ObjectTypeDB::bind_method(_MD("get_source_code"), &Script::get_source_code);
+	ObjectTypeDB::bind_method(_MD("set_source_code", "source"), &Script::set_source_code);
+	ObjectTypeDB::bind_method(_MD("reload", "keep_state"), &Script::reload, DEFVAL(false));
 }
 
 void ScriptServer::set_scripting_enabled(bool p_enabled) {
@@ -68,6 +63,11 @@ void ScriptServer::set_scripting_enabled(bool p_enabled) {
 bool ScriptServer::is_scripting_enabled() {
 
 	return scripting_enabled;
+}
+
+int ScriptServer::get_language_count() {
+
+	return _language_count;
 }
 
 ScriptLanguage *ScriptServer::get_language(int p_idx) {
@@ -100,13 +100,6 @@ void ScriptServer::init_languages() {
 
 	for (int i = 0; i < _language_count; i++) {
 		_languages[i]->init();
-	}
-}
-
-void ScriptServer::finish_languages() {
-
-	for (int i = 0; i < _language_count; i++) {
-		_languages[i]->finish();
 	}
 }
 
@@ -183,6 +176,7 @@ void ScriptInstance::call_multilevel(const StringName &p_method, VARIANT_ARG_DEC
 		argc++;
 	}
 
+	Variant::CallError error;
 	call_multilevel(p_method, argptr, argc);
 }
 
@@ -387,10 +381,11 @@ void PlaceHolderScriptInstance::update(const List<PropertyInfo> &p_properties, c
 	//change notify
 }
 
-PlaceHolderScriptInstance::PlaceHolderScriptInstance(ScriptLanguage *p_language, Ref<Script> p_script, Object *p_owner)
-	: owner(p_owner),
-	  language(p_language),
-	  script(p_script) {
+PlaceHolderScriptInstance::PlaceHolderScriptInstance(ScriptLanguage *p_language, Ref<Script> p_script, Object *p_owner) {
+
+	language = p_language;
+	script = p_script;
+	owner = p_owner;
 }
 
 PlaceHolderScriptInstance::~PlaceHolderScriptInstance() {

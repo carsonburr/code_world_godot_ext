@@ -45,8 +45,8 @@ String RunSettingsDialog::get_custom_arguments() const {
 
 void RunSettingsDialog::_bind_methods() {
 
-	ClassDB::bind_method("_run_mode_changed", &RunSettingsDialog::_run_mode_changed);
-	//ClassDB::bind_method("_browse_selected_file",&RunSettingsDialog::_browse_selected_file);
+	ObjectTypeDB::bind_method("_run_mode_changed", &RunSettingsDialog::_run_mode_changed);
+	//ObjectTypeDB::bind_method("_browse_selected_file",&RunSettingsDialog::_browse_selected_file);
 }
 
 void RunSettingsDialog::_run_mode_changed(int idx) {
@@ -74,7 +74,7 @@ RunSettingsDialog::RunSettingsDialog() {
 
 	VBoxContainer *vbc = memnew(VBoxContainer);
 	add_child(vbc);
-	//set_child_rect(vbc);
+	set_child_rect(vbc);
 
 	run_mode = memnew(OptionButton);
 	vbc->add_margin_child(TTR("Run Mode:"), run_mode);
@@ -86,6 +86,9 @@ RunSettingsDialog::RunSettingsDialog() {
 	arguments->set_editable(false);
 
 	get_ok()->set_text(TTR("Close"));
+	//get_cancel()->set_text("Close");
+
+	arguments->set_text("-l $scene");
 
 	set_title(TTR("Scene Run Settings"));
 }

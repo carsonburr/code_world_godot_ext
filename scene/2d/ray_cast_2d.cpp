@@ -28,16 +28,13 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 #include "ray_cast_2d.h"
-
 #include "collision_object_2d.h"
-#include "engine.h"
-#include "physics_body_2d.h"
 #include "servers/physics_2d_server.h"
 
 void RayCast2D::set_cast_to(const Vector2 &p_point) {
 
 	cast_to = p_point;
-	if (is_inside_tree() && (Engine::get_singleton()->is_editor_hint() || get_tree()->is_debugging_collisions_hint()))
+	if (is_inside_tree() && (get_tree()->is_editor_hint() || get_tree()->is_debugging_collisions_hint()))
 		update();
 }
 
@@ -46,34 +43,19 @@ Vector2 RayCast2D::get_cast_to() const {
 	return cast_to;
 }
 
-void RayCast2D::set_collision_mask(uint32_t p_mask) {
+void RayCast2D::set_layer_mask(uint32_t p_mask) {
 
-	collision_mask = p_mask;
+	layer_mask = p_mask;
 }
 
-uint32_t RayCast2D::get_collision_mask() const {
+uint32_t RayCast2D::get_layer_mask() const {
 
-	return collision_mask;
+	return layer_mask;
 }
 
 void RayCast2D::set_type_mask(uint32_t p_mask) {
 
 	type_mask = p_mask;
-}
-
-void RayCast2D::set_collision_mask_bit(int p_bit, bool p_value) {
-
-	uint32_t mask = get_collision_mask();
-	if (p_value)
-		mask |= 1 << p_bit;
-	else
-		mask &= ~(1 << p_bit);
-	set_collision_mask(mask);
-}
-
-bool RayCast2D::get_collision_mask_bit(int p_bit) const {
-
-	return get_collision_mask() & (1 << p_bit);
 }
 
 uint32_t RayCast2D::get_type_mask() const {
@@ -109,8 +91,8 @@ Vector2 RayCast2D::get_collision_normal() const {
 void RayCast2D::set_enabled(bool p_enabled) {
 
 	enabled = p_enabled;
-	if (is_inside_tree() && !Engine::get_singleton()->is_editor_hint())
-		set_physics_process(p_enabled);
+	if (is_inside_tree() && !get_tree()->is_editor_hint())
+		set_fixed_process(p_enabled);
 	if (!p_enabled)
 		collided = false;
 }
@@ -120,70 +102,41 @@ bool RayCast2D::is_enabled() const {
 	return enabled;
 }
 
-void RayCast2D::set_exclude_parent_body(bool p_exclude_parent_body) {
-
-	if (exclude_parent_body == p_exclude_parent_body)
-		return;
-
-	exclude_parent_body = p_exclude_parent_body;
-
-	if (!is_inside_tree())
-		return;
-
-	if (Object::cast_to<PhysicsBody2D>(get_parent())) {
-		if (exclude_parent_body)
-			exclude.insert(Object::cast_to<PhysicsBody2D>(get_parent())->get_rid());
-		else
-			exclude.erase(Object::cast_to<PhysicsBody2D>(get_parent())->get_rid());
-	}
-}
-
-bool RayCast2D::get_exclude_parent_body() const {
-
-	return exclude_parent_body;
-}
-
 void RayCast2D::_notification(int p_what) {
 
 	switch (p_what) {
 
 		case NOTIFICATION_ENTER_TREE: {
 
-			if (enabled && !Engine::get_singleton()->is_editor_hint())
-				set_physics_process(true);
+			if (enabled && !get_tree()->is_editor_hint())
+				set_fixed_process(true);
 			else
-				set_physics_process(false);
+				set_fixed_process(false);
 
-			if (Object::cast_to<PhysicsBody2D>(get_parent())) {
-				if (exclude_parent_body)
-					exclude.insert(Object::cast_to<PhysicsBody2D>(get_parent())->get_rid());
-				else
-					exclude.erase(Object::cast_to<PhysicsBody2D>(get_parent())->get_rid());
-			}
 		} break;
 		case NOTIFICATION_EXIT_TREE: {
 
 			if (enabled)
-				set_physics_process(false);
+				set_fixed_process(false);
 
 		} break;
 
 		case NOTIFICATION_DRAW: {
 
-			if (!Engine::get_singleton()->is_editor_hint() && !get_tree()->is_debugging_collisions_hint())
+			if (!get_tree()->is_editor_hint() && !get_tree()->is_debugging_collisions_hint())
 				break;
-			Transform2D xf;
+			Matrix32 xf;
 			xf.rotate(cast_to.angle());
-			xf.translate(Vector2(cast_to.length(), 0));
+			xf.translate(Vector2(0, cast_to.length()));
 
 			//Vector2 tip = Vector2(0,s->get_length());
 			Color dcol = get_tree()->get_debug_collisions_color(); //0.9,0.2,0.2,0.4);
 			draw_line(Vector2(), cast_to, dcol, 3);
 			Vector<Vector2> pts;
 			float tsize = 4;
-			pts.push_back(xf.xform(Vector2(tsize, 0)));
-			pts.push_back(xf.xform(Vector2(0, 0.707 * tsize)));
-			pts.push_back(xf.xform(Vector2(0, -0.707 * tsize)));
+			pts.push_back(xf.xform(Vector2(0, tsize)));
+			pts.push_back(xf.xform(Vector2(0.707 * tsize, 0)));
+			pts.push_back(xf.xform(Vector2(-0.707 * tsize, 0)));
 			Vector<Color> cols;
 			for (int i = 0; i < 3; i++)
 				cols.push_back(dcol);
@@ -192,7 +145,7 @@ void RayCast2D::_notification(int p_what) {
 
 		} break;
 
-		case NOTIFICATION_PHYSICS_PROCESS: {
+		case NOTIFICATION_FIXED_PROCESS: {
 
 			if (!enabled)
 				break;
@@ -210,7 +163,7 @@ void RayCast2D::_update_raycast_state() {
 	Physics2DDirectSpaceState *dss = Physics2DServer::get_singleton()->space_get_direct_state(w2d->get_space());
 	ERR_FAIL_COND(!dss);
 
-	Transform2D gt = get_global_transform();
+	Matrix32 gt = get_global_transform();
 
 	Vector2 to = cast_to;
 	if (to == Vector2())
@@ -218,7 +171,7 @@ void RayCast2D::_update_raycast_state() {
 
 	Physics2DDirectSpaceState::RayResult rr;
 
-	if (dss->intersect_ray(gt.get_origin(), gt.xform(to), rr, exclude, collision_mask, type_mask)) {
+	if (dss->intersect_ray(gt.get_origin(), gt.xform(to), rr, exclude, layer_mask, type_mask)) {
 
 		collided = true;
 		against = rr.collider_id;
@@ -242,7 +195,7 @@ void RayCast2D::add_exception_rid(const RID &p_rid) {
 void RayCast2D::add_exception(const Object *p_object) {
 
 	ERR_FAIL_NULL(p_object);
-	const CollisionObject2D *co = Object::cast_to<CollisionObject2D>(p_object);
+	CollisionObject2D *co = ((Object *)p_object)->cast_to<CollisionObject2D>();
 	if (!co)
 		return;
 	add_exception_rid(co->get_rid());
@@ -256,7 +209,7 @@ void RayCast2D::remove_exception_rid(const RID &p_rid) {
 void RayCast2D::remove_exception(const Object *p_object) {
 
 	ERR_FAIL_NULL(p_object);
-	const CollisionObject2D *co = Object::cast_to<CollisionObject2D>(p_object);
+	CollisionObject2D *co = ((Object *)p_object)->cast_to<CollisionObject2D>();
 	if (!co)
 		return;
 	remove_exception_rid(co->get_rid());
@@ -269,45 +222,38 @@ void RayCast2D::clear_exceptions() {
 
 void RayCast2D::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("set_enabled", "enabled"), &RayCast2D::set_enabled);
-	ClassDB::bind_method(D_METHOD("is_enabled"), &RayCast2D::is_enabled);
+	ObjectTypeDB::bind_method(_MD("set_enabled", "enabled"), &RayCast2D::set_enabled);
+	ObjectTypeDB::bind_method(_MD("is_enabled"), &RayCast2D::is_enabled);
 
-	ClassDB::bind_method(D_METHOD("set_cast_to", "local_point"), &RayCast2D::set_cast_to);
-	ClassDB::bind_method(D_METHOD("get_cast_to"), &RayCast2D::get_cast_to);
+	ObjectTypeDB::bind_method(_MD("set_cast_to", "local_point"), &RayCast2D::set_cast_to);
+	ObjectTypeDB::bind_method(_MD("get_cast_to"), &RayCast2D::get_cast_to);
 
-	ClassDB::bind_method(D_METHOD("is_colliding"), &RayCast2D::is_colliding);
-	ClassDB::bind_method(D_METHOD("force_raycast_update"), &RayCast2D::force_raycast_update);
+	ObjectTypeDB::bind_method(_MD("is_colliding"), &RayCast2D::is_colliding);
+	ObjectTypeDB::bind_method(_MD("force_raycast_update"), &RayCast2D::force_raycast_update);
 
-	ClassDB::bind_method(D_METHOD("get_collider"), &RayCast2D::get_collider);
-	ClassDB::bind_method(D_METHOD("get_collider_shape"), &RayCast2D::get_collider_shape);
-	ClassDB::bind_method(D_METHOD("get_collision_point"), &RayCast2D::get_collision_point);
-	ClassDB::bind_method(D_METHOD("get_collision_normal"), &RayCast2D::get_collision_normal);
+	ObjectTypeDB::bind_method(_MD("get_collider"), &RayCast2D::get_collider);
+	ObjectTypeDB::bind_method(_MD("get_collider_shape"), &RayCast2D::get_collider_shape);
+	ObjectTypeDB::bind_method(_MD("get_collision_point"), &RayCast2D::get_collision_point);
+	ObjectTypeDB::bind_method(_MD("get_collision_normal"), &RayCast2D::get_collision_normal);
 
-	ClassDB::bind_method(D_METHOD("add_exception_rid", "rid"), &RayCast2D::add_exception_rid);
-	ClassDB::bind_method(D_METHOD("add_exception", "node"), &RayCast2D::add_exception);
+	ObjectTypeDB::bind_method(_MD("add_exception_rid", "rid"), &RayCast2D::add_exception_rid);
+	ObjectTypeDB::bind_method(_MD("add_exception", "node"), &RayCast2D::add_exception);
 
-	ClassDB::bind_method(D_METHOD("remove_exception_rid", "rid"), &RayCast2D::remove_exception_rid);
-	ClassDB::bind_method(D_METHOD("remove_exception", "node"), &RayCast2D::remove_exception);
+	ObjectTypeDB::bind_method(_MD("remove_exception_rid", "rid"), &RayCast2D::remove_exception_rid);
+	ObjectTypeDB::bind_method(_MD("remove_exception", "node"), &RayCast2D::remove_exception);
 
-	ClassDB::bind_method(D_METHOD("clear_exceptions"), &RayCast2D::clear_exceptions);
+	ObjectTypeDB::bind_method(_MD("clear_exceptions"), &RayCast2D::clear_exceptions);
 
-	ClassDB::bind_method(D_METHOD("set_collision_mask", "mask"), &RayCast2D::set_collision_mask);
-	ClassDB::bind_method(D_METHOD("get_collision_mask"), &RayCast2D::get_collision_mask);
+	ObjectTypeDB::bind_method(_MD("set_layer_mask", "mask"), &RayCast2D::set_layer_mask);
+	ObjectTypeDB::bind_method(_MD("get_layer_mask"), &RayCast2D::get_layer_mask);
 
-	ClassDB::bind_method(D_METHOD("set_collision_mask_bit", "bit", "value"), &RayCast2D::set_collision_mask_bit);
-	ClassDB::bind_method(D_METHOD("get_collision_mask_bit", "bit"), &RayCast2D::get_collision_mask_bit);
+	ObjectTypeDB::bind_method(_MD("set_type_mask", "mask"), &RayCast2D::set_type_mask);
+	ObjectTypeDB::bind_method(_MD("get_type_mask"), &RayCast2D::get_type_mask);
 
-	ClassDB::bind_method(D_METHOD("set_type_mask", "mask"), &RayCast2D::set_type_mask);
-	ClassDB::bind_method(D_METHOD("get_type_mask"), &RayCast2D::get_type_mask);
-
-	ClassDB::bind_method(D_METHOD("set_exclude_parent_body", "mask"), &RayCast2D::set_exclude_parent_body);
-	ClassDB::bind_method(D_METHOD("get_exclude_parent_body"), &RayCast2D::get_exclude_parent_body);
-
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "enabled"), "set_enabled", "is_enabled");
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "exclude_parent"), "set_exclude_parent_body", "get_exclude_parent_body");
-	ADD_PROPERTY(PropertyInfo(Variant::VECTOR2, "cast_to"), "set_cast_to", "get_cast_to");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "collision_mask", PROPERTY_HINT_LAYERS_2D_PHYSICS), "set_collision_mask", "get_collision_mask");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "type_mask", PROPERTY_HINT_FLAGS, "Static,Kinematic,Rigid,Character,Area"), "set_type_mask", "get_type_mask");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "enabled"), _SCS("set_enabled"), _SCS("is_enabled"));
+	ADD_PROPERTY(PropertyInfo(Variant::VECTOR2, "cast_to"), _SCS("set_cast_to"), _SCS("get_cast_to"));
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "layer_mask", PROPERTY_HINT_ALL_FLAGS), _SCS("set_layer_mask"), _SCS("get_layer_mask"));
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "type_mask", PROPERTY_HINT_FLAGS, "Static,Kinematic,Rigid,Character,Area"), _SCS("set_type_mask"), _SCS("get_type_mask"));
 }
 
 RayCast2D::RayCast2D() {
@@ -316,8 +262,7 @@ RayCast2D::RayCast2D() {
 	against = 0;
 	collided = false;
 	against_shape = 0;
-	collision_mask = 1;
+	layer_mask = 1;
 	type_mask = Physics2DDirectSpaceState::TYPE_MASK_COLLISION;
 	cast_to = Vector2(0, 50);
-	exclude_parent_body = true;
 }

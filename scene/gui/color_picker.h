@@ -38,23 +38,27 @@
 #include "scene/gui/popup.h"
 #include "scene/gui/slider.h"
 #include "scene/gui/spin_box.h"
-#include "scene/gui/texture_rect.h"
+#include "scene/gui/texture_frame.h"
 #include "scene/gui/tool_button.h"
+#include "scene/resources/material.h"
 
 class ColorPicker : public BoxContainer {
 
-	GDCLASS(ColorPicker, BoxContainer);
+	OBJ_TYPE(ColorPicker, BoxContainer);
 
 private:
 	Control *screen;
-	Control *uv_edit;
-	Control *w_edit;
-	TextureRect *sample;
-	TextureRect *preset;
+	Image last_capture;
+	TextureFrame *uv_edit;
+	TextureFrame *w_edit;
+	TextureFrame *sample;
+	TextureFrame *preset;
 	Button *bt_add_preset;
 	List<Color> presets;
 	ToolButton *btn_pick;
 	CheckButton *btn_mode;
+	Ref<CanvasItemMaterial> uv_material;
+	Ref<CanvasItemMaterial> w_material;
 	HSlider *scroll[4];
 	SpinBox *values[4];
 	Label *labels[4];
@@ -79,12 +83,12 @@ private:
 	void _update_text_value();
 	void _text_type_toggled();
 	void _sample_draw();
-	void _hsv_draw(int p_which, Control *c);
+	void _hsv_draw(int p_wich, Control *c);
 
-	void _uv_input(const Ref<InputEvent> &p_event);
-	void _w_input(const Ref<InputEvent> &p_event);
-	void _preset_input(const Ref<InputEvent> &p_event);
-	void _screen_input(const Ref<InputEvent> &p_event);
+	void _uv_input(const InputEvent &p_input);
+	void _w_input(const InputEvent &p_input);
+	void _preset_input(const InputEvent &p_input);
+	void _screen_input(const InputEvent &p_input);
 	void _add_preset_pressed();
 	void _screen_pick_pressed();
 
@@ -96,8 +100,8 @@ public:
 	void set_edit_alpha(bool p_show);
 	bool is_editing_alpha() const;
 
-	void set_pick_color(const Color &p_color);
-	Color get_pick_color() const;
+	void set_color(const Color &p_color);
+	Color get_color() const;
 
 	void add_preset(const Color &p_color);
 	void set_raw_mode(bool p_enabled);
@@ -110,7 +114,7 @@ public:
 
 class ColorPickerButton : public Button {
 
-	GDCLASS(ColorPickerButton, Button);
+	OBJ_TYPE(ColorPickerButton, Button);
 
 	PopupPanel *popup;
 	ColorPicker *picker;
@@ -123,8 +127,8 @@ protected:
 	static void _bind_methods();
 
 public:
-	void set_pick_color(const Color &p_color);
-	Color get_pick_color() const;
+	void set_color(const Color &p_color);
+	Color get_color() const;
 
 	void set_edit_alpha(bool p_show);
 	bool is_editing_alpha() const;

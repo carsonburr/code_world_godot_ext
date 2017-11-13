@@ -35,7 +35,7 @@
 
 class AnimationCache : public Object {
 
-	GDCLASS(AnimationCache, Object);
+	OBJ_TYPE(AnimationCache, Object);
 
 	struct Path {
 

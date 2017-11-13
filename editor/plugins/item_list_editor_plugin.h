@@ -44,7 +44,7 @@
 
 class ItemListPlugin : public Object {
 
-	GDCLASS(ItemListPlugin, Object);
+	OBJ_TYPE(ItemListPlugin, Object);
 
 protected:
 	bool _set(const StringName &p_name, const Variant &p_value);
@@ -98,7 +98,7 @@ public:
 
 class ItemListOptionButtonPlugin : public ItemListPlugin {
 
-	GDCLASS(ItemListOptionButtonPlugin, ItemListPlugin);
+	OBJ_TYPE(ItemListOptionButtonPlugin, ItemListPlugin);
 
 	OptionButton *ob;
 
@@ -116,8 +116,8 @@ public:
 	virtual void set_item_enabled(int p_idx, int p_enabled) { ob->set_item_disabled(p_idx, !p_enabled); }
 	virtual bool is_item_enabled(int p_idx) const { return !ob->is_item_disabled(p_idx); }
 
-	virtual void set_item_id(int p_idx, int p_id) { ob->set_item_id(p_idx, p_id); }
-	virtual int get_item_id(int p_idx) const { return ob->get_item_id(p_idx); }
+	virtual void set_item_id(int p_idx, int p_id) { ob->set_item_ID(p_idx, p_id); }
+	virtual int get_item_id(int p_idx) const { return ob->get_item_ID(p_idx); }
 
 	virtual void add_item();
 	virtual int get_item_count() const;
@@ -128,7 +128,7 @@ public:
 
 class ItemListPopupMenuPlugin : public ItemListPlugin {
 
-	GDCLASS(ItemListPopupMenuPlugin, ItemListPlugin);
+	OBJ_TYPE(ItemListPopupMenuPlugin, ItemListPlugin);
 
 	PopupMenu *pp;
 
@@ -152,8 +152,8 @@ public:
 	virtual void set_item_enabled(int p_idx, int p_enabled) { pp->set_item_disabled(p_idx, !p_enabled); }
 	virtual bool is_item_enabled(int p_idx) const { return !pp->is_item_disabled(p_idx); }
 
-	virtual void set_item_id(int p_idx, int p_id) { pp->set_item_id(p_idx, p_idx); }
-	virtual int get_item_id(int p_idx) const { return pp->get_item_id(p_idx); }
+	virtual void set_item_id(int p_idx, int p_id) { pp->set_item_ID(p_idx, p_idx); }
+	virtual int get_item_id(int p_idx) const { return pp->get_item_ID(p_idx); }
 
 	virtual void set_item_separator(int p_idx, bool p_separator) { pp->set_item_as_separator(p_idx, p_separator); }
 	virtual bool is_item_separator(int p_idx) const { return pp->is_item_separator(p_idx); }
@@ -167,38 +167,9 @@ public:
 
 ///////////////////////////////////////////////////////////////
 
-class ItemListItemListPlugin : public ItemListPlugin {
-
-	GDCLASS(ItemListItemListPlugin, ItemListPlugin);
-
-	ItemList *pp;
-
-public:
-	virtual void set_object(Object *p_object);
-	virtual bool handles(Object *p_object) const;
-	virtual int get_flags() const;
-
-	virtual void set_item_text(int p_idx, const String &p_text) { pp->set_item_text(p_idx, p_text); }
-	virtual String get_item_text(int p_idx) const { return pp->get_item_text(p_idx); }
-
-	virtual void set_item_icon(int p_idx, const Ref<Texture> &p_tex) { pp->set_item_icon(p_idx, p_tex); }
-	virtual Ref<Texture> get_item_icon(int p_idx) const { return pp->get_item_icon(p_idx); }
-
-	virtual void set_item_enabled(int p_idx, int p_enabled) { pp->set_item_disabled(p_idx, !p_enabled); }
-	virtual bool is_item_enabled(int p_idx) const { return !pp->is_item_disabled(p_idx); }
-
-	virtual void add_item();
-	virtual int get_item_count() const;
-	virtual void erase(int p_idx);
-
-	ItemListItemListPlugin();
-};
-
-///////////////////////////////////////////////////////////////
-
 class ItemListEditor : public HBoxContainer {
 
-	GDCLASS(ItemListEditor, HBoxContainer);
+	OBJ_TYPE(ItemListEditor, HBoxContainer);
 
 	Node *item_list;
 
@@ -235,7 +206,7 @@ public:
 
 class ItemListEditorPlugin : public EditorPlugin {
 
-	GDCLASS(ItemListEditorPlugin, EditorPlugin);
+	OBJ_TYPE(ItemListEditorPlugin, EditorPlugin);
 
 	ItemListEditor *item_list_editor;
 	EditorNode *editor;
@@ -243,8 +214,8 @@ class ItemListEditorPlugin : public EditorPlugin {
 public:
 	virtual String get_name() const { return "ItemList"; }
 	bool has_main_screen() const { return false; }
-	virtual void edit(Object *p_object);
-	virtual bool handles(Object *p_object) const;
+	virtual void edit(Object *p_node);
+	virtual bool handles(Object *p_node) const;
 	virtual void make_visible(bool p_visible);
 
 	ItemListEditorPlugin(EditorNode *p_node);

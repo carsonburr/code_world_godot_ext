@@ -39,12 +39,12 @@
 */
 
 class AnimationPlayer : public Node {
-	GDCLASS(AnimationPlayer, Node);
+	OBJ_TYPE(AnimationPlayer, Node);
 	OBJ_CATEGORY("Animation Nodes");
 
 public:
 	enum AnimationProcessMode {
-		ANIMATION_PROCESS_PHYSICS,
+		ANIMATION_PROCESS_FIXED,
 		ANIMATION_PROCESS_IDLE,
 	};
 
@@ -207,11 +207,11 @@ private:
 	void _node_removed(Node *p_node);
 
 	// bind helpers
-	PoolVector<String> _get_animation_list() const {
+	DVector<String> _get_animation_list() const {
 
 		List<StringName> animations;
 		get_animation_list(&animations);
-		PoolVector<String> ret;
+		DVector<String> ret;
 		while (animations.size()) {
 
 			ret.push_back(animations.front()->get());
@@ -268,10 +268,10 @@ public:
 	bool is_active() const;
 	bool is_valid() const;
 
-	void set_speed_scale(float p_speed);
-	float get_speed_scale() const;
+	void set_speed(float p_speed);
+	float get_speed() const;
 
-	void set_autoplay(const String &p_name);
+	void set_autoplay(const String &pname);
 	String get_autoplay() const;
 
 	void set_animation_process_mode(AnimationProcessMode p_mode);
@@ -279,7 +279,7 @@ public:
 
 	void seek(float p_time, bool p_update = false);
 	void seek_delta(float p_time, float p_delta);
-	float get_current_animation_position() const;
+	float get_current_animation_pos() const;
 	float get_current_animation_length() const;
 
 	void advance(float p_time);

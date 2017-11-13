@@ -41,6 +41,7 @@ class Dictionary {
 
 	mutable DictionaryPrivate *_p;
 
+	void _copy_on_write() const;
 	void _ref(const Dictionary &p_from) const;
 	void _unref() const;
 
@@ -59,6 +60,11 @@ public:
 	bool empty() const;
 	void clear();
 
+	Error parse_json(const String &p_json);
+	String to_json() const;
+
+	bool is_shared() const;
+
 	bool has(const Variant &p_key) const;
 	bool has_all(const Array &p_keys) const;
 
@@ -74,10 +80,8 @@ public:
 	Array keys() const;
 	Array values() const;
 
-	Dictionary copy() const;
-
 	Dictionary(const Dictionary &p_from);
-	Dictionary();
+	Dictionary(bool p_shared = false);
 	~Dictionary();
 };
 

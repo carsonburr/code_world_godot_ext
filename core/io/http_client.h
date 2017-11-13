@@ -37,7 +37,7 @@
 
 class HTTPClient : public Reference {
 
-	GDCLASS(HTTPClient, Reference);
+	OBJ_TYPE(HTTPClient, Reference);
 
 public:
 	enum ResponseCode {
@@ -154,7 +154,7 @@ private:
 	Vector<String> response_headers;
 
 	static void _bind_methods();
-	PoolStringArray _get_response_headers();
+	StringArray _get_response_headers();
 	Dictionary _get_response_headers_as_dictionary();
 	int read_chunk_size;
 
@@ -162,13 +162,15 @@ private:
 
 public:
 	//Error connect_and_get(const String& p_url,bool p_verify_host=true); //connects to a full url and perform request
-	Error connect_to_host(const String &p_host, int p_port, bool p_ssl = false, bool p_verify_host = true);
+	Error connect(const String &p_host, int p_port, bool p_ssl = false, bool p_verify_host = true);
 
 	void set_connection(const Ref<StreamPeer> &p_connection);
 	Ref<StreamPeer> get_connection() const;
 
-	Error request_raw(Method p_method, const String &p_url, const Vector<String> &p_headers, const PoolVector<uint8_t> &p_body);
+	Error request_raw(Method p_method, const String &p_url, const Vector<String> &p_headers, const DVector<uint8_t> &p_body);
 	Error request(Method p_method, const String &p_url, const Vector<String> &p_headers, const String &p_body = String());
+	Error send_body_text(const String &p_body);
+	Error send_body_data(const ByteArray &p_body);
 
 	void close();
 
@@ -180,7 +182,7 @@ public:
 	Error get_response_headers(List<String> *r_response);
 	int get_response_body_length() const;
 
-	PoolByteArray read_response_body_chunk(); // can't get body as partial text because of most encodings UTF8, gzip, etc.
+	ByteArray read_response_body_chunk(); // can't get body as partial text because of most encodings UTF8, gzip, etc.
 
 	void set_blocking_mode(bool p_enable); //useful mostly if running in a thread
 	bool is_blocking_mode_enabled() const;
@@ -195,7 +197,6 @@ public:
 	~HTTPClient();
 };
 
-VARIANT_ENUM_CAST(HTTPClient::ResponseCode)
 VARIANT_ENUM_CAST(HTTPClient::Method);
 VARIANT_ENUM_CAST(HTTPClient::Status);
 

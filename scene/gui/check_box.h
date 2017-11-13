@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  check_box.h                                                          */
+/*  check_box.h                                                       */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -36,7 +36,7 @@
 */
 class CheckBox : public Button {
 
-	GDCLASS(CheckBox, Button);
+	OBJ_TYPE(CheckBox, Button);
 
 protected:
 	void _notification(int p_what);

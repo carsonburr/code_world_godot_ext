@@ -15,40 +15,6 @@
 TODO.
 
 
-## enet
-
-- Upstream: http://enet.bespin.org
-- Version: 1.3.13
-- License: MIT
-
-Files extracted from upstream source:
-
-- all .c files in the main directory (except unix.c win32.c)
-- the include/enet/ folder as enet/ (except unix.h win32.h)
-- LICENSE file
-
-Important: enet.h, host.c, protocol.c have been slightly modified
-to be usable by godot socket implementation and allow IPv6.
-Two files (godot.cpp and enet/godot.h) have been added to provide
-enet socket implementation using Godot classes.
-It is still possible to build against a system wide ENet but doing so
-will limit it's functionality to IPv4 only.
-Check the diff of enet.h, protocol.c, and host.c with the 1.3.13
-tarball before the next update.
-
-
-## etc2comp
-
-- Upstream: https://github.com/google/etc2comp
-- Version: 9cd0f9c (git)
-- License: Apache
-
-Files extracted from upstream source:
-
-- all .cpp and .h files in EtcLib/
-- README.md, LICENSE, AUTHORS
-
-
 ## fonts
 
 ### Noto Sans
@@ -59,11 +25,11 @@ Files extracted from upstream source:
 
 Use UI font if exists, because it has tight vertial metrix and good for UI.
 
-### Hack Regular
+### Adobe Source Code Pro Regular
 
-- Upstream: https://github.com/source-foundry/Hack
-- Version: 2.020
-- License: Hack Open Font License v2.0
+- Upstream: https://github.com/adobe-fonts/source-code-pro
+- Version: 2.030
+- License: OFL-1.1
 
 ### DroidSans*.ttf
 
@@ -83,15 +49,17 @@ Files extracted from upstream source:
 - `docs/{FTL.TXT,LICENSE.TXT}`
 
 
-## glad
+## glew
 
-- Upstream: https://github.com/Dav1dde/glad
-- Version: 0.1.14a0
-- License: MIT
+- Upstream: http://glew.sourceforge.net
+- Version: 1.13.0
+- License: BSD-3-Clause
 
-The files we package are automatically generated.
-See the header of glad.c for instructions on how to generate them for
-the GLES version Godot targets.
+Files extracted from upstream source:
+
+- `src/glew.c`
+- include/GL/ as GL/
+- LICENSE.txt
 
 
 ## jpeg-compressor
@@ -103,6 +71,19 @@ the GLES version Godot targets.
 Files extracted from upstream source:
 
 - `jpgd.{c,h}`
+
+
+## libmpcdec
+
+- Upstream: https://www.musepack.net
+- Version: SVN somewhere between SV7 and SV8 (r475)
+- License: BSD-3-Clause
+
+Files extracted from upstream source:
+
+- all .c and .h files in libmpcdec/
+- include/mpc as mpc/
+- COPYING from libmpcdec/
 
 
 ## libogg
@@ -121,7 +102,7 @@ Files extracted from upstream source:
 ## libpng
 
 - Upstream: http://libpng.org/pub/png/libpng.html
-- Version: 1.6.33
+- Version: 1.6.34
 - License: libpng/zlib
 
 Files extracted from upstream source:
@@ -130,17 +111,6 @@ Files extracted from upstream source:
   `example.c` and `pngtest.c`
 - the arm/ folder
 - `scripts/pnglibconf.h.prebuilt` as `pnglibconf.h`
-
-
-## libsimplewebm
-
-- Upstream: https://github.com/zaps166/libsimplewebm
-- Version: 05cfdc2 (git)
-- License: MIT, BSD-3-Clause
-
-Files extracted from upstream source:
-
-TODO.
 
 
 ## libtheora
@@ -167,17 +137,6 @@ Files extracted from upstream source:
 - `src/*` except from: `lookups.pl`, `Makefile.*`
 - `include/vorbis/*.h` as vorbis/
 - COPYING
-
-
-## libvpx
-
-- Upstream: http://www.webmproject.org/code/
-- Version: 1.6.0
-- License: BSD-3-Clause
-
-Files extracted from upstream source:
-
-TODO.
 
 
 ## libwebp
@@ -237,10 +196,6 @@ Collection of single-file libraries used in Godot components.
   * Upstream: http://www.efgh.com/software/md5.htm
   * Version: TBD, might not be latest from above URL
   * License: RSA Message-Digest License
-- `pcg.{cpp,h}`
-  * Upstream: http://www.pcg-random.org
-  * Version: minimal C implemention, http://www.pcg-random.org/download.html
-  * License: Apache 2.0
 - `sha256.{c,h}`
   * Upstream: https://github.com/ilvn/SHA256
   * Version: git (35ff823, 2015)
@@ -276,22 +231,6 @@ Collection of single-file libraries used in Godot components.
   * Upstream: https://github.com/nothings/stb
   * Version: 1.17
   * License: Public Domain (Unlicense) or MIT
-- `stb_vorbis.c`
-  * Upstream: https://github.com/nothings/stb
-  * Version: 1.11
-  * License: Public Domain (Unlicense) or MIT
-
-
-## nanosvg
-
-- Upstream: https://github.com/memononen/nanosvg
-- Version: 9a74da4 (git)
-- License: zlib
-
-Files extracted from the upstream source:
-
-- All .h files in `src/`
-- LICENSE.txt
 
 
 ## openssl
@@ -335,18 +274,6 @@ Files extracted from upstream source:
 - celt/ and silk/ subfolders
 - COPYING
 
-## pcre2
-
-- Upstream: http://www.pcre.org/
-- Version: 10.23
-- License: BSD-3-Clause
-
-Files extracted from upstream source:
-
-- Files listed in NON-AUTOTOOLS-BUILD steps 1-4
-- All .h files in src/
-- src/pcre2_jit_*.c and src/sljit/*
-- AUTHORS and COPYING
 
 ## pvrtccompressor
 
@@ -359,11 +286,17 @@ Files extracted from upstream source:
 - all .cpp and .h files apart from `main.cpp`
 - LICENSE.TXT
 
-## recastnavigation
 
-- Upstream: https://github.com/recastnavigation/recastnavigation
-- version: git commit ef3ea40f - 2016-02-06
+## rg-etc1
+
+- Upstream: https://github.com/richgel999/rg-etc1
+- Version: 1.04
 - License: zlib
+
+Files extracted from upstream source:
+
+- `rg_etc1.{cpp,h}`
+
 
 ## rtaudio
 
@@ -374,6 +307,13 @@ Files extracted from upstream source:
 Files extracted from upstream source:
 
 - `RtAudio.{cpp,h}`
+
+
+## speex
+
+- Upstream: http://speex.org/
+- Version: 1.2rc1?
+- License: BSD-3-Clause
 
 
 ## squish
@@ -387,21 +327,6 @@ Files extracted from upstream source:
 - all .cpp, .h and .inl files
 
 
-## tinyexr
-
-- Upstream: https://github.com/syoyo/tinyexr
-- Version: 0.9.5+ (git a145d69)
-- License: BSD-3-Clause
-
-Files extracted from upstream source:
-
-- `tinyexr.{cc,h}`
-
-Important: Some changes were made to get TinyEXR to build on the ancient
-MinGW-w64 toolchain of Travis CI.
-https://github.com/godotengine/godot/commit/37f5e1dcd94611dd5b670f013abf0323e8b47def
-
-
 ## zlib
 
 - Upstream: http://www.zlib.net/
@@ -411,15 +336,3 @@ https://github.com/godotengine/godot/commit/37f5e1dcd94611dd5b670f013abf0323e8b4
 Files extracted from upstream source:
 
 - all .c and .h files
-
-
-## zstd
-
-- Upstream: https://github.com/facebook/zstd
-- Version: 1.3.2
-- License: BSD-3-Clause
-
-Files extracted from upstream source:
-
-- lib/{common/,compress/,decompress/,zstd.h}
-- README.md, LICENSE

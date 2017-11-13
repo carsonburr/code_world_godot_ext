@@ -32,34 +32,36 @@
 
 #include "context_gl_win.h"
 #include "crash_handler_win.h"
-#include "drivers/rtaudio/audio_driver_rtaudio.h"
-#include "drivers/wasapi/audio_driver_wasapi.h"
 #include "os/input.h"
 #include "os/os.h"
-#include "power_windows.h"
-#include "servers/audio_server.h"
 #include "servers/physics/physics_server_sw.h"
 #include "servers/visual/rasterizer.h"
 #include "servers/visual_server.h"
-#ifdef XAUDIO2_ENABLED
-#include "drivers/xaudio2/audio_driver_xaudio2.h"
-#endif
+
+#include "drivers/rtaudio/audio_driver_rtaudio.h"
 #include "drivers/unix/ip_unix.h"
-#include "key_mapping_win.h"
-#include "main/input_default.h"
+#include "drivers/wasapi/audio_driver_wasapi.h"
+#include "servers/audio/audio_server_sw.h"
+#include "servers/audio/sample_manager_sw.h"
 #include "servers/physics_2d/physics_2d_server_sw.h"
 #include "servers/physics_2d/physics_2d_server_wrap_mt.h"
+#include "servers/spatial_sound/spatial_sound_server_sw.h"
+#include "servers/spatial_sound_2d/spatial_sound_2d_server_sw.h"
 
-#include <fcntl.h>
-#include <io.h>
-#include <stdio.h>
+#include "main/input_default.h"
+
 #include <windows.h>
+
+#include "key_mapping_win.h"
+#include <io.h>
 #include <windowsx.h>
 
+#include <fcntl.h>
+#include <stdio.h>
 /**
 	@author Juan Linietsky <reduzio@gmail.com>
 */
-class JoypadWindows;
+class joystick_windows;
 class OS_Windows : public OS {
 
 	enum {
@@ -70,7 +72,7 @@ class OS_Windows : public OS {
 
 	struct KeyEvent {
 
-		bool alt, shift, control, meta;
+		InputModifierState mod_state;
 		UINT uMsg;
 		WPARAM wParam;
 		LPARAM lParam;
@@ -86,10 +88,12 @@ class OS_Windows : public OS {
 	bool outside;
 	int old_x, old_y;
 	Point2i center;
-#if defined(OPENGL_ENABLED)
+	unsigned int last_id;
+#if defined(OPENGL_ENABLED) || defined(LEGACYGL_ENABLED) || defined(GLES2_ENABLED)
 	ContextGL_Win *gl_context;
 #endif
 	VisualServer *visual_server;
+	Rasterizer *rasterizer;
 	PhysicsServer *physics_server;
 	Physics2DServer *physics_2d_server;
 	int pressrc;
@@ -108,6 +112,11 @@ class OS_Windows : public OS {
 
 	WNDPROC user_proc;
 
+	AudioServerSW *audio_server;
+	SampleManagerMallocSW *sample_manager;
+	SpatialSoundServerSW *spatial_sound_server;
+	SpatialSound2DServerSW *spatial_sound_2d_server;
+
 	MouseMode mouse_mode;
 	bool alt_mem;
 	bool gr_mem;
@@ -115,24 +124,18 @@ class OS_Windows : public OS {
 	bool control_mem;
 	bool meta_mem;
 	bool force_quit;
-	bool window_has_focus;
 	uint32_t last_button_state;
 
 	CursorShape cursor_shape;
 
 	InputDefault *input;
-	JoypadWindows *joypad;
-
-	PowerWindows *power_manager;
+	joystick_windows *joystick;
 
 #ifdef WASAPI_ENABLED
 	AudioDriverWASAPI driver_wasapi;
 #endif
 #ifdef RTAUDIO_ENABLED
 	AudioDriverRtAudio driver_rtaudio;
-#endif
-#ifdef XAUDIO2_ENABLED
-	AudioDriverXAudio2 driver_xaudio2;
 #endif
 
 	CrashHandler crash_handler;
@@ -152,7 +155,6 @@ protected:
 	virtual int get_audio_driver_count() const;
 	virtual const char *get_audio_driver_name(int p_driver) const;
 
-	virtual void initialize_logger();
 	virtual void initialize_core();
 	virtual void initialize(const VideoMode &p_desired, int p_video_driver, int p_audio_driver);
 
@@ -181,14 +183,17 @@ protected:
 public:
 	LRESULT WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
+	void print_error(const char *p_function, const char *p_file, int p_line, const char *p_code, const char *p_rationale, ErrorType p_type);
+
+	virtual void vprint(const char *p_format, va_list p_list, bool p_stderr = false);
 	virtual void alert(const String &p_alert, const String &p_title = "ALERT!");
 	String get_stdin_string(bool p_block);
 
 	void set_mouse_mode(MouseMode p_mode);
 	MouseMode get_mouse_mode() const;
 
-	virtual void warp_mouse_position(const Point2 &p_to);
-	virtual Point2 get_mouse_position() const;
+	virtual void warp_mouse_pos(const Point2 &p_to);
+	virtual Point2 get_mouse_pos() const;
 	virtual int get_mouse_button_state() const;
 	virtual void set_window_title(const String &p_title);
 
@@ -199,9 +204,9 @@ public:
 	virtual int get_screen_count() const;
 	virtual int get_current_screen() const;
 	virtual void set_current_screen(int p_screen);
-	virtual Point2 get_screen_position(int p_screen = -1) const;
-	virtual Size2 get_screen_size(int p_screen = -1) const;
-	virtual int get_screen_dpi(int p_screen = -1) const;
+	virtual Point2 get_screen_position(int p_screen = 0) const;
+	virtual Size2 get_screen_size(int p_screen = 0) const;
+	virtual int get_screen_dpi(int p_screen = 0) const;
 
 	virtual Point2 get_window_position() const;
 	virtual void set_window_position(const Point2 &p_position);
@@ -219,10 +224,6 @@ public:
 
 	virtual void set_borderless_window(int p_borderless);
 	virtual bool get_borderless_window();
-
-	virtual Error open_dynamic_library(const String p_path, void *&p_library_handle);
-	virtual Error close_dynamic_library(void *p_library_handle);
-	virtual Error get_dynamic_library_symbol_handle(void *p_library_handle, const String p_name, void *&p_symbol_handle, bool p_optional = false);
 
 	virtual MainLoop *get_main_loop() const;
 
@@ -242,7 +243,7 @@ public:
 
 	virtual Error execute(const String &p_path, const List<String> &p_arguments, bool p_blocking, ProcessID *r_child_id = NULL, String *r_pipe = NULL, int *r_exitcode = NULL, bool read_stderr = false);
 	virtual Error kill(const ProcessID &p_pid);
-	virtual int get_process_id() const;
+	virtual int get_process_ID() const;
 
 	virtual bool has_environment(const String &p_var) const;
 	virtual String get_environment(const String &p_var) const;
@@ -251,7 +252,7 @@ public:
 	virtual String get_clipboard() const;
 
 	void set_cursor_shape(CursorShape p_shape);
-	void set_icon(const Ref<Image> &p_icon);
+	void set_icon(const Image &p_icon);
 
 	virtual String get_executable_path() const;
 
@@ -279,16 +280,8 @@ public:
 	virtual void set_use_vsync(bool p_enable);
 	virtual bool is_vsync_enabled() const;
 
-	virtual OS::PowerState get_power_state();
-	virtual int get_power_seconds_left();
-	virtual int get_power_percent_left();
-
-	virtual bool _check_internal_feature_support(const String &p_feature);
-
 	void disable_crash_handler();
 	bool is_disable_crash_handler() const;
-
-	virtual Error move_to_trash(const String &p_path);
 
 	OS_Windows(HINSTANCE _hInstance);
 	~OS_Windows();

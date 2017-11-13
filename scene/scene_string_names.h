@@ -30,7 +30,7 @@
 #ifndef SCENE_STRING_NAMES_H
 #define SCENE_STRING_NAMES_H
 
-#include "node_path.h"
+#include "path_db.h"
 #include "string_db.h"
 class SceneStringNames {
 
@@ -61,14 +61,12 @@ public:
 	StringName visibility_changed;
 	StringName input_event;
 	StringName _input_event;
-	StringName gui_input;
-	StringName _gui_input;
 	StringName item_rect_changed;
-	StringName shader;
+	StringName shader_shader;
 	StringName shader_unshaded;
 	StringName shading_mode;
-	StringName tree_entered;
-	StringName tree_exited;
+	StringName enter_tree;
+	StringName exit_tree;
 	StringName size_flags_changed;
 	StringName minimum_size_changed;
 	StringName sleeping_state_changed;
@@ -79,26 +77,24 @@ public:
 
 	StringName line_separation;
 
-	StringName mouse_entered;
-	StringName mouse_exited;
-	StringName focus_entered;
-	StringName focus_exited;
+	StringName mouse_enter;
+	StringName mouse_exit;
+	StringName focus_enter;
+	StringName focus_exit;
 
 	StringName sort_children;
 
 	StringName finished;
-	StringName emission_finished;
-	StringName animation_finished;
 	StringName animation_changed;
 	StringName animation_started;
 
-	StringName body_shape_entered;
-	StringName body_entered;
-	StringName body_shape_exited;
-	StringName body_exited;
+	StringName body_enter_shape;
+	StringName body_enter;
+	StringName body_exit_shape;
+	StringName body_exit;
 
-	StringName area_shape_entered;
-	StringName area_shape_exited;
+	StringName area_enter_shape;
+	StringName area_exit_shape;
 
 	StringName _body_inout;
 	StringName _area_inout;
@@ -106,7 +102,7 @@ public:
 	StringName _get_gizmo_geometry;
 	StringName _can_gizmo_scale;
 
-	StringName _physics_process;
+	StringName _fixed_process;
 	StringName _process;
 	StringName _enter_world;
 	StringName _exit_world;
@@ -115,8 +111,6 @@ public:
 	StringName _draw;
 	StringName _input;
 	StringName _ready;
-	StringName _unhandled_input;
-	StringName _unhandled_key_input;
 
 	StringName _pressed;
 	StringName _toggled;
@@ -135,12 +129,12 @@ public:
 	StringName can_drop_data;
 	StringName drop_data;
 
-	StringName screen_entered;
-	StringName screen_exited;
-	StringName viewport_entered;
-	StringName viewport_exited;
-	StringName camera_entered;
-	StringName camera_exited;
+	StringName enter_screen;
+	StringName exit_screen;
+	StringName enter_viewport;
+	StringName exit_viewport;
+	StringName enter_camera;
+	StringName exit_camera;
 
 	StringName _body_enter_tree;
 	StringName _body_exit_tree;
@@ -168,10 +162,12 @@ public:
 	StringName _update_remote;
 	StringName _update_pairs;
 
-	StringName area_entered;
-	StringName area_exited;
+	StringName area_enter;
+	StringName area_exit;
 
-	StringName _get_minimum_size;
+	StringName get_minimum_size;
+
+	StringName play_play;
 
 	StringName _im_update;
 	StringName _queue_update;

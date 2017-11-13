@@ -28,18 +28,12 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 #include "os_x11.h"
-#include "drivers/gles3/rasterizer_gles3.h"
+#include "drivers/gles2/rasterizer_gles2.h"
 #include "errno.h"
 #include "key_mapping_x11.h"
 #include "print_string.h"
 #include "servers/physics/physics_server_sw.h"
 #include "servers/visual/visual_server_raster.h"
-#include "servers/visual/visual_server_wrap_mt.h"
-
-#ifdef HAVE_MNTENT
-#include <mntent.h>
-#endif
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -73,14 +67,12 @@
 
 #undef CursorShape
 
-#include <X11/XKBlib.h>
-
 int OS_X11::get_video_driver_count() const {
 	return 1;
 }
 
 const char *OS_X11::get_video_driver_name(int p_driver) const {
-	return "GLES3";
+	return "GLES2";
 }
 
 OS::VideoMode OS_X11::get_default_video_mode() const {
@@ -88,14 +80,14 @@ OS::VideoMode OS_X11::get_default_video_mode() const {
 }
 
 int OS_X11::get_audio_driver_count() const {
-	return AudioDriverManager::get_driver_count();
+	return AudioDriverManagerSW::get_driver_count();
 }
 
 const char *OS_X11::get_audio_driver_name(int p_driver) const {
 
-	AudioDriver *driver = AudioDriverManager::get_driver(p_driver);
+	AudioDriverSW *driver = AudioDriverManagerSW::get_driver(p_driver);
 	ERR_FAIL_COND_V(!driver, "");
-	return AudioDriverManager::get_driver(p_driver)->get_name();
+	return AudioDriverManagerSW::get_driver(p_driver)->get_name();
 }
 
 void OS_X11::initialize_core() {
@@ -107,10 +99,10 @@ void OS_X11::initialize_core() {
 
 void OS_X11::initialize(const VideoMode &p_desired, int p_video_driver, int p_audio_driver) {
 
-	long im_event_mask = 0;
 	last_button_state = 0;
 
 	xmbstring = NULL;
+	event_id = 0;
 	x11_window = 0;
 	last_click_ms = 0;
 	args = OS::get_singleton()->get_cmdline_args();
@@ -128,29 +120,8 @@ void OS_X11::initialize(const VideoMode &p_desired, int p_video_driver, int p_au
 	/** XLIB INITIALIZATION **/
 	x11_display = XOpenDisplay(NULL);
 
-	char *modifiers = NULL;
-	Bool xkb_dar = False;
-	if (x11_display) {
-		XAutoRepeatOn(x11_display);
-		xkb_dar = XkbSetDetectableAutoRepeat(x11_display, True, NULL);
-
-		// Try to support IME if detectable auto-repeat is supported
-		if (xkb_dar == True) {
-
-// Xutf8LookupString will be used later instead of XmbLookupString before
-// the multibyte sequences can be converted to unicode string.
-
-#ifdef X_HAVE_UTF8_STRING
-			modifiers = XSetLocaleModifiers("");
-#endif
-		}
-	}
-
+	char *modifiers = XSetLocaleModifiers("@im=none");
 	if (modifiers == NULL) {
-		if (is_stdout_verbose()) {
-			WARN_PRINT("IME is disabled");
-		}
-		modifiers = XSetLocaleModifiers("@im=none");
 		WARN_PRINT("Error setting locale modifiers");
 	}
 
@@ -189,17 +160,10 @@ void OS_X11::initialize(const VideoMode &p_desired, int p_video_driver, int p_au
 		WARN_PRINT("XOpenIM failed");
 		xim_style = 0L;
 	} else {
-		::XIMCallback im_destroy_callback;
-		im_destroy_callback.client_data = (::XPointer)(this);
-		im_destroy_callback.callback = (::XIMProc)(xim_destroy_callback);
-		if (XSetIMValues(xim, XNDestroyCallback, &im_destroy_callback,
-					NULL) != NULL) {
-			WARN_PRINT("Error setting XIM destroy callback");
-		}
-
 		::XIMStyles *xim_styles = NULL;
 		xim_style = 0L;
-		char *imvalret = XGetIMValues(xim, XNQueryInputStyle, &xim_styles, NULL);
+		char *imvalret = NULL;
+		imvalret = XGetIMValues(xim, XNQueryInputStyle, &xim_styles, NULL);
 		if (imvalret != NULL || xim_styles == NULL) {
 			fprintf(stderr, "Input method doesn't support any styles\n");
 		}
@@ -239,17 +203,15 @@ void OS_X11::initialize(const VideoMode &p_desired, int p_video_driver, int p_au
 
 // maybe contextgl wants to be in charge of creating the window
 //print_line("def videomode "+itos(current_videomode.width)+","+itos(current_videomode.height));
-#if defined(OPENGL_ENABLED)
+#if defined(OPENGL_ENABLED) || defined(LEGACYGL_ENABLED)
 
-	context_gl = memnew(ContextGL_X11(x11_display, x11_window, current_videomode, true));
+	context_gl = memnew(ContextGL_X11(x11_display, x11_window, current_videomode, false));
 	context_gl->initialize();
 
-	RasterizerGLES3::register_config();
-
-	RasterizerGLES3::make_current();
+	rasterizer = memnew(RasterizerGLES2);
 
 #endif
-	visual_server = memnew(VisualServerRaster);
+	visual_server = memnew(VisualServerRaster(rasterizer));
 
 	if (get_render_thread_mode() != RENDER_THREAD_UNSAFE) {
 
@@ -258,11 +220,6 @@ void OS_X11::initialize(const VideoMode &p_desired, int p_video_driver, int p_au
 
 	// borderless fullscreen window mode
 	if (current_videomode.fullscreen) {
-		// set bypass compositor hint
-		Atom bypass_compositor = XInternAtom(x11_display, "_NET_WM_BYPASS_COMPOSITOR", False);
-		unsigned long compositing_disable_on = 1;
-		XChangeProperty(x11_display, x11_window, bypass_compositor, XA_CARDINAL, 32, PropModeReplace, (unsigned char *)&compositing_disable_on, 1);
-
 		// needed for lxde/openbox, possibly others
 		Hints hints;
 		Atom property;
@@ -290,13 +247,6 @@ void OS_X11::initialize(const VideoMode &p_desired, int p_video_driver, int p_au
 		xev.xclient.data.l[2] = 0;
 
 		XSendEvent(x11_display, DefaultRootWindow(x11_display), False, SubstructureNotifyMask, &xev);
-	} else if (current_videomode.borderless_window) {
-		Hints hints;
-		Atom property;
-		hints.flags = 2;
-		hints.decorations = 0;
-		property = XInternAtom(x11_display, "_MOTIF_WM_HINTS", True);
-		XChangeProperty(x11_display, x11_window, property, property, 32, PropModeReplace, (unsigned char *)&hints, 5);
 	}
 
 	// disable resizable window
@@ -318,7 +268,37 @@ void OS_X11::initialize(const VideoMode &p_desired, int p_video_driver, int p_au
 		XFree(xsh);
 	}
 
-	AudioDriverManager::initialize(p_audio_driver);
+	AudioDriverManagerSW::get_driver(p_audio_driver)->set_singleton();
+
+	audio_driver_index = p_audio_driver;
+	if (AudioDriverManagerSW::get_driver(p_audio_driver)->init() != OK) {
+
+		bool success = false;
+		audio_driver_index = -1;
+		for (int i = 0; i < AudioDriverManagerSW::get_driver_count(); i++) {
+			if (i == p_audio_driver)
+				continue;
+			AudioDriverManagerSW::get_driver(i)->set_singleton();
+			if (AudioDriverManagerSW::get_driver(i)->init() == OK) {
+				success = true;
+				print_line("Audio Driver Failed: " + String(AudioDriverManagerSW::get_driver(p_audio_driver)->get_name()));
+				print_line("Using alternate audio driver: " + String(AudioDriverManagerSW::get_driver(i)->get_name()));
+				audio_driver_index = i;
+				break;
+			}
+		}
+		if (!success) {
+			ERR_PRINT("Initializing audio failed.");
+		}
+	}
+
+	sample_manager = memnew(SampleManagerMallocSW);
+	audio_server = memnew(AudioServerSW(sample_manager));
+	audio_server->init();
+	spatial_sound_server = memnew(SpatialSoundServerSW);
+	spatial_sound_server->init();
+	spatial_sound_2d_server = memnew(SpatialSound2DServerSW);
+	spatial_sound_2d_server->init();
 
 	ERR_FAIL_COND(!visual_server);
 	ERR_FAIL_COND(x11_window == 0);
@@ -336,13 +316,23 @@ void OS_X11::initialize(const VideoMode &p_desired, int p_video_driver, int p_au
 						  StructureNotifyMask |
 						  SubstructureNotifyMask | SubstructureRedirectMask |
 						  FocusChangeMask | PropertyChangeMask |
-						  ColormapChangeMask | OwnerGrabButtonMask |
-						  im_event_mask;
+						  ColormapChangeMask | OwnerGrabButtonMask;
 
 	XChangeWindowAttributes(x11_display, x11_window, CWEventMask, &new_attr);
 
+	XClassHint *classHint;
+
 	/* set the titlebar name */
 	XStoreName(x11_display, x11_window, "Godot");
+
+	/* set the name and class hints for the window manager to use */
+	classHint = XAllocClassHint();
+	if (classHint) {
+		classHint->res_name = (char *)"Godot_Engine";
+		classHint->res_class = (char *)"Godot";
+	}
+	XSetClassHint(x11_display, x11_window, classHint);
+	XFree(classHint);
 
 	wm_delete = XInternAtom(x11_display, "WM_DELETE_WINDOW", true);
 	XSetWMProtocols(x11_display, x11_window, &wm_delete, 1);
@@ -350,16 +340,6 @@ void OS_X11::initialize(const VideoMode &p_desired, int p_video_driver, int p_au
 	if (xim && xim_style) {
 
 		xic = XCreateIC(xim, XNInputStyle, xim_style, XNClientWindow, x11_window, XNFocusWindow, x11_window, (char *)NULL);
-		if (XGetICValues(xic, XNFilterEvents, &im_event_mask, NULL) != NULL) {
-			WARN_PRINT("XGetICValues couldn't obtain XNFilterEvents value");
-			XDestroyIC(xic);
-			xic = NULL;
-		}
-		if (xic) {
-			XSetICFocus(xic);
-		} else {
-			WARN_PRINT("XCreateIC couldn't create xic");
-		}
 	} else {
 
 		xic = NULL;
@@ -470,36 +450,10 @@ void OS_X11::initialize(const VideoMode &p_desired, int p_video_driver, int p_au
 	physics_2d_server->init();
 
 	input = memnew(InputDefault);
-
-	window_has_focus = true; // Set focus to true at init
 #ifdef JOYDEV_ENABLED
-	joypad = memnew(JoypadLinux(input));
+	joystick = memnew(joystick_linux(input));
 #endif
 	_ensure_data_dir();
-
-	power_manager = memnew(PowerX11);
-}
-
-void OS_X11::xim_destroy_callback(::XIM im, ::XPointer client_data,
-		::XPointer call_data) {
-
-	WARN_PRINT("Input method stopped");
-	OS_X11 *os = reinterpret_cast<OS_X11 *>(client_data);
-	os->xim = NULL;
-	os->xic = NULL;
-}
-
-void OS_X11::set_ime_position(const Point2 &p_pos) {
-
-	if (!xic)
-		return;
-
-	::XPoint spot;
-	spot.x = short(p_pos.x);
-	spot.y = short(p_pos.y);
-	XVaNestedList preedit_attr = XVaCreateNestedList(0, XNSpotLocation, &spot, NULL);
-	XSetICValues(xic, XNPreeditAttributes, preedit_attr, NULL);
-	XFree(preedit_attr);
 }
 
 void OS_X11::finalize() {
@@ -508,20 +462,28 @@ void OS_X11::finalize() {
 		memdelete(main_loop);
 	main_loop = NULL;
 
-/*
-	if (debugger_connection_console) {
-		memdelete(debugger_connection_console);
-	}
-	*/
+	spatial_sound_server->finish();
+	memdelete(spatial_sound_server);
+	spatial_sound_2d_server->finish();
+	memdelete(spatial_sound_2d_server);
+
+//if (debugger_connection_console) {
+//		memdelete(debugger_connection_console);
+//}
 
 #ifdef JOYDEV_ENABLED
-	memdelete(joypad);
+	memdelete(joystick);
 #endif
 	memdelete(input);
 
+	memdelete(sample_manager);
+
+	audio_server->finish();
+	memdelete(audio_server);
+
 	visual_server->finish();
 	memdelete(visual_server);
-	//memdelete(rasterizer);
+	memdelete(rasterizer);
 
 	physics_server->finish();
 	memdelete(physics_server);
@@ -529,15 +491,13 @@ void OS_X11::finalize() {
 	physics_2d_server->finish();
 	memdelete(physics_2d_server);
 
-	memdelete(power_manager);
-
 	if (xrandr_handle)
 		dlclose(xrandr_handle);
 
 	XUnmapWindow(x11_display, x11_window);
 	XDestroyWindow(x11_display, x11_window);
 
-#if defined(OPENGL_ENABLED)
+#if defined(OPENGL_ENABLED) || defined(LEGACYGL_ENABLED)
 	memdelete(context_gl);
 #endif
 	for (int i = 0; i < CURSOR_MAX; i++) {
@@ -547,12 +507,8 @@ void OS_X11::finalize() {
 			XcursorImageDestroy(img[i]);
 	};
 
-	if (xic) {
-		XDestroyIC(xic);
-	}
-	if (xim) {
-		XCloseIM(xim);
-	}
+	XDestroyIC(xic);
+	XCloseIM(xim);
 
 	XCloseDisplay(x11_display);
 	if (xmbstring)
@@ -566,21 +522,17 @@ void OS_X11::set_mouse_mode(MouseMode p_mode) {
 	if (p_mode == mouse_mode)
 		return;
 
-	if (mouse_mode == MOUSE_MODE_CAPTURED || mouse_mode == MOUSE_MODE_CONFINED)
+	if (mouse_mode == MOUSE_MODE_CAPTURED)
 		XUngrabPointer(x11_display, CurrentTime);
-
-	// The only modes that show a cursor are VISIBLE and CONFINED
-	bool showCursor = (p_mode == MOUSE_MODE_VISIBLE || p_mode == MOUSE_MODE_CONFINED);
-
-	if (showCursor) {
-		XUndefineCursor(x11_display, x11_window); // show cursor
-	} else {
-		XDefineCursor(x11_display, x11_window, null_cursor); // hide cursor
+	if (mouse_mode != MOUSE_MODE_VISIBLE && p_mode == MOUSE_MODE_VISIBLE)
+		XUndefineCursor(x11_display, x11_window);
+	if (p_mode != MOUSE_MODE_VISIBLE && mouse_mode == MOUSE_MODE_VISIBLE) {
+		XDefineCursor(x11_display, x11_window, null_cursor);
 	}
 
 	mouse_mode = p_mode;
 
-	if (mouse_mode == MOUSE_MODE_CAPTURED || mouse_mode == MOUSE_MODE_CONFINED) {
+	if (mouse_mode == MOUSE_MODE_CAPTURED) {
 
 		while (true) {
 			//flush pending motion events
@@ -610,7 +562,7 @@ void OS_X11::set_mouse_mode(MouseMode p_mode) {
 		XWarpPointer(x11_display, None, x11_window,
 				0, 0, 0, 0, (int)center.x, (int)center.y);
 
-		input->set_mouse_position(center);
+		input->set_mouse_pos(center);
 	} else {
 		do_mouse_warp = false;
 	}
@@ -618,7 +570,7 @@ void OS_X11::set_mouse_mode(MouseMode p_mode) {
 	XFlush(x11_display);
 }
 
-void OS_X11::warp_mouse_position(const Point2 &p_to) {
+void OS_X11::warp_mouse_pos(const Point2 &p_to) {
 
 	if (mouse_mode == MOUSE_MODE_CAPTURED) {
 
@@ -642,7 +594,7 @@ int OS_X11::get_mouse_button_state() const {
 	return last_button_state;
 }
 
-Point2 OS_X11::get_mouse_position() const {
+Point2 OS_X11::get_mouse_pos() const {
 	return last_mouse_pos;
 }
 
@@ -690,12 +642,6 @@ void OS_X11::set_wm_fullscreen(bool p_enabled) {
 	xev.xclient.data.l[2] = 0;
 
 	XSendEvent(x11_display, DefaultRootWindow(x11_display), False, SubstructureRedirectMask | SubstructureNotifyMask, &xev);
-
-	// set bypass compositor hint
-	Atom bypass_compositor = XInternAtom(x11_display, "_NET_WM_BYPASS_COMPOSITOR", False);
-	unsigned long compositing_disable_on = p_enabled ? 1 : 0;
-	XChangeProperty(x11_display, x11_window, bypass_compositor, XA_CARDINAL, 32, PropModeReplace, (unsigned char *)&compositing_disable_on, 1);
-
 	XFlush(x11_display);
 
 	if (!p_enabled && !is_window_resizable()) {
@@ -712,16 +658,6 @@ void OS_X11::set_wm_fullscreen(bool p_enabled) {
 
 		XSetWMNormalHints(x11_display, x11_window, xsh);
 		XFree(xsh);
-	}
-
-	if (!p_enabled && !get_borderless_window()) {
-		// put decorations back if the window wasn't suppoesed to be borderless
-		Hints hints;
-		Atom property;
-		hints.flags = 2;
-		hints.decorations = 1;
-		property = XInternAtom(x11_display, "_MOTIF_WM_HINTS", True);
-		XChangeProperty(x11_display, x11_window, property, property, 32, PropModeReplace, (unsigned char *)&hints, 5);
 	}
 }
 
@@ -770,10 +706,6 @@ void OS_X11::set_current_screen(int p_screen) {
 }
 
 Point2 OS_X11::get_screen_position(int p_screen) const {
-	if (p_screen == -1) {
-		p_screen = get_current_screen();
-	}
-
 	// Using Xinerama Extension
 	int event_base, error_base;
 	const Bool ext_okay = XineramaQueryExtension(x11_display, &event_base, &error_base);
@@ -795,10 +727,6 @@ Point2 OS_X11::get_screen_position(int p_screen) const {
 }
 
 Size2 OS_X11::get_screen_size(int p_screen) const {
-	if (p_screen == -1) {
-		p_screen = get_current_screen();
-	}
-
 	// Using Xinerama Extension
 	int event_base, error_base;
 	const Bool ext_okay = XineramaQueryExtension(x11_display, &event_base, &error_base);
@@ -814,9 +742,6 @@ Size2 OS_X11::get_screen_size(int p_screen) const {
 }
 
 int OS_X11::get_screen_dpi(int p_screen) const {
-	if (p_screen == -1) {
-		p_screen = get_current_screen();
-	}
 
 	//invalid screen?
 	ERR_FAIL_INDEX_V(p_screen, get_screen_count(), 0);
@@ -1053,25 +978,6 @@ bool OS_X11::is_window_maximized() const {
 	return false;
 }
 
-void OS_X11::set_borderless_window(int p_borderless) {
-
-	if (current_videomode.borderless_window == p_borderless)
-		return;
-
-	current_videomode.borderless_window = p_borderless;
-
-	Hints hints;
-	Atom property;
-	hints.flags = 2;
-	hints.decorations = current_videomode.borderless_window ? 0 : 1;
-	property = XInternAtom(x11_display, "_MOTIF_WM_HINTS", True);
-	XChangeProperty(x11_display, x11_window, property, property, 32, PropModeReplace, (unsigned char *)&hints, 5);
-}
-
-bool OS_X11::get_borderless_window() {
-	return current_videomode.borderless_window;
-}
-
 void OS_X11::request_attention() {
 	// Using EWMH -- Extended Window Manager Hints
 	//
@@ -1093,12 +999,16 @@ void OS_X11::request_attention() {
 	XSendEvent(x11_display, DefaultRootWindow(x11_display), False, SubstructureRedirectMask | SubstructureNotifyMask, &xev);
 }
 
-void OS_X11::get_key_modifier_state(unsigned int p_x11_state, Ref<InputEventWithModifiers> state) {
+InputModifierState OS_X11::get_key_modifier_state(unsigned int p_x11_state) {
 
-	state->set_shift((p_x11_state & ShiftMask));
-	state->set_control((p_x11_state & ControlMask));
-	state->set_alt((p_x11_state & Mod1Mask /*|| p_x11_state&Mod5Mask*/)); //altgr should not count as alt
-	state->set_metakey((p_x11_state & Mod4Mask));
+	InputModifierState state;
+
+	state.shift = (p_x11_state & ShiftMask);
+	state.control = (p_x11_state & ControlMask);
+	state.alt = (p_x11_state & Mod1Mask /*|| p_x11_state&Mod5Mask*/); //altgr should not count as alt
+	state.meta = (p_x11_state & Mod4Mask);
+
+	return state;
 }
 
 unsigned int OS_X11::get_mouse_button_state(unsigned int p_x11_state) {
@@ -1150,7 +1060,7 @@ void OS_X11::handle_key_event(XKeyEvent *p_event, bool p_echo) {
 	// XKeycodeToKeysym to obtain internationalized
 	// input.. WRONG!!
 	// you must use XLookupString (???) which not only wastes
-	// cycles generating an unnecessary string, but also
+	// cycles generating an unnecesary string, but also
 	// still works in half the cases. (won't handle deadkeys)
 	// For more complex input methods (deadkeys and more advanced)
 	// you have to use XmbLookupString (??).
@@ -1173,61 +1083,9 @@ void OS_X11::handle_key_event(XKeyEvent *p_event, bool p_echo) {
 		xmblen = 8;
 	}
 
-	keysym_unicode = keysym_keycode;
-
 	if (xkeyevent->type == KeyPress && xic) {
 
 		Status status;
-#ifdef X_HAVE_UTF8_STRING
-		int utf8len = 8;
-		char *utf8string = (char *)memalloc(sizeof(char) * utf8len);
-		int utf8bytes = Xutf8LookupString(xic, xkeyevent, utf8string,
-				utf8len - 1, &keysym_unicode, &status);
-		if (status == XBufferOverflow) {
-			utf8len = utf8bytes + 1;
-			utf8string = (char *)memrealloc(utf8string, utf8len);
-			utf8bytes = Xutf8LookupString(xic, xkeyevent, utf8string,
-					utf8len - 1, &keysym_unicode, &status);
-		}
-		utf8string[utf8bytes] = '\0';
-
-		if (status == XLookupChars) {
-			bool keypress = xkeyevent->type == KeyPress;
-			unsigned int keycode = KeyMappingX11::get_keycode(keysym_keycode);
-			if (keycode >= 'a' && keycode <= 'z')
-				keycode -= 'a' - 'A';
-
-			String tmp;
-			tmp.parse_utf8(utf8string, utf8bytes);
-			for (int i = 0; i < tmp.length(); i++) {
-				Ref<InputEventKey> k;
-				k.instance();
-				if (keycode == 0 && tmp[i] == 0) {
-					continue;
-				}
-
-				get_key_modifier_state(xkeyevent->state, k);
-
-				k->set_unicode(tmp[i]);
-
-				k->set_pressed(keypress);
-
-				k->set_scancode(keycode);
-
-				k->set_echo(false);
-
-				if (k->get_scancode() == KEY_BACKTAB) {
-					//make it consistent across platforms.
-					k->set_scancode(KEY_TAB);
-					k->set_shift(true);
-				}
-
-				input->parse_input_event(k);
-			}
-			return;
-		}
-		memfree(utf8string);
-#else
 		do {
 
 			int mnbytes = XmbLookupString(xic, xkeyevent, xmbstring, xmblen - 1, &keysym_unicode, &status);
@@ -1238,7 +1096,6 @@ void OS_X11::handle_key_event(XKeyEvent *p_event, bool p_echo) {
 				xmbstring = (char *)memrealloc(xmbstring, xmblen);
 			}
 		} while (status == XBufferOverflow);
-#endif
 	}
 
 	/* Phase 2, obtain a pigui keycode from the keysym */
@@ -1248,7 +1105,7 @@ void OS_X11::handle_key_event(XKeyEvent *p_event, bool p_echo) {
 
 	unsigned int keycode = KeyMappingX11::get_keycode(keysym_keycode);
 
-	/* Phase 3, obtain a unicode character from the keysym */
+	/* Phase 3, obtain an unicode character from the keysym */
 
 	// KeyMappingX11 also translates keysym to unicode.
 	// It does a binary search on a table to translate
@@ -1259,13 +1116,18 @@ void OS_X11::handle_key_event(XKeyEvent *p_event, bool p_echo) {
 	/* Phase 4, determine if event must be filtered */
 
 	// This seems to be a side-effect of using XIM.
-	// XEventFilter looks like a core X11 function,
+	// XEventFilter looks like a core X11 funciton,
 	// but it's actually just used to see if we must
 	// ignore a deadkey, or events XIM determines
 	// must not reach the actual gui.
 	// Guess it was a design problem of the extension
 
 	bool keypress = xkeyevent->type == KeyPress;
+
+	if (xkeyevent->type == KeyPress && xic) {
+		if (XFilterEvent((XEvent *)xkeyevent, x11_window))
+			return;
+	}
 
 	if (keycode == 0 && unicode == 0)
 		return;
@@ -1278,21 +1140,16 @@ void OS_X11::handle_key_event(XKeyEvent *p_event, bool p_echo) {
 
 	//print_line("mod1: "+itos(xkeyevent->state&Mod1Mask)+" mod 5: "+itos(xkeyevent->state&Mod5Mask));
 
-	Ref<InputEventKey> k;
-	k.instance();
-
-	get_key_modifier_state(xkeyevent->state, k);
+	InputModifierState state = get_key_modifier_state(xkeyevent->state);
 
 	/* Phase 6, determine echo character */
 
 	// Echo characters in X11 are a keyrelease and a keypress
 	// one after the other with the (almot) same timestamp.
 	// To detect them, i use XPeekEvent and check that their
-	// difference in time is below a threshold.
+	// difference in time is below a treshold.
 
 	if (xkeyevent->type != KeyPress) {
-
-		p_echo = false;
 
 		// make sure there are events pending,
 		// so this call won't block.
@@ -1300,7 +1157,7 @@ void OS_X11::handle_key_event(XKeyEvent *p_event, bool p_echo) {
 			XEvent peek_event;
 			XPeekEvent(x11_display, &peek_event);
 
-			// I'm using a threshold of 5 msecs,
+			// I'm using a treshold of 5 msecs,
 			// since sometimes there seems to be a little
 			// jitter. I'm still not convinced that all this approach
 			// is correct, but the xorg developers are
@@ -1326,48 +1183,41 @@ void OS_X11::handle_key_event(XKeyEvent *p_event, bool p_echo) {
 
 	/* Phase 7, send event to Window */
 
-	k->set_pressed(keypress);
+	InputEvent event;
+	event.ID = ++event_id;
+	event.type = InputEvent::KEY;
+	event.device = 0;
+	event.key.mod = state;
+	event.key.pressed = keypress;
 
 	if (keycode >= 'a' && keycode <= 'z')
 		keycode -= 'a' - 'A';
 
-	k->set_scancode(keycode);
-	k->set_unicode(unicode);
-	k->set_echo(p_echo);
+	event.key.scancode = keycode;
+	event.key.unicode = unicode;
+	event.key.echo = p_echo;
 
-	if (k->get_scancode() == KEY_BACKTAB) {
-		//make it consistent across platforms.
-		k->set_scancode(KEY_TAB);
-		k->set_shift(true);
+	if (event.key.scancode == KEY_BACKTAB) {
+		//make it consistent accross platforms.
+		event.key.scancode = KEY_TAB;
+		event.key.mod.shift = true;
 	}
 
 	//don't set mod state if modifier keys are released by themselves
 	//else event.is_action() will not work correctly here
-	if (!k->is_pressed()) {
-		if (k->get_scancode() == KEY_SHIFT)
-			k->set_shift(false);
-		else if (k->get_scancode() == KEY_CONTROL)
-			k->set_control(false);
-		else if (k->get_scancode() == KEY_ALT)
-			k->set_alt(false);
-		else if (k->get_scancode() == KEY_META)
-			k->set_metakey(false);
+	if (!event.key.pressed) {
+		if (event.key.scancode == KEY_SHIFT)
+			event.key.mod.shift = false;
+		else if (event.key.scancode == KEY_CONTROL)
+			event.key.mod.control = false;
+		else if (event.key.scancode == KEY_ALT)
+			event.key.mod.alt = false;
+		else if (event.key.scancode == KEY_META)
+			event.key.mod.meta = false;
 	}
 
-	bool last_is_pressed = Input::get_singleton()->is_key_pressed(k->get_scancode());
-	if (k->is_pressed()) {
-		if (last_is_pressed) {
-			k->set_echo(true);
-		}
-	} else {
-		//ignore
-		if (last_is_pressed == false) {
-			return;
-		}
-	}
-
-	//printf("key: %x\n",k->get_scancode());
-	input->parse_input_event(k);
+	//printf("key: %x\n",event.key.scancode);
+	input->parse_input_event(event);
 }
 
 struct Property {
@@ -1400,7 +1250,7 @@ static Property read_property(Display *p_display, Window p_window, Atom p_proper
 
 	} while (bytes_after != 0);
 
-	Property p = { ret, actual_format, (int)nitems, actual_type };
+	Property p = { ret, actual_format, nitems, actual_type };
 
 	return p;
 }
@@ -1440,16 +1290,9 @@ void OS_X11::process_xevents() {
 
 	do_mouse_warp = false;
 
-	// Is the current mouse mode one where it needs to be grabbed.
-	bool mouse_mode_grab = mouse_mode == MOUSE_MODE_CAPTURED || mouse_mode == MOUSE_MODE_CONFINED;
-
 	while (XPending(x11_display) > 0) {
 		XEvent event;
 		XNextEvent(x11_display, &event);
-
-		if (XFilterEvent(&event, None)) {
-			continue;
-		}
 
 		switch (event.type) {
 			case Expose:
@@ -1465,60 +1308,40 @@ void OS_X11::process_xevents() {
 				minimized = (visibility->state == VisibilityFullyObscured);
 			} break;
 			case LeaveNotify: {
-				if (main_loop && !mouse_mode_grab)
+
+				if (main_loop && mouse_mode != MOUSE_MODE_CAPTURED)
 					main_loop->notification(MainLoop::NOTIFICATION_WM_MOUSE_EXIT);
 				if (input)
 					input->set_mouse_in_window(false);
 
 			} break;
 			case EnterNotify: {
-				if (main_loop && !mouse_mode_grab)
+
+				if (main_loop && mouse_mode != MOUSE_MODE_CAPTURED)
 					main_loop->notification(MainLoop::NOTIFICATION_WM_MOUSE_ENTER);
 				if (input)
 					input->set_mouse_in_window(true);
 			} break;
 			case FocusIn:
 				minimized = false;
-				window_has_focus = true;
 				main_loop->notification(MainLoop::NOTIFICATION_WM_FOCUS_IN);
-				if (mouse_mode_grab) {
-					// Show and update the cursor if confined and the window regained focus.
-					if (mouse_mode == MOUSE_MODE_CONFINED)
-						XUndefineCursor(x11_display, x11_window);
-					else if (mouse_mode == MOUSE_MODE_CAPTURED) // or re-hide it in captured mode
-						XDefineCursor(x11_display, x11_window, null_cursor);
-
+				if (mouse_mode == MOUSE_MODE_CAPTURED) {
 					XGrabPointer(
 							x11_display, x11_window, True,
 							ButtonPressMask | ButtonReleaseMask | PointerMotionMask,
 							GrabModeAsync, GrabModeAsync, x11_window, None, CurrentTime);
 				}
-				if (xic) {
-					XSetICFocus(xic);
-				}
 				break;
 
 			case FocusOut:
-				window_has_focus = false;
 				main_loop->notification(MainLoop::NOTIFICATION_WM_FOCUS_OUT);
-				if (mouse_mode_grab) {
+				if (mouse_mode == MOUSE_MODE_CAPTURED) {
 					//dear X11, I try, I really try, but you never work, you do whathever you want.
-					if (mouse_mode == MOUSE_MODE_CAPTURED) {
-						// Show the cursor if we're in captured mode so it doesn't look weird.
-						XUndefineCursor(x11_display, x11_window);
-					}
 					XUngrabPointer(x11_display, CurrentTime);
-				}
-				if (xic) {
-					XUnsetICFocus(xic);
 				}
 				break;
 
 			case ConfigureNotify:
-				if (xic) {
-					//  Not portable.
-					set_ime_position(Point2(0, 1));
-				}
 				/* call resizeGLScene only if our window-size changed */
 
 				if ((event.xconfigure.width == current_videomode.width) &&
@@ -1538,20 +1361,23 @@ void OS_X11::process_xevents() {
 					event.xbutton.y = last_mouse_pos.y;
 				}
 
-				Ref<InputEventMouseButton> mb;
-				mb.instance();
+				InputEvent mouse_event;
+				mouse_event.ID = ++event_id;
+				mouse_event.type = InputEvent::MOUSE_BUTTON;
+				mouse_event.device = 0;
+				mouse_event.mouse_button.mod = get_key_modifier_state(event.xbutton.state);
+				mouse_event.mouse_button.button_mask = get_mouse_button_state(event.xbutton.state);
+				mouse_event.mouse_button.x = event.xbutton.x;
+				mouse_event.mouse_button.y = event.xbutton.y;
+				mouse_event.mouse_button.global_x = event.xbutton.x;
+				mouse_event.mouse_button.global_y = event.xbutton.y;
+				mouse_event.mouse_button.button_index = event.xbutton.button;
+				if (mouse_event.mouse_button.button_index == 2)
+					mouse_event.mouse_button.button_index = 3;
+				else if (mouse_event.mouse_button.button_index == 3)
+					mouse_event.mouse_button.button_index = 2;
 
-				get_key_modifier_state(event.xbutton.state, mb);
-				mb->set_button_mask(get_mouse_button_state(event.xbutton.state));
-				mb->set_position(Vector2(event.xbutton.x, event.xbutton.y));
-				mb->set_global_position(mb->get_position());
-				mb->set_button_index(event.xbutton.button);
-				if (mb->get_button_index() == 2)
-					mb->set_button_index(3);
-				else if (mb->get_button_index() == 3)
-					mb->set_button_index(2);
-
-				mb->set_pressed((event.type == ButtonPress));
+				mouse_event.mouse_button.pressed = (event.type == ButtonPress);
 
 				if (event.type == ButtonPress && event.xbutton.button == 1) {
 
@@ -1561,7 +1387,8 @@ void OS_X11::process_xevents() {
 
 						last_click_ms = 0;
 						last_click_pos = Point2(-100, -100);
-						mb->set_doubleclick(true);
+						mouse_event.mouse_button.doubleclick = true;
+						mouse_event.ID = ++event_id;
 
 					} else {
 						last_click_ms += diff;
@@ -1569,7 +1396,7 @@ void OS_X11::process_xevents() {
 					}
 				}
 
-				input->parse_input_event(mb);
+				input->parse_input_event(mouse_event);
 
 			} break;
 			case MotionNotify: {
@@ -1612,7 +1439,8 @@ void OS_X11::process_xevents() {
 				Point2i pos(event.xmotion.x, event.xmotion.y);
 
 				if (mouse_mode == MOUSE_MODE_CAPTURED) {
-
+#if 1
+					//Vector2 c = Point2i(current_videomode.width/2,current_videomode.height/2);
 					if (pos == Point2i(current_videomode.width / 2, current_videomode.height / 2)) {
 						//this sucks, it's a hack, etc and is a little inaccurate, etc.
 						//but nothing I can do, X11 sucks.
@@ -1624,7 +1452,18 @@ void OS_X11::process_xevents() {
 					Point2i new_center = pos;
 					pos = last_mouse_pos + (pos - center);
 					center = new_center;
-					do_mouse_warp = window_has_focus; // warp the cursor if we're focused in
+					do_mouse_warp = true;
+#else
+					//Dear X11, thanks for making my life miserable
+
+					center.x = current_videomode.width / 2;
+					center.y = current_videomode.height / 2;
+					pos = last_mouse_pos + (pos - center);
+					if (pos == last_mouse_pos)
+						break;
+					XWarpPointer(x11_display, None, x11_window,
+							0, 0, 0, 0, (int)center.x, (int)center.y);
+#endif
 				}
 
 				if (!last_mouse_pos_valid) {
@@ -1635,25 +1474,29 @@ void OS_X11::process_xevents() {
 
 				Point2i rel = pos - last_mouse_pos;
 
-				Ref<InputEventMouseMotion> mm;
-				mm.instance();
+				InputEvent motion_event;
+				motion_event.ID = ++event_id;
+				motion_event.type = InputEvent::MOUSE_MOTION;
+				motion_event.device = 0;
 
-				get_key_modifier_state(event.xmotion.state, mm);
-				mm->set_button_mask(get_mouse_button_state(event.xmotion.state));
-				mm->set_position(pos);
-				mm->set_global_position(pos);
-				input->set_mouse_position(pos);
-				mm->set_speed(input->get_last_mouse_speed());
-				mm->set_relative(rel);
+				motion_event.mouse_motion.mod = get_key_modifier_state(event.xmotion.state);
+				motion_event.mouse_motion.button_mask = get_mouse_button_state(event.xmotion.state);
+				motion_event.mouse_motion.x = pos.x;
+				motion_event.mouse_motion.y = pos.y;
+				input->set_mouse_pos(pos);
+				motion_event.mouse_motion.global_x = pos.x;
+				motion_event.mouse_motion.global_y = pos.y;
+				motion_event.mouse_motion.speed_x = input->get_mouse_speed().x;
+				motion_event.mouse_motion.speed_y = input->get_mouse_speed().y;
+
+				motion_event.mouse_motion.relative_x = rel.x;
+				motion_event.mouse_motion.relative_y = rel.y;
 
 				last_mouse_pos = pos;
 
 				// printf("rel: %d,%d\n", rel.x, rel.y );
-				// Don't propagate the motion event unless we have focus
-				// this is so that the relative motion doesn't get messed up
-				// after we regain focus.
-				if (window_has_focus || !mouse_mode_grab)
-					input->parse_input_event(mm);
+
+				input->parse_input_event(motion_event);
 
 			} break;
 			case KeyPress:
@@ -1943,7 +1786,7 @@ Error OS_X11::shell_open(String p_uri) {
 	Error ok;
 	List<String> args;
 	args.push_back(p_uri);
-	ok = execute("xdg-open", args, false);
+	ok = execute("/usr/bin/xdg-open", args, false);
 	if (ok == OK)
 		return OK;
 	ok = execute("gnome-open", args, false);
@@ -1951,11 +1794,6 @@ Error OS_X11::shell_open(String p_uri) {
 		return OK;
 	ok = execute("kde-open", args, false);
 	return ok;
-}
-
-bool OS_X11::_check_internal_feature_support(const String &p_feature) {
-
-	return p_feature == "pc" || p_feature == "s3tc";
 }
 
 String OS_X11::get_system_dir(SystemDir p_dir) const {
@@ -2007,7 +1845,7 @@ String OS_X11::get_system_dir(SystemDir p_dir) const {
 	String pipe;
 	List<String> arg;
 	arg.push_back(xdgparam);
-	Error err = const_cast<OS_X11 *>(this)->execute("xdg-user-dir", arg, true, NULL, &pipe);
+	Error err = const_cast<OS_X11 *>(this)->execute("/usr/bin/xdg-user-dir", arg, true, NULL, &pipe);
 	if (err != OK)
 		return ".";
 	return pipe.strip_edges();
@@ -2057,18 +1895,18 @@ void OS_X11::alert(const String &p_alert, const String &p_title) {
 	args.push_back(p_title);
 	args.push_back(p_alert);
 
-	execute("xmessage", args, true);
+	execute("/usr/bin/xmessage", args, true);
 }
 
-void OS_X11::set_icon(const Ref<Image> &p_icon) {
+void OS_X11::set_icon(const Image &p_icon) {
 	Atom net_wm_icon = XInternAtom(x11_display, "_NET_WM_ICON", False);
 
-	if (p_icon.is_valid()) {
-		Ref<Image> img = p_icon->duplicate();
-		img->convert(Image::FORMAT_RGBA8);
+	if (!p_icon.empty()) {
+		Image img = p_icon;
+		img.convert(Image::FORMAT_RGBA);
 
-		int w = img->get_width();
-		int h = img->get_height();
+		int w = img.get_width();
+		int h = img.get_height();
 
 		// We're using long to have wordsize (32Bit build -> 32 Bits, 64 Bit build -> 64 Bits
 		Vector<long> pd;
@@ -2078,7 +1916,7 @@ void OS_X11::set_icon(const Ref<Image> &p_icon) {
 		pd[0] = w;
 		pd[1] = h;
 
-		PoolVector<uint8_t>::Read r = img->get_data().read();
+		DVector<uint8_t>::Read r = img.get_data().read();
 
 		long *wr = &pd[2];
 		uint8_t const *pr = r.ptr();
@@ -2106,16 +1944,16 @@ void OS_X11::run() {
 
 	main_loop->init();
 
-	//uint64_t last_ticks=get_ticks_usec();
+	//	uint64_t last_ticks=get_ticks_usec();
 
-	//int frames=0;
-	//uint64_t frame=0;
+	//	int frames=0;
+	//	uint64_t frame=0;
 
 	while (!force_quit) {
 
 		process_xevents(); // get rid of pending events
 #ifdef JOYDEV_ENABLED
-		joypad->process_joypads();
+		event_id = joystick->process_joysticks(event_id);
 #endif
 		if (Main::iteration() == true)
 			break;
@@ -2147,7 +1985,8 @@ bool OS_X11::is_vsync_enabled() const {
 
 void OS_X11::set_context(int p_context) {
 
-	XClassHint *classHint = XAllocClassHint();
+	XClassHint *classHint = NULL;
+	classHint = XAllocClassHint();
 	if (classHint) {
 
 		if (p_context == CONTEXT_EDITOR)
@@ -2160,16 +1999,28 @@ void OS_X11::set_context(int p_context) {
 	}
 }
 
-OS::PowerState OS_X11::get_power_state() {
-	return power_manager->get_power_state();
-}
+OS_X11::OS_X11() {
 
-int OS_X11::get_power_seconds_left() {
-	return power_manager->get_power_seconds_left();
-}
+#ifdef RTAUDIO_ENABLED
+	AudioDriverManagerSW::add_driver(&driver_rtaudio);
+#endif
 
-int OS_X11::get_power_percent_left() {
-	return power_manager->get_power_percent_left();
+#ifdef PULSEAUDIO_ENABLED
+	AudioDriverManagerSW::add_driver(&driver_pulseaudio);
+#endif
+
+#ifdef ALSA_ENABLED
+	AudioDriverManagerSW::add_driver(&driver_alsa);
+#endif
+
+	if (AudioDriverManagerSW::get_driver_count() == 0) {
+		WARN_PRINT("No sound driver found... Defaulting to dummy driver");
+		AudioDriverManagerSW::add_driver(&driver_dummy);
+	}
+
+	minimized = false;
+	xim_style = 0L;
+	mouse_mode = MOUSE_MODE_VISIBLE;
 }
 
 void OS_X11::disable_crash_handler() {
@@ -2178,92 +2029,4 @@ void OS_X11::disable_crash_handler() {
 
 bool OS_X11::is_disable_crash_handler() const {
 	return crash_handler.is_disabled();
-}
-
-static String get_mountpoint(const String &p_path) {
-	struct stat s;
-	if (stat(p_path.utf8().get_data(), &s)) {
-		return "";
-	}
-
-#ifdef HAVE_MNTENT
-	dev_t dev = s.st_dev;
-	FILE *fd = setmntent("/proc/mounts", "r");
-	if (!fd) {
-		return "";
-	}
-
-	struct mntent mnt;
-	char buf[1024];
-	size_t buflen = 1024;
-	while (getmntent_r(fd, &mnt, buf, buflen)) {
-		if (!stat(mnt.mnt_dir, &s) && s.st_dev == dev) {
-			endmntent(fd);
-			return String(mnt.mnt_dir);
-		}
-	}
-
-	endmntent(fd);
-#endif
-	return "";
-}
-
-Error OS_X11::move_to_trash(const String &p_path) {
-	String trashcan = "";
-	String mnt = get_mountpoint(p_path);
-
-	if (mnt != "") {
-		String path(mnt + "/.Trash-" + itos(getuid()) + "/files");
-		struct stat s;
-		if (!stat(path.utf8().get_data(), &s)) {
-			trashcan = path;
-		}
-	}
-
-	if (trashcan == "") {
-		char *dhome = getenv("XDG_DATA_HOME");
-		if (dhome) {
-			trashcan = String(dhome) + "/Trash/files";
-		}
-	}
-
-	if (trashcan == "") {
-		char *home = getenv("HOME");
-		if (home) {
-			trashcan = String(home) + "/.local/share/Trash/files";
-		}
-	}
-
-	if (trashcan == "") {
-		ERR_PRINTS("move_to_trash: Could not determine trashcan location");
-		return FAILED;
-	}
-
-	List<String> args;
-	args.push_back("-p");
-	args.push_back(trashcan);
-	Error err = execute("mkdir", args, true);
-	if (err == OK) {
-		List<String> args2;
-		args2.push_back(p_path);
-		args2.push_back(trashcan);
-		err = execute("mv", args2, true);
-	}
-
-	return err;
-}
-
-OS_X11::OS_X11() {
-
-#ifdef PULSEAUDIO_ENABLED
-	AudioDriverManager::add_driver(&driver_pulseaudio);
-#endif
-
-#ifdef ALSA_ENABLED
-	AudioDriverManager::add_driver(&driver_alsa);
-#endif
-
-	minimized = false;
-	xim_style = 0L;
-	mouse_mode = MOUSE_MODE_VISIBLE;
 }

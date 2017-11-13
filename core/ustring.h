@@ -40,7 +40,6 @@
 
 class CharString : public Vector<char> {
 public:
-	bool operator<(const CharString &p_right) const;
 	int length() const { return size() ? size() - 1 : 0; }
 	const char *get_data() const;
 	operator const char *() { return get_data(); };
@@ -78,7 +77,7 @@ public:
 	//String operator+(CharType p_char) const;
 
 	String &operator+=(const String &);
-	String &operator+=(CharType p_char);
+	String &operator+=(CharType p_str);
 	String &operator+=(const char *p_str);
 	String &operator+=(const CharType *p_str);
 
@@ -98,7 +97,6 @@ public:
 
 	signed char casecmp_to(const String &p_str) const;
 	signed char nocasecmp_to(const String &p_str) const;
-	signed char naturalnocasecmp_to(const String &p_str) const;
 
 	const CharType *c_str() const;
 	/* standard size stuff */
@@ -145,7 +143,6 @@ public:
 	int hex_to_int(bool p_with_prefix = true) const;
 	int to_int() const;
 
-	int64_t hex_to_int64(bool p_with_prefix = true) const;
 	int64_t to_int64() const;
 	static int to_int(const char *p_str, int p_len = -1);
 	static double to_double(const char *p_str);
@@ -156,7 +153,7 @@ public:
 
 	int get_slice_count(String p_splitter) const;
 	String get_slice(String p_splitter, int p_slice) const;
-	String get_slicec(CharType p_splitter, int p_slice) const;
+	String get_slicec(CharType splitter, int p_slice) const;
 
 	Vector<String> split(const String &p_splitter, bool p_allow_empty = true) const;
 	Vector<String> split_spaces() const;
@@ -174,8 +171,8 @@ public:
 	String right(int p_pos) const;
 	String strip_edges(bool left = true, bool right = true) const;
 	String strip_escapes() const;
-	String get_extension() const;
-	String get_basename() const;
+	String extension() const;
+	String basename() const;
 	String plus_file(const String &p_file) const;
 	CharType ord_at(int p_idx) const;
 
@@ -186,8 +183,8 @@ public:
 	bool parse_utf8(const char *p_utf8, int p_len = -1); //return true on error
 	static String utf8(const char *p_utf8, int p_len = -1);
 
-	static uint32_t hash(const CharType *p_cstr, int p_len); /* hash the string */
-	static uint32_t hash(const CharType *p_cstr); /* hash the string */
+	static uint32_t hash(const CharType *p_str, int p_len); /* hash the string */
+	static uint32_t hash(const CharType *p_str); /* hash the string */
 	static uint32_t hash(const char *p_cstr, int p_len); /* hash the string */
 	static uint32_t hash(const char *p_cstr); /* hash the string */
 	uint32_t hash() const; /* hash the string */
@@ -254,14 +251,6 @@ struct NoCaseComparator {
 	bool operator()(const String &p_a, const String &p_b) const {
 
 		return p_a.nocasecmp_to(p_b) < 0;
-	}
-};
-
-struct NaturalNoCaseComparator {
-
-	bool operator()(const String &p_a, const String &p_b) const {
-
-		return p_a.naturalnocasecmp_to(p_b) < 0;
 	}
 };
 

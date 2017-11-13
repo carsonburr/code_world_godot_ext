@@ -35,7 +35,7 @@
 void SegmentShape2D::_update_shape() {
 
 	Rect2 r;
-	r.position = a;
+	r.pos = a;
 	r.size = b;
 	Physics2DServer::get_singleton()->shape_set_data(get_rid(), r);
 	emit_changed();
@@ -69,21 +69,21 @@ void SegmentShape2D::draw(const RID &p_to_rid, const Color &p_color) {
 Rect2 SegmentShape2D::get_rect() const {
 
 	Rect2 rect;
-	rect.position = a;
+	rect.pos = a;
 	rect.expand_to(b);
 	return rect;
 }
 
 void SegmentShape2D::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("set_a", "a"), &SegmentShape2D::set_a);
-	ClassDB::bind_method(D_METHOD("get_a"), &SegmentShape2D::get_a);
+	ObjectTypeDB::bind_method(_MD("set_a", "a"), &SegmentShape2D::set_a);
+	ObjectTypeDB::bind_method(_MD("get_a"), &SegmentShape2D::get_a);
 
-	ClassDB::bind_method(D_METHOD("set_b", "b"), &SegmentShape2D::set_b);
-	ClassDB::bind_method(D_METHOD("get_b"), &SegmentShape2D::get_b);
+	ObjectTypeDB::bind_method(_MD("set_b", "b"), &SegmentShape2D::set_b);
+	ObjectTypeDB::bind_method(_MD("get_b"), &SegmentShape2D::get_b);
 
-	ADD_PROPERTY(PropertyInfo(Variant::VECTOR2, "a"), "set_a", "get_a");
-	ADD_PROPERTY(PropertyInfo(Variant::VECTOR2, "b"), "set_b", "get_b");
+	ADD_PROPERTY(PropertyInfo(Variant::VECTOR2, "a"), _SCS("set_a"), _SCS("get_a"));
+	ADD_PROPERTY(PropertyInfo(Variant::VECTOR2, "b"), _SCS("set_b"), _SCS("get_b"));
 }
 
 SegmentShape2D::SegmentShape2D()
@@ -121,7 +121,7 @@ void RayShape2D::draw(const RID &p_to_rid, const Color &p_color) {
 Rect2 RayShape2D::get_rect() const {
 
 	Rect2 rect;
-	rect.position = Vector2();
+	rect.pos = Vector2();
 	rect.expand_to(Vector2(0, length));
 	rect = rect.grow(0.707 * 4);
 	return rect;
@@ -129,10 +129,10 @@ Rect2 RayShape2D::get_rect() const {
 
 void RayShape2D::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("set_length", "length"), &RayShape2D::set_length);
-	ClassDB::bind_method(D_METHOD("get_length"), &RayShape2D::get_length);
+	ObjectTypeDB::bind_method(_MD("set_length", "length"), &RayShape2D::set_length);
+	ObjectTypeDB::bind_method(_MD("get_length"), &RayShape2D::get_length);
 
-	ADD_PROPERTY(PropertyInfo(Variant::REAL, "length"), "set_length", "get_length");
+	ADD_PROPERTY(PropertyInfo(Variant::REAL, "length"), _SCS("set_length"), _SCS("get_length"));
 }
 
 void RayShape2D::set_length(real_t p_length) {

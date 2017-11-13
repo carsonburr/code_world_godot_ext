@@ -28,7 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 #include "dictionary.h"
-
+#include "io/json.h"
 #include "safe_refcount.h"
 #include "variant.h"
 
@@ -39,84 +39,57 @@ struct _DictionaryVariantHash {
 
 struct DictionaryPrivate {
 
-	struct Data {
-		Variant variant;
-		int order;
-	};
-
 	SafeRefCount refcount;
-	HashMap<Variant, Data, _DictionaryVariantHash> variant_map;
-	int counter;
-};
-
-struct DictionaryPrivateSort {
-
-	bool operator()(const HashMap<Variant, DictionaryPrivate::Data, _DictionaryVariantHash>::Pair *A, const HashMap<Variant, DictionaryPrivate::Data, _DictionaryVariantHash>::Pair *B) const {
-
-		return A->data.order < B->data.order;
-	}
+	HashMap<Variant, Variant, _DictionaryVariantHash> variant_map;
+	bool shared;
 };
 
 void Dictionary::get_key_list(List<Variant> *p_keys) const {
 
-	if (_p->variant_map.empty())
+	_p->variant_map.get_key_list(p_keys);
+}
+
+void Dictionary::_copy_on_write() const {
+
+	//make a copy of what we have
+	if (_p->shared)
 		return;
 
-	int count = _p->variant_map.size();
-	const HashMap<Variant, DictionaryPrivate::Data, _DictionaryVariantHash>::Pair **pairs = (const HashMap<Variant, DictionaryPrivate::Data, _DictionaryVariantHash>::Pair **)alloca(count * sizeof(HashMap<Variant, DictionaryPrivate::Data, _DictionaryVariantHash>::Pair *));
-	_p->variant_map.get_key_value_ptr_array(pairs);
-
-	SortArray<const HashMap<Variant, DictionaryPrivate::Data, _DictionaryVariantHash>::Pair *, DictionaryPrivateSort> sort;
-	sort.sort(pairs, count);
-
-	for (int i = 0; i < count; i++) {
-		p_keys->push_back(pairs[i]->key);
-	}
+	DictionaryPrivate *p = memnew(DictionaryPrivate);
+	p->shared = _p->shared;
+	p->variant_map = _p->variant_map;
+	p->refcount.init();
+	_unref();
+	_p = p;
 }
 
 Variant &Dictionary::operator[](const Variant &p_key) {
 
-	DictionaryPrivate::Data *v = _p->variant_map.getptr(p_key);
+	_copy_on_write();
 
-	if (!v) {
-
-		DictionaryPrivate::Data d;
-		d.order = _p->counter++;
-		_p->variant_map[p_key] = d;
-		v = _p->variant_map.getptr(p_key);
-	}
-	return v->variant;
+	return _p->variant_map[p_key];
 }
 
 const Variant &Dictionary::operator[](const Variant &p_key) const {
 
-	return _p->variant_map[p_key].variant;
+	return _p->variant_map[p_key];
 }
 const Variant *Dictionary::getptr(const Variant &p_key) const {
 
-	const DictionaryPrivate::Data *v = _p->variant_map.getptr(p_key);
-	if (!v)
-		return NULL;
-	else
-		return &v->variant;
+	return _p->variant_map.getptr(p_key);
 }
-
 Variant *Dictionary::getptr(const Variant &p_key) {
 
-	DictionaryPrivate::Data *v = _p->variant_map.getptr(p_key);
-	if (!v)
-		return NULL;
-	else
-		return &v->variant;
+	_copy_on_write();
+	return _p->variant_map.getptr(p_key);
 }
 
 Variant Dictionary::get_valid(const Variant &p_key) const {
 
-	DictionaryPrivate::Data *v = _p->variant_map.getptr(p_key);
+	const Variant *v = getptr(p_key);
 	if (!v)
 		return Variant();
-	else
-		return v->variant;
+	return *v;
 }
 
 int Dictionary::size() const {
@@ -143,7 +116,7 @@ bool Dictionary::has_all(const Array &p_keys) const {
 }
 
 void Dictionary::erase(const Variant &p_key) {
-
+	_copy_on_write();
 	_p->variant_map.erase(p_key);
 }
 
@@ -170,8 +143,13 @@ void Dictionary::_ref(const Dictionary &p_from) const {
 
 void Dictionary::clear() {
 
+	_copy_on_write();
 	_p->variant_map.clear();
-	_p->counter = 0;
+}
+
+bool Dictionary::is_shared() const {
+
+	return _p->shared;
 }
 
 void Dictionary::_unref() const {
@@ -200,43 +178,25 @@ uint32_t Dictionary::hash() const {
 
 Array Dictionary::keys() const {
 
-	Array varr;
-	varr.resize(size());
-	if (_p->variant_map.empty())
-		return varr;
-
-	int count = _p->variant_map.size();
-	const HashMap<Variant, DictionaryPrivate::Data, _DictionaryVariantHash>::Pair **pairs = (const HashMap<Variant, DictionaryPrivate::Data, _DictionaryVariantHash>::Pair **)alloca(count * sizeof(HashMap<Variant, DictionaryPrivate::Data, _DictionaryVariantHash>::Pair *));
-	_p->variant_map.get_key_value_ptr_array(pairs);
-
-	SortArray<const HashMap<Variant, DictionaryPrivate::Data, _DictionaryVariantHash>::Pair *, DictionaryPrivateSort> sort;
-	sort.sort(pairs, count);
-
-	for (int i = 0; i < count; i++) {
-		varr[i] = pairs[i]->key;
+	Array karr;
+	karr.resize(size());
+	const Variant *K = NULL;
+	int idx = 0;
+	while ((K = next(K))) {
+		karr[idx++] = (*K);
 	}
-
-	return varr;
+	return karr;
 }
 
 Array Dictionary::values() const {
 
 	Array varr;
 	varr.resize(size());
-	if (_p->variant_map.empty())
-		return varr;
-
-	int count = _p->variant_map.size();
-	const HashMap<Variant, DictionaryPrivate::Data, _DictionaryVariantHash>::Pair **pairs = (const HashMap<Variant, DictionaryPrivate::Data, _DictionaryVariantHash>::Pair **)alloca(count * sizeof(HashMap<Variant, DictionaryPrivate::Data, _DictionaryVariantHash>::Pair *));
-	_p->variant_map.get_key_value_ptr_array(pairs);
-
-	SortArray<const HashMap<Variant, DictionaryPrivate::Data, _DictionaryVariantHash>::Pair *, DictionaryPrivateSort> sort;
-	sort.sort(pairs, count);
-
-	for (int i = 0; i < count; i++) {
-		varr[i] = pairs[i]->data.variant;
+	const Variant *key = NULL;
+	int i = 0;
+	while ((key = next(key))) {
+		varr[i++] = _p->variant_map[*key];
 	}
-
 	return varr;
 }
 
@@ -245,18 +205,24 @@ const Variant *Dictionary::next(const Variant *p_key) const {
 	return _p->variant_map.next(p_key);
 }
 
-Dictionary Dictionary::copy() const {
+Error Dictionary::parse_json(const String &p_json) {
 
-	Dictionary n;
-
-	List<Variant> keys;
-	get_key_list(&keys);
-
-	for (List<Variant>::Element *E = keys.front(); E; E = E->next()) {
-		n[E->get()] = operator[](E->get());
+	String errstr;
+	int errline = 0;
+	if (p_json != "") {
+		Error err = JSON::parse(p_json, *this, errstr, errline);
+		if (err != OK) {
+			ERR_EXPLAIN("Error parsing JSON: " + errstr + " at line: " + itos(errline));
+			ERR_FAIL_COND_V(err != OK, err);
+		}
 	}
 
-	return n;
+	return OK;
+}
+
+String Dictionary::to_json() const {
+
+	return JSON::print(*this);
 }
 
 void Dictionary::operator=(const Dictionary &p_dictionary) {
@@ -269,11 +235,11 @@ Dictionary::Dictionary(const Dictionary &p_from) {
 	_ref(p_from);
 }
 
-Dictionary::Dictionary() {
+Dictionary::Dictionary(bool p_shared) {
 
 	_p = memnew(DictionaryPrivate);
 	_p->refcount.init();
-	_p->counter = 0;
+	_p->shared = p_shared;
 }
 Dictionary::~Dictionary() {
 

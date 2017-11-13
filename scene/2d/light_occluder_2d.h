@@ -34,7 +34,7 @@
 
 class OccluderPolygon2D : public Resource {
 
-	GDCLASS(OccluderPolygon2D, Resource);
+	OBJ_TYPE(OccluderPolygon2D, Resource);
 
 public:
 	enum CullMode {
@@ -45,7 +45,7 @@ public:
 
 private:
 	RID occ_polygon;
-	PoolVector<Vector2> polygon;
+	DVector<Vector2> polygon;
 	bool closed;
 	CullMode cull;
 
@@ -53,8 +53,8 @@ protected:
 	static void _bind_methods();
 
 public:
-	void set_polygon(const PoolVector<Vector2> &p_polygon);
-	PoolVector<Vector2> get_polygon() const;
+	void set_polygon(const DVector<Vector2> &p_polygon);
+	DVector<Vector2> get_polygon() const;
 
 	void set_closed(bool p_closed);
 	bool is_closed() const;
@@ -70,7 +70,7 @@ public:
 VARIANT_ENUM_CAST(OccluderPolygon2D::CullMode);
 
 class LightOccluder2D : public Node2D {
-	GDCLASS(LightOccluder2D, Node2D);
+	OBJ_TYPE(LightOccluder2D, Node2D);
 
 	RID occluder;
 	bool enabled;

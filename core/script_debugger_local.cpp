@@ -28,7 +28,6 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 #include "script_debugger_local.h"
-
 #include "os/os.h"
 
 void ScriptDebuggerLocal::debug(ScriptLanguage *p_script, bool p_can_continue) {
@@ -186,12 +185,12 @@ struct _ScriptDebuggerLocalProfileInfoSort {
 	}
 };
 
-void ScriptDebuggerLocal::profiling_set_frame_times(float p_frame_time, float p_idle_time, float p_physics_time, float p_physics_frame_time) {
+void ScriptDebuggerLocal::profiling_set_frame_times(float p_frame_time, float p_idle_time, float p_fixed_time, float p_fixed_frame_time) {
 
 	frame_time = p_frame_time;
 	idle_time = p_idle_time;
-	physics_time = p_physics_time;
-	physics_frame_time = p_physics_frame_time;
+	fixed_time = p_fixed_time;
+	fixed_frame_time = p_fixed_frame_time;
 }
 
 void ScriptDebuggerLocal::idle_poll() {
@@ -250,9 +249,9 @@ void ScriptDebuggerLocal::profiling_start() {
 	profiling = true;
 	pinfo.resize(32768);
 	frame_time = 0;
-	physics_time = 0;
+	fixed_time = 0;
 	idle_time = 0;
-	physics_frame_time = 0;
+	fixed_frame_time = 0;
 }
 
 void ScriptDebuggerLocal::profiling_end() {

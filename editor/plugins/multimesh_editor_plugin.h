@@ -41,7 +41,7 @@
 
 class MultiMeshEditor : public Control {
 
-	GDCLASS(MultiMeshEditor, Control);
+	OBJ_TYPE(MultiMeshEditor, Control);
 
 	friend class MultiMeshEditorPlugin;
 
@@ -87,7 +87,7 @@ public:
 
 class MultiMeshEditorPlugin : public EditorPlugin {
 
-	GDCLASS(MultiMeshEditorPlugin, EditorPlugin);
+	OBJ_TYPE(MultiMeshEditorPlugin, EditorPlugin);
 
 	MultiMeshEditor *multimesh_editor;
 	EditorNode *editor;
@@ -95,8 +95,8 @@ class MultiMeshEditorPlugin : public EditorPlugin {
 public:
 	virtual String get_name() const { return "MultiMesh"; }
 	bool has_main_screen() const { return false; }
-	virtual void edit(Object *p_object);
-	virtual bool handles(Object *p_object) const;
+	virtual void edit(Object *p_node);
+	virtual bool handles(Object *p_node) const;
 	virtual void make_visible(bool p_visible);
 
 	MultiMeshEditorPlugin(EditorNode *p_node);

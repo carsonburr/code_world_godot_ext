@@ -76,7 +76,7 @@ Rect2 LineShape2D::get_rect() const {
 	Vector2 l1[2] = { point - get_normal().tangent() * 100, point + get_normal().tangent() * 100 };
 	Vector2 l2[2] = { point, point + get_normal() * 30 };
 	Rect2 rect;
-	rect.position = l1[0];
+	rect.pos = l1[0];
 	rect.expand_to(l1[1]);
 	rect.expand_to(l2[0]);
 	rect.expand_to(l2[1]);
@@ -85,14 +85,14 @@ Rect2 LineShape2D::get_rect() const {
 
 void LineShape2D::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("set_normal", "normal"), &LineShape2D::set_normal);
-	ClassDB::bind_method(D_METHOD("get_normal"), &LineShape2D::get_normal);
+	ObjectTypeDB::bind_method(_MD("set_normal", "normal"), &LineShape2D::set_normal);
+	ObjectTypeDB::bind_method(_MD("get_normal"), &LineShape2D::get_normal);
 
-	ClassDB::bind_method(D_METHOD("set_d", "d"), &LineShape2D::set_d);
-	ClassDB::bind_method(D_METHOD("get_d"), &LineShape2D::get_d);
+	ObjectTypeDB::bind_method(_MD("set_d", "d"), &LineShape2D::set_d);
+	ObjectTypeDB::bind_method(_MD("get_d"), &LineShape2D::get_d);
 
-	ADD_PROPERTY(PropertyInfo(Variant::VECTOR2, "normal"), "set_normal", "get_normal");
-	ADD_PROPERTY(PropertyInfo(Variant::REAL, "d"), "set_d", "get_d");
+	ADD_PROPERTY(PropertyInfo(Variant::VECTOR2, "normal"), _SCS("set_normal"), _SCS("get_normal"));
+	ADD_PROPERTY(PropertyInfo(Variant::REAL, "d"), _SCS("set_d"), _SCS("get_d"));
 }
 
 LineShape2D::LineShape2D()

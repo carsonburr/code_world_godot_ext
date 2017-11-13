@@ -28,12 +28,11 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 #include "reference.h"
-
 #include "script_language.h"
 
 bool Reference::init_ref() {
 
-	if (reference()) {
+	if (refcount.ref()) {
 
 		// this may fail in the scenario of two threads assigning the pointer for the FIRST TIME
 		// at the same time, which is never likely to happen (would be crazy to do)
@@ -41,7 +40,7 @@ bool Reference::init_ref() {
 
 		if (refcount_init.get() > 0) {
 			refcount_init.unref();
-			unreference(); // first referencing is already 1, so compensate for the ref above
+			refcount.unref(); // first referencing is already 1, so compensate for the ref above
 		}
 
 		return true;
@@ -53,32 +52,28 @@ bool Reference::init_ref() {
 
 void Reference::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("init_ref"), &Reference::init_ref);
-	ClassDB::bind_method(D_METHOD("reference"), &Reference::reference);
-	ClassDB::bind_method(D_METHOD("unreference"), &Reference::unreference);
+	ObjectTypeDB::bind_method(_MD("init_ref"), &Reference::init_ref);
+	ObjectTypeDB::bind_method(_MD("reference"), &Reference::reference);
+	ObjectTypeDB::bind_method(_MD("unreference"), &Reference::unreference);
 }
 
 int Reference::reference_get_count() const {
 	return refcount.get();
 }
 
-bool Reference::reference() {
-	bool success = refcount.ref();
+void Reference::reference() {
 
-	if (success && get_script_instance()) {
+	refcount.ref();
+	if (get_script_instance()) {
 		get_script_instance()->refcount_incremented();
 	}
-
-	return success;
 }
-
 bool Reference::unreference() {
 
 	bool die = refcount.unref();
 
 	if (get_script_instance()) {
-		bool script_ret = get_script_instance()->refcount_decremented();
-		die = die && script_ret;
+		die = die && get_script_instance()->refcount_decremented();
 	}
 
 	return die;
@@ -101,7 +96,7 @@ Variant WeakRef::get_ref() const {
 	Object *obj = ObjectDB::get_instance(ref);
 	if (!obj)
 		return Variant();
-	Reference *r = cast_to<Reference>(obj);
+	Reference *r = obj->cast_to<Reference>();
 	if (r) {
 
 		return REF(r);
@@ -111,12 +106,12 @@ Variant WeakRef::get_ref() const {
 }
 
 void WeakRef::set_obj(Object *p_object) {
-	ref = p_object ? p_object->get_instance_id() : 0;
+	ref = p_object ? p_object->get_instance_ID() : 0;
 }
 
 void WeakRef::set_ref(const REF &p_ref) {
 
-	ref = p_ref.is_valid() ? p_ref->get_instance_id() : 0;
+	ref = p_ref.is_valid() ? p_ref->get_instance_ID() : 0;
 }
 
 WeakRef::WeakRef() {
@@ -125,5 +120,46 @@ WeakRef::WeakRef() {
 
 void WeakRef::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("get_ref"), &WeakRef::get_ref);
+	ObjectTypeDB::bind_method(_MD("get_ref:Object"), &WeakRef::get_ref);
 }
+#if 0
+
+Reference * RefBase::get_reference_from_ref(const RefBase &p_base) {
+
+	return p_base.get_reference();
+}
+void RefBase::ref_inc(Reference *p_reference) {
+
+	p_reference->refcount.ref();
+}
+bool RefBase::ref_dec(Reference *p_reference) {
+
+	bool ref = p_reference->refcount.unref();
+	return ref;
+}
+
+Reference *RefBase::first_ref(Reference *p_reference) {
+
+	if (p_reference->refcount.ref()) {
+
+		// this may fail in the scenario of two threads assigning the pointer for the FIRST TIME
+		// at the same time, which is never likely to happen (would be crazy to do)
+		// so don't do it.
+
+		if (p_reference->refcount_init.get()>0) {
+			p_reference->refcount_init.unref();
+			p_reference->refcount.unref(); // first referencing is already 1, so compensate for the ref above
+		}
+
+		return p_reference;
+	} else {
+
+		return 0;
+	}
+
+}
+char * RefBase::get_refptr_data(const RefPtr &p_refptr) const {
+
+	return p_refptr.data;
+}
+#endif

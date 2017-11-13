@@ -56,16 +56,8 @@ class BodySW : public CollisionObjectSW {
 	PhysicsServer::BodyAxisLock axis_lock;
 
 	real_t _inv_mass;
-	Vector3 _inv_inertia; // Relative to the principal axes of inertia
-
-	// Relative to the local frame of reference
-	Basis principal_inertia_axes_local;
-	Vector3 center_of_mass_local;
-
-	// In world orientation with local origin
-	Basis _inv_inertia_tensor;
-	Basis principal_inertia_axes;
-	Vector3 center_of_mass;
+	Vector3 _inv_inertia;
+	Matrix3 _inv_inertia_tensor;
 
 	Vector3 gravity;
 
@@ -74,8 +66,8 @@ class BodySW : public CollisionObjectSW {
 	Vector3 applied_force;
 	Vector3 applied_torque;
 
-	real_t area_angular_damp;
-	real_t area_linear_damp;
+	float area_angular_damp;
+	float area_linear_damp;
 
 	SelfList<BodySW> active_list;
 	SelfList<BodySW> inertia_update_list;
@@ -115,7 +107,7 @@ class BodySW : public CollisionObjectSW {
 
 		Vector3 local_pos;
 		Vector3 local_normal;
-		real_t depth;
+		float depth;
 		int local_shape;
 		Vector3 collider_pos;
 		int collider_shape;
@@ -142,9 +134,12 @@ class BodySW : public CollisionObjectSW {
 
 	_FORCE_INLINE_ void _compute_area_gravity_and_dampenings(const AreaSW *p_area);
 
-	_FORCE_INLINE_ void _update_transform_dependant();
+	_FORCE_INLINE_ void _update_inertia_tensor();
 
 	friend class PhysicsDirectBodyStateSW; // i give up, too many functions to expose
+
+protected:
+	virtual void _shape_index_removed(int p_index);
 
 public:
 	void set_force_integration_callback(ObjectID p_id, const StringName &p_method, const Variant &p_udata = Variant());
@@ -175,7 +170,7 @@ public:
 	_FORCE_INLINE_ int get_max_contacts_reported() const { return contacts.size(); }
 
 	_FORCE_INLINE_ bool can_report_contacts() const { return !contacts.empty(); }
-	_FORCE_INLINE_ void add_contact(const Vector3 &p_local_pos, const Vector3 &p_local_normal, real_t p_depth, int p_local_shape, const Vector3 &p_collider_pos, int p_collider_shape, ObjectID p_collider_instance_id, const RID &p_collider, const Vector3 &p_collider_velocity_at_pos);
+	_FORCE_INLINE_ void add_contact(const Vector3 &p_local_pos, const Vector3 &p_local_normal, float p_depth, int p_local_shape, const Vector3 &p_collider_pos, int p_collider_shape, ObjectID p_collider_instance_id, const RID &p_collider, const Vector3 &p_collider_velocity_at_pos);
 
 	_FORCE_INLINE_ void add_exception(const RID &p_exception) { exceptions.insert(p_exception); }
 	_FORCE_INLINE_ void remove_exception(const RID &p_exception) { exceptions.erase(p_exception); }
@@ -199,10 +194,6 @@ public:
 	_FORCE_INLINE_ void set_omit_force_integration(bool p_omit_force_integration) { omit_force_integration = p_omit_force_integration; }
 	_FORCE_INLINE_ bool get_omit_force_integration() const { return omit_force_integration; }
 
-	_FORCE_INLINE_ Basis get_principal_inertia_axes() const { return principal_inertia_axes; }
-	_FORCE_INLINE_ Vector3 get_center_of_mass() const { return center_of_mass; }
-	_FORCE_INLINE_ Vector3 xform_local_to_principal(const Vector3 &p_pos) const { return principal_inertia_axes_local.xform(p_pos - center_of_mass_local); }
-
 	_FORCE_INLINE_ void set_linear_velocity(const Vector3 &p_velocity) { linear_velocity = p_velocity; }
 	_FORCE_INLINE_ Vector3 get_linear_velocity() const { return linear_velocity; }
 
@@ -215,23 +206,18 @@ public:
 	_FORCE_INLINE_ void apply_impulse(const Vector3 &p_pos, const Vector3 &p_j) {
 
 		linear_velocity += p_j * _inv_mass;
-		angular_velocity += _inv_inertia_tensor.xform((p_pos - center_of_mass).cross(p_j));
-	}
-
-	_FORCE_INLINE_ void apply_torque_impulse(const Vector3 &p_j) {
-
-		angular_velocity += _inv_inertia_tensor.xform(p_j);
+		angular_velocity += _inv_inertia_tensor.xform(p_pos.cross(p_j));
 	}
 
 	_FORCE_INLINE_ void apply_bias_impulse(const Vector3 &p_pos, const Vector3 &p_j) {
 
 		biased_linear_velocity += p_j * _inv_mass;
-		biased_angular_velocity += _inv_inertia_tensor.xform((p_pos - center_of_mass).cross(p_j));
+		biased_angular_velocity += _inv_inertia_tensor.xform(p_pos.cross(p_j));
 	}
 
-	_FORCE_INLINE_ void apply_bias_torque_impulse(const Vector3 &p_j) {
+	_FORCE_INLINE_ void apply_torque_impulse(const Vector3 &p_j) {
 
-		biased_angular_velocity += _inv_inertia_tensor.xform(p_j);
+		angular_velocity += _inv_inertia_tensor.xform(p_j);
 	}
 
 	_FORCE_INLINE_ void add_force(const Vector3 &p_force, const Vector3 &p_pos) {
@@ -249,8 +235,8 @@ public:
 		set_active(true);
 	}
 
-	void set_param(PhysicsServer::BodyParameter p_param, real_t);
-	real_t get_param(PhysicsServer::BodyParameter p_param) const;
+	void set_param(PhysicsServer::BodyParameter p_param, float);
+	float get_param(PhysicsServer::BodyParameter p_param) const;
 
 	void set_mode(PhysicsServer::BodyMode p_mode);
 	PhysicsServer::BodyMode get_mode() const;
@@ -273,7 +259,7 @@ public:
 
 	_FORCE_INLINE_ real_t get_inv_mass() const { return _inv_mass; }
 	_FORCE_INLINE_ Vector3 get_inv_inertia() const { return _inv_inertia; }
-	_FORCE_INLINE_ Basis get_inv_inertia_tensor() const { return _inv_inertia_tensor; }
+	_FORCE_INLINE_ Matrix3 get_inv_inertia_tensor() const { return _inv_inertia_tensor; }
 	_FORCE_INLINE_ real_t get_friction() const { return friction; }
 	_FORCE_INLINE_ Vector3 get_gravity() const { return gravity; }
 	_FORCE_INLINE_ real_t get_bounce() const { return bounce; }
@@ -286,12 +272,12 @@ public:
 
 	_FORCE_INLINE_ Vector3 get_velocity_in_local_point(const Vector3 &rel_pos) const {
 
-		return linear_velocity + angular_velocity.cross(rel_pos - center_of_mass);
+		return linear_velocity + angular_velocity.cross(rel_pos);
 	}
 
 	_FORCE_INLINE_ real_t compute_impulse_denominator(const Vector3 &p_pos, const Vector3 &p_normal) const {
 
-		Vector3 r0 = p_pos - get_transform().origin - center_of_mass;
+		Vector3 r0 = p_pos - get_transform().origin;
 
 		Vector3 c0 = (r0).cross(p_normal);
 
@@ -317,7 +303,7 @@ public:
 
 //add contact inline
 
-void BodySW::add_contact(const Vector3 &p_local_pos, const Vector3 &p_local_normal, real_t p_depth, int p_local_shape, const Vector3 &p_collider_pos, int p_collider_shape, ObjectID p_collider_instance_id, const RID &p_collider, const Vector3 &p_collider_velocity_at_pos) {
+void BodySW::add_contact(const Vector3 &p_local_pos, const Vector3 &p_local_normal, float p_depth, int p_local_shape, const Vector3 &p_collider_pos, int p_collider_shape, ObjectID p_collider_instance_id, const RID &p_collider, const Vector3 &p_collider_velocity_at_pos) {
 
 	int c_max = contacts.size();
 
@@ -332,7 +318,7 @@ void BodySW::add_contact(const Vector3 &p_local_pos, const Vector3 &p_local_norm
 		idx = contact_count++;
 	} else {
 
-		real_t least_depth = 1e20;
+		float least_depth = 1e20;
 		int least_deep = -1;
 		for (int i = 0; i < c_max; i++) {
 
@@ -363,7 +349,7 @@ void BodySW::add_contact(const Vector3 &p_local_pos, const Vector3 &p_local_norm
 
 class PhysicsDirectBodyStateSW : public PhysicsDirectBodyState {
 
-	GDCLASS(PhysicsDirectBodyStateSW, PhysicsDirectBodyState);
+	OBJ_TYPE(PhysicsDirectBodyStateSW, PhysicsDirectBodyState);
 
 public:
 	static PhysicsDirectBodyStateSW *singleton;
@@ -371,15 +357,12 @@ public:
 	real_t step;
 
 	virtual Vector3 get_total_gravity() const { return body->gravity; } // get gravity vector working on this body space/area
-	virtual real_t get_total_angular_damp() const { return body->area_angular_damp; } // get density of this body space/area
-	virtual real_t get_total_linear_damp() const { return body->area_linear_damp; } // get density of this body space/area
+	virtual float get_total_angular_damp() const { return body->area_angular_damp; } // get density of this body space/area
+	virtual float get_total_linear_damp() const { return body->area_linear_damp; } // get density of this body space/area
 
-	virtual Vector3 get_center_of_mass() const { return body->get_center_of_mass(); }
-	virtual Basis get_principal_inertia_axes() const { return body->get_principal_inertia_axes(); }
-
-	virtual real_t get_inverse_mass() const { return body->get_inv_mass(); } // get the mass
+	virtual float get_inverse_mass() const { return body->get_inv_mass(); } // get the mass
 	virtual Vector3 get_inverse_inertia() const { return body->get_inv_inertia(); } // get density of this body space
-	virtual Basis get_inverse_inertia_tensor() const { return body->get_inv_inertia_tensor(); } // get density of this body space
+	virtual Matrix3 get_inverse_inertia_tensor() const { return body->get_inv_inertia_tensor(); } // get density of this body space
 
 	virtual void set_linear_velocity(const Vector3 &p_velocity) { body->set_linear_velocity(p_velocity); }
 	virtual Vector3 get_linear_velocity() const { return body->get_linear_velocity(); }
@@ -392,14 +375,13 @@ public:
 
 	virtual void add_force(const Vector3 &p_force, const Vector3 &p_pos) { body->add_force(p_force, p_pos); }
 	virtual void apply_impulse(const Vector3 &p_pos, const Vector3 &p_j) { body->apply_impulse(p_pos, p_j); }
-	virtual void apply_torque_impulse(const Vector3 &p_j) { body->apply_torque_impulse(p_j); }
 
 	virtual void set_sleep_state(bool p_enable) { body->set_active(!p_enable); }
 	virtual bool is_sleeping() const { return !body->is_active(); }
 
 	virtual int get_contact_count() const { return body->contact_count; }
 
-	virtual Vector3 get_contact_local_position(int p_contact_idx) const {
+	virtual Vector3 get_contact_local_pos(int p_contact_idx) const {
 		ERR_FAIL_INDEX_V(p_contact_idx, body->contact_count, Vector3());
 		return body->contacts[p_contact_idx].local_pos;
 	}
@@ -416,7 +398,7 @@ public:
 		ERR_FAIL_INDEX_V(p_contact_idx, body->contact_count, RID());
 		return body->contacts[p_contact_idx].collider;
 	}
-	virtual Vector3 get_contact_collider_position(int p_contact_idx) const {
+	virtual Vector3 get_contact_collider_pos(int p_contact_idx) const {
 		ERR_FAIL_INDEX_V(p_contact_idx, body->contact_count, Vector3());
 		return body->contacts[p_contact_idx].collider_pos;
 	}
@@ -428,7 +410,7 @@ public:
 		ERR_FAIL_INDEX_V(p_contact_idx, body->contact_count, 0);
 		return body->contacts[p_contact_idx].collider_shape;
 	}
-	virtual Vector3 get_contact_collider_velocity_at_position(int p_contact_idx) const {
+	virtual Vector3 get_contact_collider_velocity_at_pos(int p_contact_idx) const {
 		ERR_FAIL_INDEX_V(p_contact_idx, body->contact_count, Vector3());
 		return body->contacts[p_contact_idx].collider_velocity_at_pos;
 	}

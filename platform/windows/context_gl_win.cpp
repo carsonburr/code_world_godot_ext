@@ -27,7 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
-#if defined(OPENGL_ENABLED) || defined(GLES2_ENABLED)
+#if defined(OPENGL_ENABLED) || defined(LEGACYGL_ENABLED) || defined(GLES2_ENABLED)
 
 //
 // C++ Implementation: context_gl_x11
@@ -105,8 +105,6 @@ bool ContextGL_Win::is_using_vsync() const {
 	return use_vsync;
 }
 
-#define _WGL_CONTEXT_DEBUG_BIT_ARB 0x0001
-
 Error ContextGL_Win::initialize() {
 
 	static PIXELFORMATDESCRIPTOR pfd = {
@@ -130,28 +128,24 @@ Error ContextGL_Win::initialize() {
 		0, 0, 0 // Layer Masks Ignored
 	};
 
-	hDC = GetDC(hWnd);
-	if (!hDC) {
+	if (!(hDC = GetDC(hWnd))) {
 		MessageBox(NULL, "Can't Create A GL Device Context.", "ERROR", MB_OK | MB_ICONEXCLAMATION);
 		return ERR_CANT_CREATE; // Return FALSE
 	}
 
-	pixel_format = ChoosePixelFormat(hDC, &pfd);
-	if (!pixel_format) // Did Windows Find A Matching Pixel Format?
+	if (!(pixel_format = ChoosePixelFormat(hDC, &pfd))) // Did Windows Find A Matching Pixel Format?
 	{
 		MessageBox(NULL, "Can't Find A Suitable pixel_format.", "ERROR", MB_OK | MB_ICONEXCLAMATION);
 		return ERR_CANT_CREATE; // Return FALSE
 	}
 
-	BOOL ret = SetPixelFormat(hDC, pixel_format, &pfd);
-	if (!ret) // Are We Able To Set The Pixel Format?
+	if (!SetPixelFormat(hDC, pixel_format, &pfd)) // Are We Able To Set The Pixel Format?
 	{
 		MessageBox(NULL, "Can't Set The pixel_format.", "ERROR", MB_OK | MB_ICONEXCLAMATION);
 		return ERR_CANT_CREATE; // Return FALSE
 	}
 
-	hRC = wglCreateContext(hDC);
-	if (!hRC) // Are We Able To Get A Rendering Context?
+	if (!(hRC = wglCreateContext(hDC))) // Are We Able To Get A Rendering Context?
 	{
 		MessageBox(NULL, "Can't Create A Temporary GL Rendering Context.", "ERROR", MB_OK | MB_ICONEXCLAMATION);
 		return ERR_CANT_CREATE; // Return FALSE
@@ -162,10 +156,10 @@ Error ContextGL_Win::initialize() {
 	if (opengl_3_context) {
 
 		int attribs[] = {
-			WGL_CONTEXT_MAJOR_VERSION_ARB, 3, //we want a 3.3 context
-			WGL_CONTEXT_MINOR_VERSION_ARB, 3,
+			WGL_CONTEXT_MAJOR_VERSION_ARB, 3, //we want a 3.1 context
+			WGL_CONTEXT_MINOR_VERSION_ARB, 2,
 			//and it shall be forward compatible so that we can only use up to date functionality
-			WGL_CONTEXT_FLAGS_ARB, WGL_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB | _WGL_CONTEXT_DEBUG_BIT_ARB,
+			WGL_CONTEXT_FLAGS_ARB, WGL_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB,
 			0
 		}; //zero indicates the end of the array
 
@@ -174,15 +168,15 @@ Error ContextGL_Win::initialize() {
 
 		if (wglCreateContextAttribsARB == NULL) //OpenGL 3.0 is not supported
 		{
-			MessageBox(NULL, "Cannot get Proc Address for CreateContextAttribs", "ERROR", MB_OK | MB_ICONEXCLAMATION);
+			MessageBox(NULL, "Cannot get Proc Adress for CreateContextAttribs", "ERROR", MB_OK | MB_ICONEXCLAMATION);
 			wglDeleteContext(hRC);
 			return ERR_CANT_CREATE;
 		}
 
-		HGLRC new_hRC = wglCreateContextAttribsARB(hDC, 0, attribs);
-		if (!new_hRC) {
+		HGLRC new_hRC;
+		if (!(new_hRC = wglCreateContextAttribsARB(hDC, 0, attribs))) {
 			wglDeleteContext(hRC);
-			MessageBox(NULL, "Can't Create An OpenGL 3.3 Rendering Context.", "ERROR", MB_OK | MB_ICONEXCLAMATION);
+			MessageBox(NULL, "Can't Create An OpenGL 3.1 Rendering Context.", "ERROR", MB_OK | MB_ICONEXCLAMATION);
 			return ERR_CANT_CREATE; // Return false
 		}
 		wglMakeCurrent(hDC, NULL);
@@ -191,15 +185,15 @@ Error ContextGL_Win::initialize() {
 
 		if (!wglMakeCurrent(hDC, hRC)) // Try To Activate The Rendering Context
 		{
-			MessageBox(NULL, "Can't Activate The GL 3.3 Rendering Context.", "ERROR", MB_OK | MB_ICONEXCLAMATION);
+			MessageBox(NULL, "Can't Activate The GL 3.1 Rendering Context.", "ERROR", MB_OK | MB_ICONEXCLAMATION);
 			return ERR_CANT_CREATE; // Return FALSE
 		}
 
-		printf("Activated GL 3.3 context");
+		printf("Activated GL 3.1 context");
 	}
 
 	wglSwapIntervalEXT = (PFNWGLSWAPINTERVALEXTPROC)wglGetProcAddress("wglSwapIntervalEXT");
-	//glWrapperInit(wrapper_get_proc_address);
+	//	glWrapperInit(wrapper_get_proc_address);
 
 	return OK;
 }

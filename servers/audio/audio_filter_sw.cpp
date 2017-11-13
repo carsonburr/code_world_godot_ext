@@ -58,7 +58,7 @@ void AudioFilterSW::prepare_coefficients(Coeffs *p_coeffs) {
 
 	double final_cutoff = (cutoff > sr_limit) ? sr_limit : cutoff;
 	if (final_cutoff < 1) //avoid crapness
-		final_cutoff = 1; //don't allow less than this
+		final_cutoff = 1; //dont allow less than this
 
 	double omega = 2.0 * Math_PI * final_cutoff / sampling_rate;
 
@@ -137,9 +137,9 @@ void AudioFilterSW::prepare_coefficients(Coeffs *p_coeffs) {
 			//this one is extra tricky
 			double hicutoff = resonance;
 			double centercutoff = (cutoff + resonance) / 2.0;
-			double bandwidth = (Math::log(centercutoff) - Math::log(hicutoff)) / Math::log((double)2);
+			double bandwidth = (Math::log(centercutoff) - Math::log(hicutoff)) / Math::log(2);
 			omega = 2.0 * Math_PI * centercutoff / sampling_rate;
-			alpha = Math::sin(omega) * Math::sinh(Math::log((double)2) / 2 * bandwidth * omega / Math::sin(omega));
+			alpha = Math::sin(omega) * Math::sinh(Math::log(2) / 2 * bandwidth * omega / Math::sin(omega));
 			a0 = 1 + alpha;
 
 			p_coeffs->b0 = alpha;
@@ -242,49 +242,28 @@ AudioFilterSW::Processor::Processor() {
 	set_filter(NULL);
 }
 
-void AudioFilterSW::Processor::set_filter(AudioFilterSW *p_filter, bool p_clear_history) {
+void AudioFilterSW::Processor::set_filter(AudioFilterSW *p_filter) {
 
-	if (p_clear_history) {
-		ha1 = ha2 = hb1 = hb2 = 0;
-	}
+	ha1 = ha2 = hb1 = hb2 = 0;
 	filter = p_filter;
 }
 
-void AudioFilterSW::Processor::update_coeffs(int p_interp_buffer_len) {
+void AudioFilterSW::Processor::update_coeffs() {
 
 	if (!filter)
 		return;
 
-	if (p_interp_buffer_len) { //interpolate
-		Coeffs old_coeffs = coeffs;
-		filter->prepare_coefficients(&coeffs);
-		incr_coeffs.a1 = (coeffs.a1 - old_coeffs.a1) / p_interp_buffer_len;
-		incr_coeffs.a2 = (coeffs.a2 - old_coeffs.a2) / p_interp_buffer_len;
-		incr_coeffs.b0 = (coeffs.b0 - old_coeffs.b0) / p_interp_buffer_len;
-		incr_coeffs.b1 = (coeffs.b1 - old_coeffs.b1) / p_interp_buffer_len;
-		incr_coeffs.b2 = (coeffs.b2 - old_coeffs.b2) / p_interp_buffer_len;
-		coeffs = old_coeffs;
-	} else {
-		filter->prepare_coefficients(&coeffs);
-	}
+	filter->prepare_coefficients(&coeffs);
 }
 
-void AudioFilterSW::Processor::process(float *p_samples, int p_amount, int p_stride, bool p_interpolate) {
+void AudioFilterSW::Processor::process(float *p_samples, int p_amount, int p_stride) {
 
 	if (!filter)
 		return;
 
-	if (p_interpolate) {
-		for (int i = 0; i < p_amount; i++) {
+	for (int i = 0; i < p_amount; i++) {
 
-			process_one_interp(*p_samples);
-			p_samples += p_stride;
-		}
-	} else {
-		for (int i = 0; i < p_amount; i++) {
-
-			process_one(*p_samples);
-			p_samples += p_stride;
-		}
+		process_one(*p_samples);
+		p_samples += p_stride;
 	}
 }

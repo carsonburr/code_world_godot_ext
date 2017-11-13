@@ -46,7 +46,7 @@
 
 class ScriptEditorQuickOpen : public ConfirmationDialog {
 
-	GDCLASS(ScriptEditorQuickOpen, ConfirmationDialog)
+	OBJ_TYPE(ScriptEditorQuickOpen, ConfirmationDialog)
 
 	LineEdit *search_box;
 	Tree *search_options;
@@ -54,7 +54,7 @@ class ScriptEditorQuickOpen : public ConfirmationDialog {
 
 	void _update_search();
 
-	void _sbox_input(const Ref<InputEvent> &p_ie);
+	void _sbox_input(const InputEvent &p_ie);
 	Vector<String> functions;
 
 	void _confirmed();
@@ -65,65 +65,49 @@ protected:
 	static void _bind_methods();
 
 public:
-	void popup(const Vector<String> &p_functions, bool p_dontclear = false);
+	void popup(const Vector<String> &p_base, bool p_dontclear = false);
 	ScriptEditorQuickOpen();
 };
 
 class ScriptEditorDebugger;
 
-class ScriptEditorBase : public Control {
+class ScriptTextEditor : public CodeTextEditor {
 
-	GDCLASS(ScriptEditorBase, Control);
+	OBJ_TYPE(ScriptTextEditor, CodeTextEditor);
+
+	Ref<Script> script;
+
+	Vector<String> functions;
 
 protected:
+	virtual void _validate_script();
+	virtual void _code_complete_script(const String &p_code, List<String> *r_options);
+	virtual void _load_theme_settings();
+	void _notification(int p_what);
 	static void _bind_methods();
 
 public:
-	virtual void apply_code() = 0;
-	virtual Ref<Script> get_edited_script() const = 0;
-	virtual Vector<String> get_functions() = 0;
-	virtual void set_edited_script(const Ref<Script> &p_script) = 0;
-	virtual void reload_text() = 0;
-	virtual String get_name() = 0;
-	virtual Ref<Texture> get_icon() = 0;
-	virtual bool is_unsaved() = 0;
-	virtual Variant get_edit_state() = 0;
-	virtual void set_edit_state(const Variant &p_state) = 0;
-	virtual void goto_line(int p_line, bool p_with_error = false) = 0;
-	virtual void trim_trailing_whitespace() = 0;
-	virtual void convert_indent_to_spaces() = 0;
-	virtual void convert_indent_to_tabs() = 0;
-	virtual void ensure_focus() = 0;
-	virtual void tag_saved_version() = 0;
-	virtual void reload(bool p_soft) = 0;
-	virtual void get_breakpoints(List<int> *p_breakpoints) = 0;
-	virtual void add_callback(const String &p_function, PoolStringArray p_args) = 0;
-	virtual void update_settings() = 0;
-	virtual void set_debugger_active(bool p_active) = 0;
-	virtual bool can_lose_focus_on_node_selection() { return true; }
-
-	virtual bool show_members_overview() = 0;
-
-	virtual void set_tooltip_request_func(String p_method, Object *p_obj) = 0;
-	virtual Control *get_edit_menu() = 0;
-	virtual void clear_edit_menu() = 0;
-
-	ScriptEditorBase() {}
+	virtual void apply_code();
+	Ref<Script> get_edited_script() const;
+	Vector<String> get_functions();
+	void set_edited_script(const Ref<Script> &p_script);
+	void reload_text();
+	String get_name();
+	Ref<Texture> get_icon();
+	bool is_unsaved();
+	ScriptTextEditor();
 };
-
-typedef ScriptEditorBase *(*CreateScriptEditorFunc)(const Ref<Script> &p_script);
 
 class EditorScriptCodeCompletionCache;
 
-class ScriptEditor : public PanelContainer {
+class ScriptEditor : public VBoxContainer {
 
-	GDCLASS(ScriptEditor, PanelContainer);
+	OBJ_TYPE(ScriptEditor, VBoxContainer);
 
 	EditorNode *editor;
 	enum {
 		FILE_NEW,
 		FILE_OPEN,
-		FILE_OPEN_RECENT,
 		FILE_SAVE,
 		FILE_SAVE_AS,
 		FILE_SAVE_ALL,
@@ -131,25 +115,45 @@ class ScriptEditor : public PanelContainer {
 		FILE_RELOAD_THEME,
 		FILE_SAVE_THEME,
 		FILE_SAVE_THEME_AS,
-		FILE_RUN,
 		FILE_CLOSE,
 		CLOSE_DOCS,
-		CLOSE_ALL,
-		TOGGLE_SCRIPTS_PANEL,
+		EDIT_UNDO,
+		EDIT_REDO,
+		EDIT_CUT,
+		EDIT_COPY,
+		EDIT_PASTE,
+		EDIT_SELECT_ALL,
+		EDIT_COMPLETE,
+		EDIT_AUTO_INDENT,
+		EDIT_TRIM_TRAILING_WHITESAPCE,
+		EDIT_TOGGLE_COMMENT,
+		EDIT_MOVE_LINE_UP,
+		EDIT_MOVE_LINE_DOWN,
+		EDIT_INDENT_RIGHT,
+		EDIT_INDENT_LEFT,
+		EDIT_CLONE_DOWN,
 		FILE_TOOL_RELOAD,
 		FILE_TOOL_RELOAD_SOFT,
+		SEARCH_FIND,
+		SEARCH_FIND_NEXT,
+		SEARCH_FIND_PREV,
+		SEARCH_REPLACE,
+		SEARCH_LOCATE_FUNCTION,
+		SEARCH_GOTO_LINE,
+		SEARCH_HELP,
+		SEARCH_CLASSES,
+		SEARCH_WEBSITE,
+		DEBUG_TOGGLE_BREAKPOINT,
+		DEBUG_REMOVE_ALL_BREAKPOINTS,
+		DEBUG_GOTO_NEXT_BREAKPOINT,
+		DEBUG_GOTO_PREV_BREAKPOINT,
 		DEBUG_NEXT,
 		DEBUG_STEP,
 		DEBUG_BREAK,
 		DEBUG_CONTINUE,
 		DEBUG_SHOW,
 		DEBUG_SHOW_KEEP_OPEN,
-		DEBUG_WITH_EXTERNAL_EDITOR,
-		SEARCH_HELP,
-		SEARCH_CLASSES,
-		SEARCH_WEBSITE,
-		HELP_SEARCH_FIND,
-		HELP_SEARCH_FIND_NEXT,
+		HELP_CONTEXTUAL,
 		WINDOW_MOVE_LEFT,
 		WINDOW_MOVE_RIGHT,
 		WINDOW_NEXT,
@@ -171,12 +175,12 @@ class ScriptEditor : public PanelContainer {
 	HBoxContainer *menu_hb;
 	MenuButton *file_menu;
 	MenuButton *edit_menu;
+	MenuButton *search_menu;
 	MenuButton *script_search_menu;
 	MenuButton *debug_menu;
+	MenuButton *help_menu;
 	Timer *autosave_timer;
 	uint64_t idle;
-
-	PopupMenu *recent_scripts;
 
 	Button *help_search;
 	Button *site_search;
@@ -187,11 +191,10 @@ class ScriptEditor : public PanelContainer {
 	HSplitContainer *script_split;
 	ItemList *members_overview;
 	bool members_overview_enabled;
-	ItemList *help_overview;
-	bool help_overview_enabled;
 	VSplitContainer *list_split;
 	TabContainer *tab_container;
 	EditorFileDialog *file_dialog;
+	GotoLineDialog *goto_line_dialog;
 	ConfirmationDialog *erase_tab_confirm;
 	ScriptCreateDialog *script_create_dialog;
 	ScriptEditorDebugger *debugger;
@@ -199,59 +202,44 @@ class ScriptEditor : public PanelContainer {
 
 	String current_theme;
 
-	TextureRect *script_icon;
+	TextureFrame *script_icon;
 	Label *script_name_label;
 
 	ToolButton *script_back;
 	ToolButton *script_forward;
 
-	enum {
-		SCRIPT_EDITOR_FUNC_MAX = 32
-	};
-
-	static int script_editor_func_count;
-	static CreateScriptEditorFunc script_editor_funcs[SCRIPT_EDITOR_FUNC_MAX];
-
 	struct ScriptHistory {
 
 		Control *control;
-		Variant state;
+		int scroll_pos;
+		int cursor_column;
+		int cursor_row;
 	};
 
 	Vector<ScriptHistory> history;
 	int history_pos;
 
-	Vector<String> previous_scripts;
-
 	EditorHelpIndex *help_index;
 
 	void _tab_changed(int p_which);
-	void _menu_option(int p_option);
+	void _menu_option(int p_optin);
 
 	Tree *disk_changed_list;
 	ConfirmationDialog *disk_changed;
 
 	bool restoring_layout;
 
-	String _get_debug_tooltip(const String &p_text, Node *_se);
+	String _get_debug_tooltip(const String &p_text, Node *_ste);
 
 	void _resave_scripts(const String &p_str);
 	void _reload_scripts();
 
 	bool _test_script_times_on_disk(Ref<Script> p_for_script = Ref<Script>());
 
-	void _add_recent_script(String p_path);
-	void _update_recent_scripts();
-	void _open_recent_script(int p_idx);
-
-	void _close_tab(int p_idx, bool p_save = true);
+	void _close_tab(int p_idx);
 
 	void _close_current_tab();
-	void _close_discard_current_tab(const String &p_str);
 	void _close_docs_tab();
-	void _close_all_tabs();
-
-	void _ask_close_current_unsaved_tab(ScriptEditorBase *current);
 
 	bool grab_focus_block;
 
@@ -259,7 +247,7 @@ class ScriptEditor : public PanelContainer {
 	bool auto_reload_running_scripts;
 	void _live_auto_reload_running_scripts();
 
-	void _update_selected_editor_menu();
+	ScriptEditorQuickOpen *quick_open;
 
 	EditorScriptCodeCompletionCache *completion_cache;
 
@@ -269,12 +257,10 @@ class ScriptEditor : public PanelContainer {
 
 	int edit_pass;
 
-	void _add_callback(Object *p_obj, const String &p_function, const PoolStringArray &p_args);
+	void _add_callback(Object *p_obj, const String &p_function, const StringArray &p_args);
 	void _res_saved_callback(const Ref<Resource> &p_res);
 
 	bool trim_trailing_whitespace_on_save;
-	bool use_space_indentation;
-	bool convert_indent_on_save;
 
 	void _trim_trailing_whitespace(TextEdit *tx);
 
@@ -291,14 +277,11 @@ class ScriptEditor : public PanelContainer {
 
 	void _update_members_overview_visibility();
 	void _update_members_overview();
+	void _members_overview_selected(int p_idx);
+
 	void _update_script_names();
 
-	void _members_overview_selected(int p_idx);
 	void _script_selected(int p_idx);
-
-	void _update_help_overview_visibility();
-	void _update_help_overview();
-	void _help_overview_selected(int p_idx);
 
 	void _find_scripts(Node *p_base, Node *p_current, Set<Ref<Script> > &used);
 
@@ -306,10 +289,7 @@ class ScriptEditor : public PanelContainer {
 
 	void _script_split_dragged(float);
 
-	void _unhandled_input(const Ref<InputEvent> &p_event);
-
-	void _help_search(String p_text);
-	void _help_index(String p_text);
+	void _unhandled_input(const InputEvent &p_event);
 
 	void _history_forward();
 	void _history_back();
@@ -319,20 +299,13 @@ class ScriptEditor : public PanelContainer {
 	void _help_class_open(const String &p_class);
 	void _help_class_goto(const String &p_desc);
 	void _update_history_arrows();
-	void _save_history();
 	void _go_to_tab(int p_idx);
 	void _update_history_pos(int p_new_pos);
 	void _update_script_colors();
 	void _update_modified_scripts_for_external_editor(Ref<Script> p_for_script = Ref<Script>());
 
-	void _script_changed();
 	int file_dialog_option;
 	void _file_dialog_action(String p_file);
-
-	Ref<Script> _get_current_script();
-	Array _get_open_scripts() const;
-
-	static void _open_script_request(const String &p_path);
 
 	static ScriptEditor *script_editor;
 
@@ -347,11 +320,16 @@ public:
 	void apply_scripts() const;
 
 	void ensure_select_current();
+	void edit(const Ref<Script> &p_script);
 
-	_FORCE_INLINE_ bool edit(const Ref<Script> &p_script, bool p_grab_focus = true) { return edit(p_script, -1, 0, p_grab_focus); }
-	bool edit(const Ref<Script> &p_script, int p_line, int p_col, bool p_grab_focus = true);
+	Dictionary get_state() const;
+	void set_state(const Dictionary &p_state);
+	void clear();
 
 	void get_breakpoints(List<String> *p_breakpoints);
+
+	void swap_lines(TextEdit *tx, int line1, int line2);
+	void _breakpoint_toggled(const int p_row);
 
 	void save_all_scripts();
 
@@ -359,34 +337,25 @@ public:
 	void get_window_layout(Ref<ConfigFile> p_layout);
 
 	void set_scene_root_script(Ref<Script> p_script);
-	Vector<Ref<Script> > get_open_scripts() const;
 
-	bool script_goto_method(Ref<Script> p_script, const String &p_method);
+	bool script_go_to_method(Ref<Script> p_script, const String &p_method);
 
 	virtual void edited_scene_changed();
-
-	void notify_script_close(const Ref<Script> &p_script);
-	void notify_script_changed(const Ref<Script> &p_script);
 
 	void close_builtin_scripts_from_scene(const String &p_scene);
 
 	void goto_help(const String &p_desc) { _help_class_goto(p_desc); }
 
-	bool can_take_away_focus() const;
-
-	VSplitContainer *get_left_list_split() { return list_split; }
-
 	ScriptEditorDebugger *get_debugger() { return debugger; }
 	void set_live_auto_reload_running_scripts(bool p_enabled);
 
-	static void register_create_script_editor_function(CreateScriptEditorFunc p_func);
 	ScriptEditor(EditorNode *p_editor);
 	~ScriptEditor();
 };
 
 class ScriptEditorPlugin : public EditorPlugin {
 
-	GDCLASS(ScriptEditorPlugin, EditorPlugin);
+	OBJ_TYPE(ScriptEditorPlugin, EditorPlugin);
 
 	ScriptEditor *script_editor;
 	EditorNode *editor;
@@ -394,10 +363,14 @@ class ScriptEditorPlugin : public EditorPlugin {
 public:
 	virtual String get_name() const { return "Script"; }
 	bool has_main_screen() const { return true; }
-	virtual void edit(Object *p_object);
-	virtual bool handles(Object *p_object) const;
+	virtual void edit(Object *p_node);
+	virtual bool handles(Object *p_node) const;
 	virtual void make_visible(bool p_visible);
 	virtual void selected_notify();
+
+	Dictionary get_state() const;
+	virtual void set_state(const Dictionary &p_state);
+	virtual void clear();
 
 	virtual void save_external_data();
 	virtual void apply_changes();

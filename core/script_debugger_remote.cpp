@@ -28,12 +28,12 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 #include "script_debugger_remote.h"
-
+#include "core/io/marshalls.h"
+#include "globals.h"
 #include "io/ip.h"
-#include "io/marshalls.h"
 #include "os/input.h"
 #include "os/os.h"
-#include "project_settings.h"
+
 void ScriptDebuggerRemote::_send_video_memory() {
 
 	List<ResourceUsage> usage;
@@ -65,7 +65,7 @@ Error ScriptDebuggerRemote::connect_to_host(const String &p_host, uint16_t p_por
 	int port = p_port;
 
 	int tries = 3;
-	tcp_client->connect_to_host(ip, port);
+	tcp_client->connect(ip, port);
 
 	while (tries--) {
 
@@ -95,7 +95,7 @@ static Object *_ScriptDebuggerRemote_find = NULL;
 static void _ScriptDebuggerRemote_debug_func(Object *p_obj) {
 
 	if (_ScriptDebuggerRemote_find == p_obj) {
-		_ScriptDebuggerRemote_found_id = p_obj->get_instance_id();
+		_ScriptDebuggerRemote_found_id = p_obj->get_instance_ID();
 	}
 }
 
@@ -109,7 +109,7 @@ static ObjectID safe_get_instance_id(const Variant &p_v) {
 		REF r = p_v;
 		if (r.is_valid()) {
 
-			return r->get_instance_id();
+			return r->get_instance_ID();
 		} else {
 
 			_ScriptDebuggerRemote_found_id = 0;
@@ -120,27 +120,12 @@ static ObjectID safe_get_instance_id(const Variant &p_v) {
 	}
 }
 
-void ScriptDebuggerRemote::_put_variable(const String &p_name, const Variant &p_variable) {
-
-	packet_peer_stream->put_var(p_name);
-	int len = 0;
-	Error err = encode_variant(p_variable, NULL, len);
-	if (err != OK)
-		ERR_PRINT("Failed to encode variant");
-
-	if (len > packet_peer_stream->get_output_buffer_max_size()) { //limit to max size
-		packet_peer_stream->put_var(Variant());
-	} else {
-		packet_peer_stream->put_var(p_variable);
-	}
-}
-
 void ScriptDebuggerRemote::debug(ScriptLanguage *p_script, bool p_can_continue) {
 
 	//this function is called when there is a debugger break (bug on script)
 	//or when execution is paused from editor
 
-	if (!tcp_client->is_connected_to_host()) {
+	if (!tcp_client->is_connected()) {
 		ERR_EXPLAIN("Script Debugger failed to connect, but being used anyway.");
 		ERR_FAIL();
 	}
@@ -198,6 +183,8 @@ void ScriptDebuggerRemote::debug(ScriptLanguage *p_script, bool p_can_continue) 
 				ERR_CONTINUE(cmd.size() != 1);
 				int lv = cmd[0];
 
+				ScriptInstance *self_instance = p_script->debug_get_stack_level_instance(lv);
+
 				List<String> members;
 				List<Variant> member_vals;
 
@@ -212,32 +199,74 @@ void ScriptDebuggerRemote::debug(ScriptLanguage *p_script, bool p_can_continue) 
 
 				ERR_CONTINUE(locals.size() != local_vals.size());
 
+				List<String> globals;
+				List<Variant> global_vals;
+
+				p_script->debug_get_globals(&globals, &global_vals);
+
+				ERR_CONTINUE(globals.size() != global_vals.size());
+
 				packet_peer_stream->put_var("stack_frame_vars");
-				packet_peer_stream->put_var(2 + locals.size() * 2 + members.size() * 2);
+				packet_peer_stream->put_var(locals.size() + members.size() + globals.size());
 
-				{ //members
-					packet_peer_stream->put_var(members.size());
-
-					List<String>::Element *E = members.front();
-					List<Variant>::Element *F = member_vals.front();
+				{ //locals
+					List<String>::Element *E = locals.front();
+					List<Variant>::Element *F = local_vals.front();
 
 					while (E) {
 
-						_put_variable(E->get(), F->get());
+						PropertyInfo pi(var.get_type(), String("locals/") + E->get());
+						packet_peer_stream->put_var(_serialize(F->get(), pi));
 
 						E = E->next();
 						F = F->next();
 					}
 				}
 
-				{ //locals
-					packet_peer_stream->put_var(locals.size());
+				{ //members
 
-					List<String>::Element *E = locals.front();
-					List<Variant>::Element *F = local_vals.front();
+					if (self_instance) { // self
+
+						members.push_front("self");
+						member_vals.push_front(self_instance->get_owner());
+					}
+
+					List<String>::Element *E = members.front();
+					List<Variant>::Element *F = member_vals.front();
 
 					while (E) {
-						_put_variable(E->get(), F->get());
+
+						PropertyInfo pi(var.get_type(), String("members/") + E->get());
+						packet_peer_stream->put_var(_serialize(F->get(), pi));
+
+						E = E->next();
+						F = F->next();
+					}
+				}
+
+				if (self_instance) { // constants
+
+					Ref<Script> script = self_instance->get_script();
+					if (!script.is_null()) {
+
+						const Map<StringName, Variant> &constants = script->get_constants();
+
+						for (Map<StringName, Variant>::Element *E = constants.front(); E; E = E->next()) {
+
+							PropertyInfo pi(var.get_type(), String("constants/") + E->key());
+							packet_peer_stream->put_var(_serialize(E->value(), pi));
+						}
+					}
+				}
+
+				{ //globals
+					List<String>::Element *E = globals.front();
+					List<Variant>::Element *F = global_vals.front();
+
+					while (E) {
+
+						PropertyInfo pi(var.get_type(), String("globals/") + E->get());
+						packet_peer_stream->put_var(_serialize(F->get(), pi));
 
 						E = E->next();
 						F = F->next();
@@ -368,7 +397,7 @@ void ScriptDebuggerRemote::_get_output() {
 void ScriptDebuggerRemote::line_poll() {
 
 	//the purpose of this is just processing events every now and then when the script might get too busy
-	//otherwise bugs like infinite loops can't be caught
+	//otherwise bugs like infinite loops cant be catched
 	if (poll_every % 2048 == 0)
 		_poll_events();
 	poll_every++;
@@ -419,7 +448,7 @@ void ScriptDebuggerRemote::_err_handler(void *ud, const char *p_func, const char
 
 	sdr->mutex->lock();
 
-	if (!sdr->locking && sdr->tcp_client->is_connected_to_host()) {
+	if (!sdr->locking && sdr->tcp_client->is_connected()) {
 
 		sdr->errors.push_back(oe);
 	}
@@ -427,9 +456,9 @@ void ScriptDebuggerRemote::_err_handler(void *ud, const char *p_func, const char
 	sdr->mutex->unlock();
 }
 
-bool ScriptDebuggerRemote::_parse_live_edit(const Array &p_command) {
+bool ScriptDebuggerRemote::_parse_live_edit(const Array &cmd) {
 
-	String cmdstr = p_command[0];
+	String cmdstr = cmd[0];
 	if (!live_edit_funcs || !cmdstr.begins_with("live_"))
 		return false;
 
@@ -439,7 +468,7 @@ bool ScriptDebuggerRemote::_parse_live_edit(const Array &p_command) {
 		if (!live_edit_funcs->root_func)
 			return true;
 		//print_line("root: "+Variant(cmd).get_construct_string());
-		live_edit_funcs->root_func(live_edit_funcs->udata, p_command[1], p_command[2]);
+		live_edit_funcs->root_func(live_edit_funcs->udata, cmd[1], cmd[2]);
 
 	} else if (cmdstr == "live_node_path") {
 
@@ -447,75 +476,75 @@ bool ScriptDebuggerRemote::_parse_live_edit(const Array &p_command) {
 			return true;
 		//print_line("path: "+Variant(cmd).get_construct_string());
 
-		live_edit_funcs->node_path_func(live_edit_funcs->udata, p_command[1], p_command[2]);
+		live_edit_funcs->node_path_func(live_edit_funcs->udata, cmd[1], cmd[2]);
 
 	} else if (cmdstr == "live_res_path") {
 
 		if (!live_edit_funcs->res_path_func)
 			return true;
-		live_edit_funcs->res_path_func(live_edit_funcs->udata, p_command[1], p_command[2]);
+		live_edit_funcs->res_path_func(live_edit_funcs->udata, cmd[1], cmd[2]);
 
 	} else if (cmdstr == "live_node_prop_res") {
 		if (!live_edit_funcs->node_set_res_func)
 			return true;
 
-		live_edit_funcs->node_set_res_func(live_edit_funcs->udata, p_command[1], p_command[2], p_command[3]);
+		live_edit_funcs->node_set_res_func(live_edit_funcs->udata, cmd[1], cmd[2], cmd[3]);
 
 	} else if (cmdstr == "live_node_prop") {
 
 		if (!live_edit_funcs->node_set_func)
 			return true;
-		live_edit_funcs->node_set_func(live_edit_funcs->udata, p_command[1], p_command[2], p_command[3]);
+		live_edit_funcs->node_set_func(live_edit_funcs->udata, cmd[1], cmd[2], cmd[3]);
 
 	} else if (cmdstr == "live_res_prop_res") {
 
 		if (!live_edit_funcs->res_set_res_func)
 			return true;
-		live_edit_funcs->res_set_res_func(live_edit_funcs->udata, p_command[1], p_command[2], p_command[3]);
+		live_edit_funcs->res_set_res_func(live_edit_funcs->udata, cmd[1], cmd[2], cmd[3]);
 
 	} else if (cmdstr == "live_res_prop") {
 
 		if (!live_edit_funcs->res_set_func)
 			return true;
-		live_edit_funcs->res_set_func(live_edit_funcs->udata, p_command[1], p_command[2], p_command[3]);
+		live_edit_funcs->res_set_func(live_edit_funcs->udata, cmd[1], cmd[2], cmd[3]);
 
 	} else if (cmdstr == "live_node_call") {
 
 		if (!live_edit_funcs->node_call_func)
 			return true;
-		live_edit_funcs->node_call_func(live_edit_funcs->udata, p_command[1], p_command[2], p_command[3], p_command[4], p_command[5], p_command[6], p_command[7]);
+		live_edit_funcs->node_call_func(live_edit_funcs->udata, cmd[1], cmd[2], cmd[3], cmd[4], cmd[5], cmd[6], cmd[7]);
 
 	} else if (cmdstr == "live_res_call") {
 
 		if (!live_edit_funcs->res_call_func)
 			return true;
-		live_edit_funcs->res_call_func(live_edit_funcs->udata, p_command[1], p_command[2], p_command[3], p_command[4], p_command[5], p_command[6], p_command[7]);
+		live_edit_funcs->res_call_func(live_edit_funcs->udata, cmd[1], cmd[2], cmd[3], cmd[4], cmd[5], cmd[6], cmd[7]);
 
 	} else if (cmdstr == "live_create_node") {
 
-		live_edit_funcs->tree_create_node_func(live_edit_funcs->udata, p_command[1], p_command[2], p_command[3]);
+		live_edit_funcs->tree_create_node_func(live_edit_funcs->udata, cmd[1], cmd[2], cmd[3]);
 
 	} else if (cmdstr == "live_instance_node") {
 
-		live_edit_funcs->tree_instance_node_func(live_edit_funcs->udata, p_command[1], p_command[2], p_command[3]);
+		live_edit_funcs->tree_instance_node_func(live_edit_funcs->udata, cmd[1], cmd[2], cmd[3]);
 
 	} else if (cmdstr == "live_remove_node") {
 
-		live_edit_funcs->tree_remove_node_func(live_edit_funcs->udata, p_command[1]);
+		live_edit_funcs->tree_remove_node_func(live_edit_funcs->udata, cmd[1]);
 
 	} else if (cmdstr == "live_remove_and_keep_node") {
 
-		live_edit_funcs->tree_remove_and_keep_node_func(live_edit_funcs->udata, p_command[1], p_command[2]);
+		live_edit_funcs->tree_remove_and_keep_node_func(live_edit_funcs->udata, cmd[1], cmd[2]);
 	} else if (cmdstr == "live_restore_node") {
 
-		live_edit_funcs->tree_restore_node_func(live_edit_funcs->udata, p_command[1], p_command[2], p_command[3]);
+		live_edit_funcs->tree_restore_node_func(live_edit_funcs->udata, cmd[1], cmd[2], cmd[3]);
 
 	} else if (cmdstr == "live_duplicate_node") {
 
-		live_edit_funcs->tree_duplicate_node_func(live_edit_funcs->udata, p_command[1], p_command[2]);
+		live_edit_funcs->tree_duplicate_node_func(live_edit_funcs->udata, cmd[1], cmd[2]);
 	} else if (cmdstr == "live_reparent_node") {
 
-		live_edit_funcs->tree_reparent_node_func(live_edit_funcs->udata, p_command[1], p_command[2], p_command[3], p_command[4]);
+		live_edit_funcs->tree_reparent_node_func(live_edit_funcs->udata, cmd[1], cmd[2], cmd[3], cmd[4]);
 
 	} else {
 
@@ -531,56 +560,81 @@ void ScriptDebuggerRemote::_send_object_id(ObjectID p_id) {
 	if (!obj)
 		return;
 
+	Array props;
+	const uint32_t SEND_PROPERTIES = 0xFFFFFFFF; // All kind of properties are allowed
 	List<PropertyInfo> pinfo;
+	Set<StringName> ignored_properties;
 	obj->get_property_list(&pinfo, true);
+	bool query_props = true;
 
-	int props_to_send = 0;
-	for (List<PropertyInfo>::Element *E = pinfo.front(); E; E = E->next()) {
+	if (ScriptInstance *si = obj->get_script_instance()) {
+		if (!si->get_script().is_null()) {
 
-		if (E->get().usage & (PROPERTY_USAGE_EDITOR | PROPERTY_USAGE_CATEGORY)) {
-			props_to_send++;
+			const Map<StringName, Variant> &constants = si->get_script()->get_constants();
+			for (Map<StringName, Variant>::Element *E = constants.front(); E; E = E->next()) {
+
+				PropertyInfo pi(E->value().get_type(), String("constants/") + E->key());
+				props.push_back(_serialize(E->value(), pi));
+			}
+
+			const Set<StringName> &members = si->get_script()->get_members();
+			for (Set<StringName>::Element *E = members.front(); E; E = E->next()) {
+
+				Variant m;
+				if (si->get(E->get(), m)) {
+
+					PropertyInfo pi(m.get_type(), String("members/") + E->get());
+					props.push_back(_serialize(m, pi));
+
+					ignored_properties.insert(E->get());
+				}
+			}
+
+			PropertyInfo pi(Variant::OBJECT, String("Resource/script"));
+			props.push_back(_serialize(si->get_script(), pi));
+		}
+	} else if (Resource *res = obj->cast_to<Resource>()) {
+
+		if (res->cast_to<Script>()) {
+
+			const Map<StringName, Variant> &constants = res->cast_to<Script>()->get_constants();
+			for (Map<StringName, Variant>::Element *E = constants.front(); E; E = E->next()) {
+
+				PropertyInfo pi(E->value().get_type(), String("constants/") + E->key());
+				props.push_back(_serialize(E->value(), pi));
+			}
+		}
+
+		PropertyInfo pi(Variant::OBJECT, res->get_type_name(), PROPERTY_HINT_NONE, "", PROPERTY_USAGE_CATEGORY);
+		props.push_front(_serialize(res, pi));
+
+		PropertyInfo pathpi(Variant::STRING, "Resource/Resource");
+		pathpi.hint_string = "REMOTE:RES";
+		props.push_back(_serialize(res->get_path(), pathpi));
+
+		query_props = false;
+	} else if (obj->is_type("Node")) {
+
+		String path = obj->call("get_path");
+		PropertyInfo pi(Variant::OBJECT, String("Node/path"));
+		props.push_back(_serialize(path, pi));
+	}
+
+	if (query_props) {
+		for (List<PropertyInfo>::Element *E = pinfo.front(); E; E = E->next()) {
+
+			if (E->get().usage & SEND_PROPERTIES && !ignored_properties.has(E->get().name)) {
+
+				Variant var = obj->get(E->get().name);
+				props.push_back(_serialize(var, E->get()));
+			}
 		}
 	}
 
 	packet_peer_stream->put_var("message:inspect_object");
-	packet_peer_stream->put_var(props_to_send * 5 + 4);
+	packet_peer_stream->put_var(2);
 	packet_peer_stream->put_var(p_id);
-	packet_peer_stream->put_var(obj->get_class());
-	if (obj->is_class("Resource") || obj->is_class("Node"))
-		packet_peer_stream->put_var(obj->call("get_path"));
-	else
-		packet_peer_stream->put_var("");
-
-	packet_peer_stream->put_var(props_to_send);
-
-	for (List<PropertyInfo>::Element *E = pinfo.front(); E; E = E->next()) {
-
-		if (E->get().usage & (PROPERTY_USAGE_EDITOR | PROPERTY_USAGE_CATEGORY)) {
-
-			if (E->get().usage & PROPERTY_USAGE_CATEGORY) {
-				packet_peer_stream->put_var("*" + E->get().name);
-			} else {
-				packet_peer_stream->put_var(E->get().name);
-			}
-
-			Variant var = obj->get(E->get().name);
-			packet_peer_stream->put_var(E->get().type);
-			//only send information that can be sent..
-
-			int len = 0; //test how big is this to encode
-			encode_variant(var, NULL, len);
-
-			if (len > packet_peer_stream->get_output_buffer_max_size()) { //limit to max size
-				packet_peer_stream->put_var(PROPERTY_HINT_OBJECT_TOO_BIG);
-				packet_peer_stream->put_var("");
-				packet_peer_stream->put_var(Variant());
-			} else {
-				packet_peer_stream->put_var(E->get().hint);
-				packet_peer_stream->put_var(E->get().hint_string);
-				packet_peer_stream->put_var(var);
-			}
-		}
-	}
+	packet_peer_stream->put_var(props);
 }
 
 void ScriptDebuggerRemote::_set_object_property(ObjectID p_id, const String &p_property, const Variant &p_value) {
@@ -589,7 +643,164 @@ void ScriptDebuggerRemote::_set_object_property(ObjectID p_id, const String &p_p
 	if (!obj)
 		return;
 
-	obj->set(p_property, p_value);
+	String name = p_property;
+	const String member_prefix = String("members/");
+	if (name.begins_with(member_prefix) && p_property.length() > member_prefix.length()) {
+		name = p_property.substr(member_prefix.length(), p_property.length());
+	}
+
+	obj->set(name, p_value);
+}
+
+int __put_value_to_buff_at_pos(const Variant &value, DVector<uint8_t> &buff, int pos) {
+
+	int size_required = 0;
+
+	DVector<uint8_t> valuebuf;
+	if (value.get_type() == Variant::RAW_ARRAY)
+		valuebuf = value;
+
+	String sub_contetn;
+
+	switch (value.get_type()) {
+		case Variant::NIL:
+		case Variant::INT:
+		case Variant::BOOL:
+			size_required = sizeof(uint32_t);
+			break;
+		case Variant::REAL:
+			size_required = sizeof(uint32_t);
+			break;
+		case Variant::STRING: {
+			sub_contetn = value;
+			const int MAX_STR_LEN = 80; // More than 80 will not be send to the debugger
+			if (sub_contetn.length() > MAX_STR_LEN)
+				sub_contetn = sub_contetn.substr(0, MAX_STR_LEN) + "...";
+			encode_variant(sub_contetn, NULL, size_required);
+		} break;
+		default:
+			encode_variant(value, NULL, size_required);
+			break;
+	}
+	if (buff.size() < pos + size_required)
+		buff.resize((pos + size_required) * 2);
+
+	switch (value.get_type()) {
+		case Variant::INT:
+		case Variant::BOOL:
+			encode_uint32(value, &buff.write()[pos]);
+			break;
+		case Variant::REAL:
+			encode_float(value, &buff.write()[pos]);
+			break;
+		case Variant::STRING:
+			encode_variant(sub_contetn, &buff.write()[pos], size_required);
+			break;
+		default:
+			encode_variant(value, &buff.write()[pos], size_required);
+			break;
+	}
+
+	return size_required;
+}
+
+int ScriptDebuggerRemote::_serialize_variant(const Variant &var, const PropertyInfo &p_info, DVector<uint8_t> &buff) {
+
+	int used_size = 0;
+
+	used_size += __put_value_to_buff_at_pos(p_info.name, buff, used_size);
+	const int type_index = used_size;
+	used_size += __put_value_to_buff_at_pos(var.get_type(), buff, type_index);
+	const int hint_index = used_size;
+	used_size += __put_value_to_buff_at_pos(p_info.hint, buff, hint_index);
+	used_size += __put_value_to_buff_at_pos(p_info.usage, buff, used_size);
+
+	StringName hint_string = p_info.hint_string;
+
+	int value_len = 0;
+	switch (var.get_type()) {
+		case Variant::OBJECT: {
+			__put_value_to_buff_at_pos(Variant::INT, buff, type_index);
+			__put_value_to_buff_at_pos(PROPERTY_HINT_OBJECT_ID, buff, hint_index);
+			Object *obj = var;
+			uint32_t id = obj ? obj->get_instance_ID() : 0;
+			hint_string = obj ? obj->get_type_name() : hint_string;
+			value_len += __put_value_to_buff_at_pos(id, buff, used_size + value_len);
+		} break;
+		case Variant::IMAGE:
+			value_len += __put_value_to_buff_at_pos(Image(), buff, used_size + value_len);
+			break;
+		case Variant::ARRAY: {
+			Array arr = var;
+			value_len += __put_value_to_buff_at_pos(arr.size(), buff, used_size + value_len);
+
+			for (int i = 0; i < arr.size(); i++) {
+
+				const Variant &e = arr[i];
+				PropertyInfo pi(e.get_type(), "");
+				DVector<uint8_t> ebuff;
+				ebuff.resize(256);
+				ebuff.resize(_serialize_variant(e, pi, ebuff));
+
+				value_len += __put_value_to_buff_at_pos(ebuff, buff, used_size + value_len);
+			}
+		} break;
+		case Variant::STRING_ARRAY: {
+
+			DVector<String> strarr = var;
+			Array arr;
+			arr.resize(strarr.size());
+
+			for (int i = 0; i < strarr.size(); i++)
+				arr[i] = strarr[i];
+
+			PropertyInfo pi(Variant::ARRAY, "");
+			DVector<uint8_t> ebuff;
+			ebuff.resize(256);
+			ebuff.resize(_serialize_variant(arr, pi, ebuff));
+
+			value_len += __put_value_to_buff_at_pos(ebuff, buff, used_size + value_len);
+		} break;
+		case Variant::DICTIONARY: {
+			Dictionary dict = var;
+			value_len += __put_value_to_buff_at_pos(dict.size(), buff, used_size + value_len);
+
+			const Array &keys = dict.keys();
+			for (int i = 0; i < keys.size(); i++) {
+
+				PropertyInfo pi;
+				const Variant &key = keys[i];
+
+				DVector<uint8_t> tmpbuff;
+				tmpbuff.resize(256);
+				pi.type = key.get_type();
+				tmpbuff.resize(_serialize_variant(key, pi, tmpbuff));
+				value_len += __put_value_to_buff_at_pos(tmpbuff, buff, used_size + value_len);
+
+				const Variant &value = dict[key];
+				pi.type = value.get_type();
+				tmpbuff.resize(_serialize_variant(value, pi, tmpbuff));
+				value_len += __put_value_to_buff_at_pos(tmpbuff, buff, used_size + value_len);
+			}
+		} break;
+		default:
+			value_len += __put_value_to_buff_at_pos(var, buff, used_size + value_len);
+			break;
+	}
+	used_size += value_len;
+
+	used_size += __put_value_to_buff_at_pos(hint_string, buff, used_size);
+
+	return used_size;
+}
+
+DVector<uint8_t> ScriptDebuggerRemote::_serialize(const Variant &var, const PropertyInfo &p_info) {
+
+	DVector<uint8_t> buff;
+	buff.resize(256);
+	buff.resize(_serialize_variant(var, p_info, buff));
+
+	return buff;
 }
 
 void ScriptDebuggerRemote::_poll_events() {
@@ -635,6 +846,9 @@ void ScriptDebuggerRemote::_poll_events() {
 		} else if (command == "set_object_property") {
 
 			_set_object_property(cmd[1], cmd[2], cmd[3]);
+		} else if (command == "set_variable_value") {
+
+			// TODO: Implement set the value stack variale
 
 		} else if (command == "start_profiling") {
 
@@ -647,8 +861,8 @@ void ScriptDebuggerRemote::_poll_events() {
 			profiling = true;
 			frame_time = 0;
 			idle_time = 0;
-			physics_time = 0;
-			physics_frame_time = 0;
+			fixed_time = 0;
+			fixed_frame_time = 0;
 
 			print_line("PROFILING ALRIGHT!");
 
@@ -724,11 +938,11 @@ void ScriptDebuggerRemote::_send_profiling_data(bool p_for_frame) {
 		packet_peer_stream->put_var(8 + to_send * 4);
 	}
 
-	packet_peer_stream->put_var(Engine::get_singleton()->get_frames_drawn()); //total frame time
+	packet_peer_stream->put_var(OS::get_singleton()->get_frames_drawn()); //total frame time
 	packet_peer_stream->put_var(frame_time); //total frame time
 	packet_peer_stream->put_var(idle_time); //idle frame time
-	packet_peer_stream->put_var(physics_time); //fixed frame time
-	packet_peer_stream->put_var(physics_frame_time); //fixed frame time
+	packet_peer_stream->put_var(fixed_time); //fixed frame time
+	packet_peer_stream->put_var(fixed_frame_time); //fixed frame time
 
 	packet_peer_stream->put_var(USEC_TO_SEC(total_script_time)); //total script execution time
 
@@ -821,7 +1035,7 @@ void ScriptDebuggerRemote::idle_poll() {
 void ScriptDebuggerRemote::send_message(const String &p_message, const Array &p_args) {
 
 	mutex->lock();
-	if (!locking && tcp_client->is_connected_to_host()) {
+	if (!locking && tcp_client->is_connected()) {
 
 		Message msg;
 		msg.message = p_message;
@@ -858,7 +1072,7 @@ void ScriptDebuggerRemote::_print_handler(void *p_this, const String &p_string) 
 	bool overflowed = sdr->char_count >= sdr->max_cps;
 
 	sdr->mutex->lock();
-	if (!sdr->locking && sdr->tcp_client->is_connected_to_host()) {
+	if (!sdr->locking && sdr->tcp_client->is_connected()) {
 
 		if (overflowed)
 			s += "[...]";
@@ -921,49 +1135,49 @@ void ScriptDebuggerRemote::profiling_end() {
 	//ignores this, uses it via connnection
 }
 
-void ScriptDebuggerRemote::profiling_set_frame_times(float p_frame_time, float p_idle_time, float p_physics_time, float p_physics_frame_time) {
+void ScriptDebuggerRemote::profiling_set_frame_times(float p_frame_time, float p_idle_time, float p_fixed_time, float p_fixed_frame_time) {
 
 	frame_time = p_frame_time;
 	idle_time = p_idle_time;
-	physics_time = p_physics_time;
-	physics_frame_time = p_physics_frame_time;
+	fixed_time = p_fixed_time;
+	fixed_frame_time = p_fixed_frame_time;
 }
 
 ScriptDebuggerRemote::ResourceUsageFunc ScriptDebuggerRemote::resource_usage_func = NULL;
 
-ScriptDebuggerRemote::ScriptDebuggerRemote()
-	: profiling(false),
-	  max_frame_functions(16),
-	  skip_profile_frame(false),
-	  reload_all_scripts(false),
-	  tcp_client(StreamPeerTCP::create_ref()),
-	  packet_peer_stream(Ref<PacketPeerStream>(memnew(PacketPeerStream))),
-	  last_perf_time(0),
-	  performance(ProjectSettings::get_singleton()->get_singleton_object("Performance")),
-	  requested_quit(false),
-	  mutex(Mutex::create()),
-	  max_cps(GLOBAL_GET("network/limits/debugger_stdout/max_chars_per_second")),
-	  char_count(0),
-	  last_msec(0),
-	  msec_count(0),
-	  locking(false),
-	  poll_every(0),
-	  request_scene_tree(NULL),
-	  live_edit_funcs(NULL) {
+ScriptDebuggerRemote::ScriptDebuggerRemote() {
 
+	tcp_client = StreamPeerTCP::create_ref();
+	packet_peer_stream = Ref<PacketPeerStream>(memnew(PacketPeerStream));
 	packet_peer_stream->set_stream_peer(tcp_client);
-	packet_peer_stream->set_output_buffer_max_size(1024 * 1024 * 8); //8mb should be way more than enough
+	packet_peer_stream->set_input_buffer_max_size(pow(2, 20));
+	mutex = Mutex::create();
+	locking = false;
 
 	phl.printfunc = _print_handler;
 	phl.userdata = this;
 	add_print_handler(&phl);
+	requested_quit = false;
+	performance = Globals::get_singleton()->get_singleton_object("Performance");
+	last_perf_time = 0;
+	poll_every = 0;
+	request_scene_tree = NULL;
+	live_edit_funcs = NULL;
+	max_cps = GLOBAL_DEF("debug/max_remote_stdout_chars_per_second", 2048);
+	char_count = 0;
+	msec_count = 0;
+	last_msec = 0;
+	skip_profile_frame = false;
 
 	eh.errfunc = _err_handler;
 	eh.userdata = this;
 	add_error_handler(&eh);
 
-	profile_info.resize(CLAMP(int(ProjectSettings::get_singleton()->get("debug/settings/profiler/max_functions")), 128, 65535));
+	profile_info.resize(CLAMP(int(Globals::get_singleton()->get("debug/profiler_max_functions")), 128, 65535));
 	profile_info_ptrs.resize(profile_info.size());
+	profiling = false;
+	max_frame_functions = 16;
+	reload_all_scripts = false;
 }
 
 ScriptDebuggerRemote::~ScriptDebuggerRemote() {

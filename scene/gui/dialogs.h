@@ -42,31 +42,18 @@
 
 class WindowDialog : public Popup {
 
-	GDCLASS(WindowDialog, Popup);
-
-	enum DRAG_TYPE {
-		DRAG_NONE = 0,
-		DRAG_MOVE = 1,
-		DRAG_RESIZE_TOP = 1 << 1,
-		DRAG_RESIZE_RIGHT = 1 << 2,
-		DRAG_RESIZE_BOTTOM = 1 << 3,
-		DRAG_RESIZE_LEFT = 1 << 4
-	};
+	OBJ_TYPE(WindowDialog, Popup);
 
 	TextureButton *close_button;
 	String title;
-	int drag_type;
-	Point2 drag_offset;
-	Point2 drag_offset_far;
-	bool resizable;
+	bool dragging;
 
-	void _gui_input(const Ref<InputEvent> &p_event);
+	void _input_event(const InputEvent &p_event);
 	void _closed();
-	int _drag_hit_test(const Point2 &pos) const;
 
 protected:
 	virtual void _post_popup();
-	virtual void _fix_size();
+
 	virtual void _close_pressed() {}
 	virtual bool has_point(const Point2 &p_point) const;
 	void _notification(int p_what);
@@ -77,8 +64,6 @@ public:
 
 	void set_title(const String &p_title);
 	String get_title() const;
-	void set_resizable(bool p_resizable);
-	bool get_resizable() const;
 
 	Size2 get_minimum_size() const;
 
@@ -88,7 +73,7 @@ public:
 
 class PopupDialog : public Popup {
 
-	GDCLASS(PopupDialog, Popup);
+	OBJ_TYPE(PopupDialog, Popup);
 
 protected:
 	void _notification(int p_what);
@@ -102,21 +87,24 @@ class LineEdit;
 
 class AcceptDialog : public WindowDialog {
 
-	GDCLASS(AcceptDialog, WindowDialog);
+	OBJ_TYPE(AcceptDialog, WindowDialog);
 
+	Control *child;
 	HBoxContainer *hbc;
 	Label *label;
 	Button *ok;
-	//Button *cancel; no more cancel (there is X on tht titlebar)
+	//	Button *cancel; no more cancel (there is X on tht titlebar)
 	bool hide_on_ok;
 
 	void _custom_action(const String &p_action);
 	void _ok_pressed();
 	void _close_pressed();
 	void _builtin_text_entered(const String &p_text);
-	void _update_child_rects();
+	void _update_child_rect();
 
 	static bool swap_ok_cancel;
+
+	virtual void remove_child_notify(Node *p_child);
 
 protected:
 	virtual void _post_popup();
@@ -144,13 +132,15 @@ public:
 	void set_text(String p_text);
 	String get_text() const;
 
+	void set_child_rect(Control *p_child);
+
 	AcceptDialog();
 	~AcceptDialog();
 };
 
 class ConfirmationDialog : public AcceptDialog {
 
-	GDCLASS(ConfirmationDialog, AcceptDialog);
+	OBJ_TYPE(ConfirmationDialog, AcceptDialog);
 	Button *cancel;
 
 protected:

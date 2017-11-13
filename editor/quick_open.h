@@ -36,7 +36,7 @@
 #include "scene/gui/tree.h"
 class EditorQuickOpen : public ConfirmationDialog {
 
-	GDCLASS(EditorQuickOpen, ConfirmationDialog)
+	OBJ_TYPE(EditorQuickOpen, ConfirmationDialog)
 
 	LineEdit *search_box;
 	Tree *search_options;
@@ -47,9 +47,8 @@ class EditorQuickOpen : public ConfirmationDialog {
 
 	void _update_search();
 
-	void _sbox_input(const Ref<InputEvent> &p_ie);
+	void _sbox_input(const InputEvent &p_ie);
 	void _parse_fs(EditorFileSystemDirectory *efsd, Vector<Pair<String, Ref<Texture> > > &list);
-	Vector<Pair<String, Ref<Texture> > > _sort_fs(Vector<Pair<String, Ref<Texture> > > &list);
 	float _path_cmp(String search, String path) const;
 
 	void _confirmed();

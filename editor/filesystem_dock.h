@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  filesystem_dock.h                                                    */
+/*  scenes_dock.h                                                        */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -32,7 +32,6 @@
 
 #include "scene/gui/box_container.h"
 #include "scene/gui/control.h"
-#include "scene/gui/dialogs.h"
 #include "scene/gui/item_list.h"
 #include "scene/gui/label.h"
 #include "scene/gui/menu_button.h"
@@ -53,7 +52,7 @@
 class EditorNode;
 
 class FileSystemDock : public VBoxContainer {
-	GDCLASS(FileSystemDock, VBoxContainer);
+	OBJ_TYPE(FileSystemDock, VBoxContainer);
 
 public:
 	enum DisplayMode {
@@ -68,24 +67,11 @@ private:
 		FILE_DEPENDENCIES,
 		FILE_OWNERS,
 		FILE_MOVE,
-		FILE_RENAME,
 		FILE_REMOVE,
 		FILE_REIMPORT,
 		FILE_INFO,
-		FILE_NEW_FOLDER,
 		FILE_SHOW_IN_EXPLORER,
 		FILE_COPY_PATH
-	};
-
-	enum FolderMenu {
-		FOLDER_EXPAND_ALL,
-		FOLDER_COLLAPSE_ALL,
-		FOLDER_MOVE,
-		FOLDER_RENAME,
-		FOLDER_REMOVE,
-		FOLDER_NEW_FOLDER,
-		FOLDER_SHOW_IN_EXPLORER,
-		FOLDER_COPY_PATH
 	};
 
 	VBoxContainer *scanning_vb;
@@ -104,37 +90,23 @@ private:
 	Button *button_hist_prev;
 	LineEdit *current_path;
 	LineEdit *search_box;
-	TextureRect *search_icon;
+	TextureFrame *search_icon;
 	HBoxContainer *path_hb;
 
 	bool split_mode;
 	DisplayMode display_mode;
 
 	PopupMenu *file_options;
-	PopupMenu *folder_options;
 
 	DependencyEditor *deps_editor;
 	DependencyEditorOwners *owners_editor;
 	DependencyRemoveDialog *remove_dialog;
 
 	EditorDirDialog *move_dialog;
-	ConfirmationDialog *rename_dialog;
-	LineEdit *rename_dialog_text;
-	ConfirmationDialog *make_dir_dialog;
-	LineEdit *make_dir_dialog_text;
+	EditorFileDialog *rename_dialog;
 
-	class FileOrFolder {
-	public:
-		String path;
-		bool is_file;
-
-		FileOrFolder()
-			: path(""), is_file(false) {}
-		FileOrFolder(const String &p_path, bool p_is_file)
-			: path(p_path), is_file(p_is_file) {}
-	};
-	FileOrFolder to_rename;
-	Vector<FileOrFolder> to_move;
+	Vector<String> move_dirs;
+	Vector<String> move_files;
 
 	Vector<String> history;
 	int history_pos;
@@ -147,29 +119,20 @@ private:
 	Tree *tree; //directories
 	ItemList *files;
 
-	void _file_multi_selected(int p_index, bool p_selected);
-	void _file_selected();
-
 	void _go_to_tree();
 	void _go_to_dir(const String &p_dir);
 	void _select_file(int p_idx);
 
 	bool _create_tree(TreeItem *p_parent, EditorFileSystemDirectory *p_dir);
 	void _thumbnail_done(const String &p_path, const Ref<Texture> &p_preview, const Variant &p_udata);
+	void _find_inside_move_files(EditorFileSystemDirectory *efsd, Vector<String> &files);
+	void _find_remaps(EditorFileSystemDirectory *efsd, Map<String, String> &renames, List<String> &to_remaps);
 
-	void _get_all_files_in_dir(EditorFileSystemDirectory *efsd, Vector<String> &files) const;
-	void _find_remaps(EditorFileSystemDirectory *efsd, const Map<String, String> &renames, Vector<String> &to_remaps) const;
-	void _try_move_item(const FileOrFolder &p_item, const String &p_new_path, Map<String, String> &p_renames) const;
-	void _update_dependencies_after_move(const Map<String, String> &p_renames) const;
-
-	void _make_dir_confirm();
-	void _rename_operation_confirm();
-	void _move_operation_confirm(const String &p_to_path);
+	void _rename_operation(const String &p_to_path);
+	void _move_operation(const String &p_to_path);
 
 	void _file_option(int p_option);
-	void _folder_option(int p_option);
 	void _update_files(bool p_keep_selection);
-	void _update_file_display_toggle_button();
 	void _change_file_display();
 
 	void _fs_changed();
@@ -184,7 +147,6 @@ private:
 
 	void _favorites_pressed();
 	void _open_pressed();
-	void _dir_rmb_pressed(const Vector2 &p_pos);
 	void _search_changed(const String &p_text);
 
 	void _files_list_rmb_select(int p_item, const Vector2 &p_pos);
@@ -195,7 +157,6 @@ private:
 		StringName type;
 		int import_status; //0 not imported, 1 - ok, 2- must reimport, 3- broken
 		Vector<String> sources;
-		bool import_broken;
 
 		bool operator<(const FileInfo &fi) const {
 			return name < fi.name;
@@ -218,7 +179,6 @@ public:
 	String get_selected_path() const;
 
 	String get_current_path() const;
-	void navigate_to_path(const String &p_path);
 	void focus_on_filter();
 
 	void fix_dependencies(const String &p_for_file);
@@ -227,7 +187,6 @@ public:
 
 	int get_split_offset() { return split_box->get_split_offset(); }
 	void set_split_offset(int p_offset) { split_box->set_split_offset(p_offset); }
-	void select_file(const String &p_file);
 
 	FileSystemDock(EditorNode *p_editor);
 	~FileSystemDock();

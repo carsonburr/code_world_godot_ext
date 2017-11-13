@@ -29,7 +29,6 @@
 /*************************************************************************/
 #include "main/main.h"
 #include "os_iphone.h"
-#include "ustring.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -42,9 +41,9 @@ int add_path(int p_argc, char **p_args);
 int add_cmdline(int p_argc, char **p_args);
 };
 
-int iphone_main(int, int, int, char **, String);
+int iphone_main(int, int, int, char **);
 
-int iphone_main(int width, int height, int argc, char **argv, String data_dir) {
+int iphone_main(int width, int height, int argc, char **argv) {
 
 	int len = strlen(argv[0]);
 
@@ -64,7 +63,7 @@ int iphone_main(int width, int height, int argc, char **argv, String data_dir) {
 	char cwd[512];
 	getcwd(cwd, sizeof(cwd));
 	printf("cwd %s\n", cwd);
-	os = new OSIPhone(width, height, data_dir);
+	os = new OSIPhone(width, height);
 
 	char *fargv[64];
 	for (int i = 0; i < argc; i++) {

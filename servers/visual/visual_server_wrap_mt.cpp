@@ -6,6 +6,7 @@
 /*                      https://godotengine.org                          */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,9 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 #include "visual_server_wrap_mt.h"
+#include "globals.h"
 #include "os/os.h"
-#include "project_settings.h"
-
 void VisualServerWrapMT::thread_exit() {
 
 	exit = true;
@@ -68,7 +68,7 @@ void VisualServerWrapMT::_thread_callback(void *_instance) {
 
 void VisualServerWrapMT::thread_loop() {
 
-	server_thread = Thread::get_caller_id();
+	server_thread = Thread::get_caller_ID();
 
 	OS::get_singleton()->make_rendering_thread();
 
@@ -155,7 +155,7 @@ void VisualServerWrapMT::finish() {
 		memdelete(thread);
 
 		texture_free_cached_ids();
-		//mesh_free_cached_ids();
+		mesh_free_cached_ids();
 
 		thread = NULL;
 	} else {
@@ -176,10 +176,10 @@ VisualServerWrapMT::VisualServerWrapMT(VisualServer *p_contained, bool p_create_
 	draw_pending = 0;
 	draw_thread_up = false;
 	alloc_mutex = Mutex::create();
-	pool_max_size = GLOBAL_GET("memory/limits/multithreaded_server/rid_pool_prealloc");
-
+	texture_pool_max_size = GLOBAL_DEF("render/thread_textures_prealloc", 5);
+	mesh_pool_max_size = GLOBAL_DEF("core/rid_pool_prealloc", 20);
 	if (!p_create_thread) {
-		server_thread = Thread::get_caller_id();
+		server_thread = Thread::get_caller_ID();
 	} else {
 		server_thread = 0;
 	}

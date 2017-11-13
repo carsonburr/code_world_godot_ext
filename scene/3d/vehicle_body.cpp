@@ -46,8 +46,8 @@ public:
 	btVehicleJacobianEntry(){};
 	//constraint between two different rigidbodies
 	btVehicleJacobianEntry(
-			const Basis &world2A,
-			const Basis &world2B,
+			const Matrix3 &world2A,
+			const Matrix3 &world2B,
 			const Vector3 &rel_pos1,
 			const Vector3 &rel_pos2,
 			const Vector3 &jointAxis,
@@ -81,7 +81,9 @@ void VehicleWheel::_notification(int p_what) {
 
 	if (p_what == NOTIFICATION_ENTER_TREE) {
 
-		VehicleBody *cb = Object::cast_to<VehicleBody>(get_parent());
+		if (!get_parent())
+			return;
+		VehicleBody *cb = get_parent()->cast_to<VehicleBody>();
 		if (!cb)
 			return;
 		body = cb;
@@ -94,20 +96,14 @@ void VehicleWheel::_notification(int p_what) {
 	}
 	if (p_what == NOTIFICATION_EXIT_TREE) {
 
-		VehicleBody *cb = Object::cast_to<VehicleBody>(get_parent());
+		if (!get_parent())
+			return;
+		VehicleBody *cb = get_parent()->cast_to<VehicleBody>();
 		if (!cb)
 			return;
 		cb->wheels.erase(this);
 		body = NULL;
 	}
-}
-
-String VehicleWheel::get_configuration_warning() const {
-	if (!Object::cast_to<VehicleBody>(get_parent())) {
-		return TTR("VehicleWheel serves to provide a wheel system to a VehicleBody. Please use it as a child of a VehicleBody.");
-	}
-
-	return String();
 }
 
 void VehicleWheel::_update(PhysicsDirectBodyState *s) {
@@ -232,57 +228,52 @@ bool VehicleWheel::is_in_contact() const {
 
 void VehicleWheel::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("set_radius", "length"), &VehicleWheel::set_radius);
-	ClassDB::bind_method(D_METHOD("get_radius"), &VehicleWheel::get_radius);
+	ObjectTypeDB::bind_method(_MD("set_radius", "length"), &VehicleWheel::set_radius);
+	ObjectTypeDB::bind_method(_MD("get_radius"), &VehicleWheel::get_radius);
 
-	ClassDB::bind_method(D_METHOD("set_suspension_rest_length", "length"), &VehicleWheel::set_suspension_rest_length);
-	ClassDB::bind_method(D_METHOD("get_suspension_rest_length"), &VehicleWheel::get_suspension_rest_length);
+	ObjectTypeDB::bind_method(_MD("set_suspension_rest_length", "length"), &VehicleWheel::set_suspension_rest_length);
+	ObjectTypeDB::bind_method(_MD("get_suspension_rest_length"), &VehicleWheel::get_suspension_rest_length);
 
-	ClassDB::bind_method(D_METHOD("set_suspension_travel", "length"), &VehicleWheel::set_suspension_travel);
-	ClassDB::bind_method(D_METHOD("get_suspension_travel"), &VehicleWheel::get_suspension_travel);
+	ObjectTypeDB::bind_method(_MD("set_suspension_travel", "length"), &VehicleWheel::set_suspension_travel);
+	ObjectTypeDB::bind_method(_MD("get_suspension_travel"), &VehicleWheel::get_suspension_travel);
 
-	ClassDB::bind_method(D_METHOD("set_suspension_stiffness", "length"), &VehicleWheel::set_suspension_stiffness);
-	ClassDB::bind_method(D_METHOD("get_suspension_stiffness"), &VehicleWheel::get_suspension_stiffness);
+	ObjectTypeDB::bind_method(_MD("set_suspension_stiffness", "length"), &VehicleWheel::set_suspension_stiffness);
+	ObjectTypeDB::bind_method(_MD("get_suspension_stiffness"), &VehicleWheel::get_suspension_stiffness);
 
-	ClassDB::bind_method(D_METHOD("set_suspension_max_force", "length"), &VehicleWheel::set_suspension_max_force);
-	ClassDB::bind_method(D_METHOD("get_suspension_max_force"), &VehicleWheel::get_suspension_max_force);
+	ObjectTypeDB::bind_method(_MD("set_suspension_max_force", "length"), &VehicleWheel::set_suspension_max_force);
+	ObjectTypeDB::bind_method(_MD("get_suspension_max_force"), &VehicleWheel::get_suspension_max_force);
 
-	ClassDB::bind_method(D_METHOD("set_damping_compression", "length"), &VehicleWheel::set_damping_compression);
-	ClassDB::bind_method(D_METHOD("get_damping_compression"), &VehicleWheel::get_damping_compression);
+	ObjectTypeDB::bind_method(_MD("set_damping_compression", "length"), &VehicleWheel::set_damping_compression);
+	ObjectTypeDB::bind_method(_MD("get_damping_compression"), &VehicleWheel::get_damping_compression);
 
-	ClassDB::bind_method(D_METHOD("set_damping_relaxation", "length"), &VehicleWheel::set_damping_relaxation);
-	ClassDB::bind_method(D_METHOD("get_damping_relaxation"), &VehicleWheel::get_damping_relaxation);
+	ObjectTypeDB::bind_method(_MD("set_damping_relaxation", "length"), &VehicleWheel::set_damping_relaxation);
+	ObjectTypeDB::bind_method(_MD("get_damping_relaxation"), &VehicleWheel::get_damping_relaxation);
 
-	ClassDB::bind_method(D_METHOD("set_use_as_traction", "enable"), &VehicleWheel::set_use_as_traction);
-	ClassDB::bind_method(D_METHOD("is_used_as_traction"), &VehicleWheel::is_used_as_traction);
+	ObjectTypeDB::bind_method(_MD("set_use_as_traction", "enable"), &VehicleWheel::set_use_as_traction);
+	ObjectTypeDB::bind_method(_MD("is_used_as_traction"), &VehicleWheel::is_used_as_traction);
 
-	ClassDB::bind_method(D_METHOD("set_use_as_steering", "enable"), &VehicleWheel::set_use_as_steering);
-	ClassDB::bind_method(D_METHOD("is_used_as_steering"), &VehicleWheel::is_used_as_steering);
+	ObjectTypeDB::bind_method(_MD("set_use_as_steering", "enable"), &VehicleWheel::set_use_as_steering);
+	ObjectTypeDB::bind_method(_MD("is_used_as_steering"), &VehicleWheel::is_used_as_steering);
 
-	ClassDB::bind_method(D_METHOD("set_friction_slip", "length"), &VehicleWheel::set_friction_slip);
-	ClassDB::bind_method(D_METHOD("get_friction_slip"), &VehicleWheel::get_friction_slip);
+	ObjectTypeDB::bind_method(_MD("set_friction_slip", "length"), &VehicleWheel::set_friction_slip);
+	ObjectTypeDB::bind_method(_MD("get_friction_slip"), &VehicleWheel::get_friction_slip);
 
-	ClassDB::bind_method(D_METHOD("is_in_contact"), &VehicleWheel::is_in_contact);
+	ObjectTypeDB::bind_method(_MD("is_in_contact"), &VehicleWheel::is_in_contact);
 
-	ClassDB::bind_method(D_METHOD("set_roll_influence", "roll_influence"), &VehicleWheel::set_roll_influence);
-	ClassDB::bind_method(D_METHOD("get_roll_influence"), &VehicleWheel::get_roll_influence);
+	ObjectTypeDB::bind_method(_MD("set_roll_influence", "roll_influence"), &VehicleWheel::set_roll_influence);
+	ObjectTypeDB::bind_method(_MD("get_roll_influence"), &VehicleWheel::get_roll_influence);
 
-	ClassDB::bind_method(D_METHOD("get_skidinfo"), &VehicleWheel::get_skidinfo);
-
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "use_as_traction"), "set_use_as_traction", "is_used_as_traction");
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "use_as_steering"), "set_use_as_steering", "is_used_as_steering");
-	ADD_GROUP("Wheel", "wheel_");
-	ADD_PROPERTY(PropertyInfo(Variant::REAL, "wheel_roll_influence"), "set_roll_influence", "get_roll_influence");
-	ADD_PROPERTY(PropertyInfo(Variant::REAL, "wheel_radius"), "set_radius", "get_radius");
-	ADD_PROPERTY(PropertyInfo(Variant::REAL, "wheel_rest_length"), "set_suspension_rest_length", "get_suspension_rest_length");
-	ADD_PROPERTY(PropertyInfo(Variant::REAL, "wheel_friction_slip"), "set_friction_slip", "get_friction_slip");
-	ADD_GROUP("Suspension", "suspension_");
-	ADD_PROPERTY(PropertyInfo(Variant::REAL, "suspension_travel"), "set_suspension_travel", "get_suspension_travel");
-	ADD_PROPERTY(PropertyInfo(Variant::REAL, "suspension_stiffness"), "set_suspension_stiffness", "get_suspension_stiffness");
-	ADD_PROPERTY(PropertyInfo(Variant::REAL, "suspension_max_force"), "set_suspension_max_force", "get_suspension_max_force");
-	ADD_GROUP("Damping", "damping_");
-	ADD_PROPERTY(PropertyInfo(Variant::REAL, "damping_compression"), "set_damping_compression", "get_damping_compression");
-	ADD_PROPERTY(PropertyInfo(Variant::REAL, "damping_relaxation"), "set_damping_relaxation", "get_damping_relaxation");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "type/traction"), _SCS("set_use_as_traction"), _SCS("is_used_as_traction"));
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "type/steering"), _SCS("set_use_as_steering"), _SCS("is_used_as_steering"));
+	ADD_PROPERTY(PropertyInfo(Variant::REAL, "wheel/roll_influence"), _SCS("set_roll_influence"), _SCS("get_roll_influence"));
+	ADD_PROPERTY(PropertyInfo(Variant::REAL, "wheel/radius"), _SCS("set_radius"), _SCS("get_radius"));
+	ADD_PROPERTY(PropertyInfo(Variant::REAL, "wheel/rest_length"), _SCS("set_suspension_rest_length"), _SCS("get_suspension_rest_length"));
+	ADD_PROPERTY(PropertyInfo(Variant::REAL, "wheel/friction_slip"), _SCS("set_friction_slip"), _SCS("get_friction_slip"));
+	ADD_PROPERTY(PropertyInfo(Variant::REAL, "suspension/travel"), _SCS("set_suspension_travel"), _SCS("get_suspension_travel"));
+	ADD_PROPERTY(PropertyInfo(Variant::REAL, "suspension/stiffness"), _SCS("set_suspension_stiffness"), _SCS("get_suspension_stiffness"));
+	ADD_PROPERTY(PropertyInfo(Variant::REAL, "suspension/max_force"), _SCS("set_suspension_max_force"), _SCS("get_suspension_max_force"));
+	ADD_PROPERTY(PropertyInfo(Variant::REAL, "damping/compression"), _SCS("set_damping_compression"), _SCS("get_damping_compression"));
+	ADD_PROPERTY(PropertyInfo(Variant::REAL, "damping/relaxation"), _SCS("set_damping_relaxation"), _SCS("get_damping_relaxation"));
 }
 
 void VehicleWheel::set_use_as_traction(bool p_enable) {
@@ -303,11 +294,6 @@ void VehicleWheel::set_use_as_steering(bool p_enabled) {
 bool VehicleWheel::is_used_as_steering() const {
 
 	return steers;
-}
-
-float VehicleWheel::get_skidinfo() const {
-
-	return m_skidInfo;
 }
 
 VehicleWheel::VehicleWheel() {
@@ -344,11 +330,10 @@ void VehicleBody::_update_wheel_transform(VehicleWheel &wheel, PhysicsDirectBody
 	wheel.m_raycastInfo.m_isInContact = false;
 
 	Transform chassisTrans = s->get_transform();
-	/*
-	if (interpolatedTransform && (getRigidBody()->getMotionState())) {
-		getRigidBody()->getMotionState()->getWorldTransform(chassisTrans);
-	}
-	*/
+	//if (interpolatedTransform && (getRigidBody()->getMotionState()))
+	//{
+	//	getRigidBody()->getMotionState()->getWorldTransform(chassisTrans);
+	//}
 
 	wheel.m_raycastInfo.m_hardPointWS = chassisTrans.xform(wheel.m_chassisConnectionPointCS);
 	//wheel.m_raycastInfo.m_hardPointWS+=s->get_linear_velocity()*s->get_step();
@@ -365,23 +350,21 @@ void VehicleBody::_update_wheel(int p_idx, PhysicsDirectBodyState *s) {
 	const Vector3 &right = wheel.m_raycastInfo.m_wheelAxleWS;
 	Vector3 fwd = up.cross(right);
 	fwd = fwd.normalized();
-	//up = right.cross(fwd);
-	//up.normalize();
+	//	up = right.cross(fwd);
+	//	up.normalize();
 
 	//rotate around steering over de wheelAxleWS
 	real_t steering = wheel.steers ? m_steeringValue : 0.0;
 	//print_line(itos(p_idx)+": "+rtos(steering));
 
-	Basis steeringMat(up, steering);
+	Matrix3 steeringMat(up, steering);
 
-	Basis rotatingMat(right, -wheel.m_rotation);
+	Matrix3 rotatingMat(right, -wheel.m_rotation);
 
-	/*
-	if (p_idx==1)
-		print_line("steeringMat " +steeringMat);
-	*/
+	//	if (p_idx==1)
+	//		print_line("steeringMat " +steeringMat);
 
-	Basis basis2(
+	Matrix3 basis2(
 			right[0], up[0], fwd[0],
 			right[1], up[1], fwd[1],
 			right[2], up[2], fwd[2]);
@@ -427,7 +410,7 @@ real_t VehicleBody::_ray_cast(int p_idx, PhysicsDirectBodyState *s) {
 
 		wheel.m_raycastInfo.m_isInContact = true;
 		if (rr.collider)
-			wheel.m_raycastInfo.m_groundObject = Object::cast_to<PhysicsBody>(rr.collider);
+			wheel.m_raycastInfo.m_groundObject = rr.collider->cast_to<PhysicsBody>();
 
 		real_t hitDistance = param * raylen;
 		wheel.m_raycastInfo.m_suspensionLength = hitDistance - wheel.m_wheelRadius;
@@ -486,7 +469,7 @@ void VehicleBody::_update_suspension(PhysicsDirectBodyState *s) {
 
 		if (wheel_info.m_raycastInfo.m_isInContact) {
 			real_t force;
-			//Spring
+			//	Spring
 			{
 				real_t susp_length = wheel_info.m_suspensionRestLength;
 				real_t current_length = wheel_info.m_raycastInfo.m_suspensionLength;
@@ -547,7 +530,7 @@ void VehicleBody::_resolve_single_bilateral(PhysicsDirectBodyState *s, const Vec
 
 	Vector3 vel = vel1 - vel2;
 
-	Basis b2trans;
+	Matrix3 b2trans;
 	float b2invmass = 0;
 	Vector3 b2lv;
 	Vector3 b2av;
@@ -565,14 +548,11 @@ void VehicleBody::_resolve_single_bilateral(PhysicsDirectBodyState *s, const Vec
 			rel_pos1,
 			rel_pos2,
 			normal,
-			s->get_inverse_inertia_tensor().get_main_diagonal(),
+			s->get_inverse_inertia(),
 			1.0 / mass,
 			b2invinertia,
 			b2invmass);
 
-	// FIXME: rel_vel assignment here is overwritten by the following assignment.
-	// What seemes to be intented in the next next assignment is: rel_vel = normal.dot(rel_vel);
-	// Investigate why.
 	real_t rel_vel = jac.getRelativeVelocity(
 			s->get_linear_velocity(),
 			s->get_transform().basis.transposed().xform(s->get_angular_velocity()),
@@ -688,7 +668,7 @@ void VehicleBody::_update_friction(PhysicsDirectBodyState *s) {
 
 				//const btTransform& wheelTrans = getWheelTransformWS( i );
 
-				Basis wheelBasis0 = wheelInfo.m_worldTransform.basis; //get_global_transform().basis;
+				Matrix3 wheelBasis0 = wheelInfo.m_worldTransform.basis; //get_global_transform().basis;
 
 				m_axle[i] = wheelBasis0.get_axis(Vector3::AXIS_X);
 				//m_axle[i] = wheelInfo.m_raycastInfo.m_wheelAxleWS;
@@ -815,7 +795,7 @@ void VehicleBody::_update_friction(PhysicsDirectBodyState *s) {
 
 void VehicleBody::_direct_state_changed(Object *p_state) {
 
-	PhysicsDirectBodyState *s = Object::cast_to<PhysicsDirectBodyState>(p_state);
+	PhysicsDirectBodyState *s = p_state->cast_to<PhysicsDirectBodyState>();
 
 	set_ignore_transform_notification(true);
 	set_global_transform(s->get_transform());
@@ -907,9 +887,9 @@ real_t VehicleBody::get_friction() const {
 	return friction;
 }
 
-void VehicleBody::set_engine_force(float p_engine_force) {
+void VehicleBody::set_engine_force(float p_force) {
 
-	engine_force = p_engine_force;
+	engine_force = p_force;
 }
 
 float VehicleBody::get_engine_force() const {
@@ -941,32 +921,30 @@ Vector3 VehicleBody::get_linear_velocity() const {
 
 void VehicleBody::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("set_mass", "mass"), &VehicleBody::set_mass);
-	ClassDB::bind_method(D_METHOD("get_mass"), &VehicleBody::get_mass);
+	ObjectTypeDB::bind_method(_MD("set_mass", "mass"), &VehicleBody::set_mass);
+	ObjectTypeDB::bind_method(_MD("get_mass"), &VehicleBody::get_mass);
 
-	ClassDB::bind_method(D_METHOD("set_friction", "friction"), &VehicleBody::set_friction);
-	ClassDB::bind_method(D_METHOD("get_friction"), &VehicleBody::get_friction);
+	ObjectTypeDB::bind_method(_MD("set_friction", "friction"), &VehicleBody::set_friction);
+	ObjectTypeDB::bind_method(_MD("get_friction"), &VehicleBody::get_friction);
 
-	ClassDB::bind_method(D_METHOD("set_engine_force", "engine_force"), &VehicleBody::set_engine_force);
-	ClassDB::bind_method(D_METHOD("get_engine_force"), &VehicleBody::get_engine_force);
+	ObjectTypeDB::bind_method(_MD("set_engine_force", "engine_force"), &VehicleBody::set_engine_force);
+	ObjectTypeDB::bind_method(_MD("get_engine_force"), &VehicleBody::get_engine_force);
 
-	ClassDB::bind_method(D_METHOD("set_brake", "brake"), &VehicleBody::set_brake);
-	ClassDB::bind_method(D_METHOD("get_brake"), &VehicleBody::get_brake);
+	ObjectTypeDB::bind_method(_MD("set_brake", "brake"), &VehicleBody::set_brake);
+	ObjectTypeDB::bind_method(_MD("get_brake"), &VehicleBody::get_brake);
 
-	ClassDB::bind_method(D_METHOD("set_steering", "steering"), &VehicleBody::set_steering);
-	ClassDB::bind_method(D_METHOD("get_steering"), &VehicleBody::get_steering);
+	ObjectTypeDB::bind_method(_MD("set_steering", "steering"), &VehicleBody::set_steering);
+	ObjectTypeDB::bind_method(_MD("get_steering"), &VehicleBody::get_steering);
 
-	ClassDB::bind_method(D_METHOD("get_linear_velocity"), &VehicleBody::get_linear_velocity);
+	ObjectTypeDB::bind_method(_MD("get_linear_velocity"), &VehicleBody::get_linear_velocity);
 
-	ClassDB::bind_method(D_METHOD("_direct_state_changed"), &VehicleBody::_direct_state_changed);
+	ObjectTypeDB::bind_method(_MD("_direct_state_changed"), &VehicleBody::_direct_state_changed);
 
-	ADD_GROUP("Motion", "");
-	ADD_PROPERTY(PropertyInfo(Variant::REAL, "engine_force", PROPERTY_HINT_RANGE, "0.00,1024.0,0.01"), "set_engine_force", "get_engine_force");
-	ADD_PROPERTY(PropertyInfo(Variant::REAL, "brake", PROPERTY_HINT_RANGE, "0.0,1.0,0.01"), "set_brake", "get_brake");
-	ADD_PROPERTY(PropertyInfo(Variant::REAL, "steering", PROPERTY_HINT_RANGE, "-180,180.0,0.01"), "set_steering", "get_steering");
-	ADD_GROUP("Mass", "");
-	ADD_PROPERTY(PropertyInfo(Variant::REAL, "mass", PROPERTY_HINT_RANGE, "0.01,65536,0.01"), "set_mass", "get_mass");
-	ADD_PROPERTY(PropertyInfo(Variant::REAL, "friction", PROPERTY_HINT_RANGE, "0.01,1,0.01"), "set_friction", "get_friction");
+	ADD_PROPERTY(PropertyInfo(Variant::REAL, "motion/engine_force", PROPERTY_HINT_RANGE, "0.00,1024.0,0.01"), _SCS("set_engine_force"), _SCS("get_engine_force"));
+	ADD_PROPERTY(PropertyInfo(Variant::REAL, "motion/brake", PROPERTY_HINT_RANGE, "0.0,1.0,0.01"), _SCS("set_brake"), _SCS("get_brake"));
+	ADD_PROPERTY(PropertyInfo(Variant::REAL, "motion/steering", PROPERTY_HINT_RANGE, "-180,180.0,0.01"), _SCS("set_steering"), _SCS("get_steering"));
+	ADD_PROPERTY(PropertyInfo(Variant::REAL, "body/mass", PROPERTY_HINT_RANGE, "0.01,65536,0.01"), _SCS("set_mass"), _SCS("get_mass"));
+	ADD_PROPERTY(PropertyInfo(Variant::REAL, "body/friction", PROPERTY_HINT_RANGE, "0.01,1,0.01"), _SCS("set_friction"), _SCS("get_friction"));
 }
 
 VehicleBody::VehicleBody()

@@ -41,7 +41,7 @@
 
 class XMLParser : public Reference {
 
-	GDCLASS(XMLParser, Reference);
+	OBJ_TYPE(XMLParser, Reference);
 
 public:
 	//! Enumeration of all supported source text file formats
@@ -67,7 +67,7 @@ public:
 private:
 	char *data;
 	char *P;
-	uint64_t length;
+	int length;
 	void unescape(String &p_str);
 	Vector<String> special_characters;
 	String node_name;

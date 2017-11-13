@@ -47,7 +47,14 @@ Area2DSW::BodyKey::BodyKey(Area2DSW *p_body, uint32_t p_body_shape, uint32_t p_a
 void Area2DSW::_shapes_changed() {
 }
 
-void Area2DSW::set_transform(const Transform2D &p_transform) {
+void Area2DSW::_shape_index_removed(int p_index) {
+
+	for (Set<Constraint2DSW *>::Element *E = constraints.front(); E; E = E->next()) {
+		E->get()->shift_shape_indices(this, p_index);
+	}
+}
+
+void Area2DSW::set_transform(const Matrix32 &p_transform) {
 
 	if (!moved_list.in_list() && get_space())
 		get_space()->area_add_to_moved_list(&moved_list);
@@ -125,14 +132,38 @@ void Area2DSW::set_space_override_mode(Physics2DServer::AreaSpaceOverrideMode p_
 void Area2DSW::set_param(Physics2DServer::AreaParameter p_param, const Variant &p_value) {
 
 	switch (p_param) {
-		case Physics2DServer::AREA_PARAM_GRAVITY: gravity = p_value; break;
-		case Physics2DServer::AREA_PARAM_GRAVITY_VECTOR: gravity_vector = p_value; break;
-		case Physics2DServer::AREA_PARAM_GRAVITY_IS_POINT: gravity_is_point = p_value; break;
-		case Physics2DServer::AREA_PARAM_GRAVITY_DISTANCE_SCALE: gravity_distance_scale = p_value; break;
-		case Physics2DServer::AREA_PARAM_GRAVITY_POINT_ATTENUATION: point_attenuation = p_value; break;
-		case Physics2DServer::AREA_PARAM_LINEAR_DAMP: linear_damp = p_value; break;
-		case Physics2DServer::AREA_PARAM_ANGULAR_DAMP: angular_damp = p_value; break;
-		case Physics2DServer::AREA_PARAM_PRIORITY: priority = p_value; break;
+		case Physics2DServer::AREA_PARAM_GRAVITY:
+			gravity = p_value;
+			;
+			break;
+		case Physics2DServer::AREA_PARAM_GRAVITY_VECTOR:
+			gravity_vector = p_value;
+			;
+			break;
+		case Physics2DServer::AREA_PARAM_GRAVITY_IS_POINT:
+			gravity_is_point = p_value;
+			;
+			break;
+		case Physics2DServer::AREA_PARAM_GRAVITY_DISTANCE_SCALE:
+			gravity_distance_scale = p_value;
+			;
+			break;
+		case Physics2DServer::AREA_PARAM_GRAVITY_POINT_ATTENUATION:
+			point_attenuation = p_value;
+			;
+			break;
+		case Physics2DServer::AREA_PARAM_LINEAR_DAMP:
+			linear_damp = p_value;
+			;
+			break;
+		case Physics2DServer::AREA_PARAM_ANGULAR_DAMP:
+			angular_damp = p_value;
+			;
+			break;
+		case Physics2DServer::AREA_PARAM_PRIORITY:
+			priority = p_value;
+			;
+			break;
 	}
 }
 

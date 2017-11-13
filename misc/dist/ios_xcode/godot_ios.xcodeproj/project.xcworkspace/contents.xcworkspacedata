@@ -2,6 +2,6 @@
 <Workspace
    version = "1.0">
    <FileRef
-      location = "self:$binary.xcodeproj">
+      location = "self:godot_ios.xcodeproj">
    </FileRef>
 </Workspace>

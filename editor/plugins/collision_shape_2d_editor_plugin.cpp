@@ -30,6 +30,7 @@
 #include "collision_shape_2d_editor_plugin.h"
 
 #include "canvas_item_editor_plugin.h"
+
 #include "scene/resources/capsule_shape_2d.h"
 #include "scene/resources/circle_shape_2d.h"
 #include "scene/resources/concave_polygon_shape_2d.h"
@@ -302,7 +303,7 @@ void CollisionShape2DEditor::commit_handle(int idx, Variant &p_org) {
 	undo_redo->commit_action();
 }
 
-bool CollisionShape2DEditor::forward_canvas_gui_input(const Ref<InputEvent> &p_event) {
+bool CollisionShape2DEditor::forward_input_event(const InputEvent &p_event) {
 
 	if (!node) {
 		return false;
@@ -316,64 +317,68 @@ bool CollisionShape2DEditor::forward_canvas_gui_input(const Ref<InputEvent> &p_e
 		return false;
 	}
 
-	Ref<InputEventMouseButton> mb = p_event;
-	Transform2D xform = canvas_item_editor->get_canvas_transform() * node->get_global_transform();
+	switch (p_event.type) {
+		case InputEvent::MOUSE_BUTTON: {
+			const InputEventMouseButton &mb = p_event.mouse_button;
 
-	if (mb.is_valid()) {
+			Matrix32 gt = canvas_item_editor->get_canvas_transform() * node->get_global_transform();
 
-		Vector2 gpoint = mb->get_position();
-		Vector2 cpoint = node->get_global_transform().affine_inverse().xform(canvas_item_editor->snap_point(canvas_item_editor->get_canvas_transform().affine_inverse().xform(mb->get_position())));
+			Point2 gpoint(mb.x, mb.y);
 
-		if (mb->get_button_index() == BUTTON_LEFT) {
-			if (mb->is_pressed()) {
-				for (int i = 0; i < handles.size(); i++) {
-					if (xform.xform(handles[i]).distance_to(gpoint) < 8) {
-						edit_handle = i;
+			if (mb.button_index == BUTTON_LEFT) {
+				if (mb.pressed) {
+					for (int i = 0; i < handles.size(); i++) {
+						if (gt.xform(handles[i]).distance_to(gpoint) < 8) {
+							edit_handle = i;
 
-						break;
+							break;
+						}
 					}
-				}
 
-				if (edit_handle == -1) {
-					pressed = false;
+					if (edit_handle == -1) {
+						pressed = false;
 
-					return false;
-				}
+						return false;
+					}
 
-				original = get_handle_value(edit_handle);
-				pressed = true;
-
-				return true;
-
-			} else {
-				if (pressed) {
-					commit_handle(edit_handle, original);
-
-					edit_handle = -1;
-					pressed = false;
+					original = get_handle_value(edit_handle);
+					pressed = true;
 
 					return true;
+
+				} else {
+					if (pressed) {
+						commit_handle(edit_handle, original);
+
+						edit_handle = -1;
+						pressed = false;
+
+						return true;
+					}
 				}
 			}
-		}
 
-		return false;
-	}
-
-	Ref<InputEventMouseMotion> mm = p_event;
-
-	if (mm.is_valid()) {
-
-		if (edit_handle == -1 || !pressed) {
 			return false;
-		}
 
-		Vector2 cpoint = canvas_item_editor->snap_point(canvas_item_editor->get_canvas_transform().affine_inverse().xform(mm->get_position()));
-		cpoint = node->get_global_transform().affine_inverse().xform(cpoint);
+		} break;
 
-		set_handle(edit_handle, cpoint);
+		case InputEvent::MOUSE_MOTION: {
+			const InputEventMouseMotion &mm = p_event.mouse_motion;
 
-		return true;
+			if (edit_handle == -1 || !pressed) {
+				return false;
+			}
+
+			Point2 gpoint = Point2(mm.x, mm.y);
+			Point2 cpoint = canvas_item_editor->get_canvas_transform().affine_inverse().xform(gpoint);
+			cpoint = canvas_item_editor->snap_point(cpoint);
+			cpoint = node->get_global_transform().affine_inverse().xform(cpoint);
+
+			set_handle(edit_handle, cpoint);
+
+			return true;
+
+		} break;
 	}
 
 	return false;
@@ -391,21 +396,21 @@ void CollisionShape2DEditor::_get_current_shape_type() {
 		return;
 	}
 
-	if (Object::cast_to<CapsuleShape2D>(*s)) {
+	if (s->cast_to<CapsuleShape2D>()) {
 		shape_type = CAPSULE_SHAPE;
-	} else if (Object::cast_to<CircleShape2D>(*s)) {
+	} else if (s->cast_to<CircleShape2D>()) {
 		shape_type = CIRCLE_SHAPE;
-	} else if (Object::cast_to<ConcavePolygonShape2D>(*s)) {
+	} else if (s->cast_to<ConcavePolygonShape2D>()) {
 		shape_type = CONCAVE_POLYGON_SHAPE;
-	} else if (Object::cast_to<ConvexPolygonShape2D>(*s)) {
+	} else if (s->cast_to<ConvexPolygonShape2D>()) {
 		shape_type = CONVEX_POLYGON_SHAPE;
-	} else if (Object::cast_to<LineShape2D>(*s)) {
+	} else if (s->cast_to<LineShape2D>()) {
 		shape_type = LINE_SHAPE;
-	} else if (Object::cast_to<RayShape2D>(*s)) {
+	} else if (s->cast_to<RayShape2D>()) {
 		shape_type = RAY_SHAPE;
-	} else if (Object::cast_to<RectangleShape2D>(*s)) {
+	} else if (s->cast_to<RectangleShape2D>()) {
 		shape_type = RECTANGLE_SHAPE;
-	} else if (Object::cast_to<SegmentShape2D>(*s)) {
+	} else if (s->cast_to<SegmentShape2D>()) {
 		shape_type = SEGMENT_SHAPE;
 	} else {
 		shape_type = -1;
@@ -414,7 +419,7 @@ void CollisionShape2DEditor::_get_current_shape_type() {
 	canvas_item_editor->get_viewport_control()->update();
 }
 
-void CollisionShape2DEditor::forward_draw_over_canvas(Control *p_canvas) {
+void CollisionShape2DEditor::_canvas_draw() {
 
 	if (!node) {
 		return;
@@ -430,7 +435,8 @@ void CollisionShape2DEditor::forward_draw_over_canvas(Control *p_canvas) {
 		return;
 	}
 
-	Transform2D gt = canvas_item_editor->get_canvas_transform() * node->get_global_transform();
+	Control *c = canvas_item_editor->get_viewport_control();
+	Matrix32 gt = canvas_item_editor->get_canvas_transform() * node->get_global_transform();
 
 	Ref<Texture> h = get_icon("EditorHandle", "EditorIcons");
 	Vector2 size = h->get_size() * 0.5;
@@ -448,8 +454,8 @@ void CollisionShape2DEditor::forward_draw_over_canvas(Control *p_canvas) {
 			handles[0] = Point2(radius, -height);
 			handles[1] = Point2(0, -(height + radius));
 
-			p_canvas->draw_texture(h, gt.xform(handles[0]) - size);
-			p_canvas->draw_texture(h, gt.xform(handles[1]) - size);
+			c->draw_texture(h, gt.xform(handles[0]) - size);
+			c->draw_texture(h, gt.xform(handles[1]) - size);
 
 		} break;
 
@@ -459,7 +465,7 @@ void CollisionShape2DEditor::forward_draw_over_canvas(Control *p_canvas) {
 			handles.resize(1);
 			handles[0] = Point2(shape->get_radius(), 0);
 
-			p_canvas->draw_texture(h, gt.xform(handles[0]) - size);
+			c->draw_texture(h, gt.xform(handles[0]) - size);
 
 		} break;
 
@@ -478,8 +484,8 @@ void CollisionShape2DEditor::forward_draw_over_canvas(Control *p_canvas) {
 			handles[0] = shape->get_normal() * shape->get_d();
 			handles[1] = shape->get_normal() * (shape->get_d() + 30.0);
 
-			p_canvas->draw_texture(h, gt.xform(handles[0]) - size);
-			p_canvas->draw_texture(h, gt.xform(handles[1]) - size);
+			c->draw_texture(h, gt.xform(handles[0]) - size);
+			c->draw_texture(h, gt.xform(handles[1]) - size);
 
 		} break;
 
@@ -489,7 +495,7 @@ void CollisionShape2DEditor::forward_draw_over_canvas(Control *p_canvas) {
 			handles.resize(1);
 			handles[0] = Point2(0, shape->get_length());
 
-			p_canvas->draw_texture(h, gt.xform(handles[0]) - size);
+			c->draw_texture(h, gt.xform(handles[0]) - size);
 
 		} break;
 
@@ -501,8 +507,8 @@ void CollisionShape2DEditor::forward_draw_over_canvas(Control *p_canvas) {
 			handles[0] = Point2(ext.x, 0);
 			handles[1] = Point2(0, -ext.y);
 
-			p_canvas->draw_texture(h, gt.xform(handles[0]) - size);
-			p_canvas->draw_texture(h, gt.xform(handles[1]) - size);
+			c->draw_texture(h, gt.xform(handles[0]) - size);
+			c->draw_texture(h, gt.xform(handles[1]) - size);
 
 		} break;
 
@@ -513,8 +519,8 @@ void CollisionShape2DEditor::forward_draw_over_canvas(Control *p_canvas) {
 			handles[0] = shape->get_a();
 			handles[1] = shape->get_b();
 
-			p_canvas->draw_texture(h, gt.xform(handles[0]) - size);
-			p_canvas->draw_texture(h, gt.xform(handles[1]) - size);
+			c->draw_texture(h, gt.xform(handles[0]) - size);
+			c->draw_texture(h, gt.xform(handles[1]) - size);
 
 		} break;
 	}
@@ -527,13 +533,19 @@ void CollisionShape2DEditor::edit(Node *p_node) {
 	}
 
 	if (p_node) {
-		node = Object::cast_to<CollisionShape2D>(p_node);
+		node = p_node->cast_to<CollisionShape2D>();
+
+		if (!canvas_item_editor->get_viewport_control()->is_connected("draw", this, "_canvas_draw"))
+			canvas_item_editor->get_viewport_control()->connect("draw", this, "_canvas_draw");
 
 		_get_current_shape_type();
 
 	} else {
 		edit_handle = -1;
 		shape_type = -1;
+
+		if (canvas_item_editor->get_viewport_control()->is_connected("draw", this, "_canvas_draw"))
+			canvas_item_editor->get_viewport_control()->disconnect("draw", this, "_canvas_draw");
 
 		node = NULL;
 	}
@@ -543,7 +555,8 @@ void CollisionShape2DEditor::edit(Node *p_node) {
 
 void CollisionShape2DEditor::_bind_methods() {
 
-	ClassDB::bind_method("_get_current_shape_type", &CollisionShape2DEditor::_get_current_shape_type);
+	ObjectTypeDB::bind_method("_canvas_draw", &CollisionShape2DEditor::_canvas_draw);
+	ObjectTypeDB::bind_method("_get_current_shape_type", &CollisionShape2DEditor::_get_current_shape_type);
 }
 
 CollisionShape2DEditor::CollisionShape2DEditor(EditorNode *p_editor) {
@@ -560,12 +573,12 @@ CollisionShape2DEditor::CollisionShape2DEditor(EditorNode *p_editor) {
 
 void CollisionShape2DEditorPlugin::edit(Object *p_obj) {
 
-	collision_shape_2d_editor->edit(Object::cast_to<Node>(p_obj));
+	collision_shape_2d_editor->edit(p_obj->cast_to<Node>());
 }
 
 bool CollisionShape2DEditorPlugin::handles(Object *p_obj) const {
 
-	return p_obj->is_class("CollisionShape2D");
+	return p_obj->is_type("CollisionShape2D");
 }
 
 void CollisionShape2DEditorPlugin::make_visible(bool visible) {
@@ -575,12 +588,12 @@ void CollisionShape2DEditorPlugin::make_visible(bool visible) {
 	}
 }
 
-CollisionShape2DEditorPlugin::CollisionShape2DEditorPlugin(EditorNode *p_editor) {
+CollisionShape2DEditorPlugin::CollisionShape2DEditorPlugin(EditorNode *p_node) {
 
-	editor = p_editor;
+	editor = p_node;
 
-	collision_shape_2d_editor = memnew(CollisionShape2DEditor(p_editor));
-	p_editor->get_gui_base()->add_child(collision_shape_2d_editor);
+	collision_shape_2d_editor = memnew(CollisionShape2DEditor(p_node));
+	p_node->get_gui_base()->add_child(collision_shape_2d_editor);
 }
 
 CollisionShape2DEditorPlugin::~CollisionShape2DEditorPlugin() {

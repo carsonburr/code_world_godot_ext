@@ -37,16 +37,15 @@
 #include "scene/3d/mesh_instance.h"
 #include "scene/resources/material.h"
 
-class MeshEditor : public ViewportContainer {
+class MeshEditor : public Control {
 
-	GDCLASS(MeshEditor, ViewportContainer);
+	OBJ_TYPE(MeshEditor, Control);
 
 	float rot_x;
 	float rot_y;
 
 	Viewport *viewport;
 	MeshInstance *mesh_instance;
-	Spatial *rotation;
 	DirectionalLight *light1;
 	DirectionalLight *light2;
 	Camera *camera;
@@ -63,7 +62,7 @@ class MeshEditor : public ViewportContainer {
 
 protected:
 	void _notification(int p_what);
-	void _gui_input(Ref<InputEvent> p_event);
+	void _input_event(InputEvent p_event);
 	static void _bind_methods();
 
 public:
@@ -73,7 +72,7 @@ public:
 
 class MeshEditorPlugin : public EditorPlugin {
 
-	GDCLASS(MeshEditorPlugin, EditorPlugin);
+	OBJ_TYPE(MeshEditorPlugin, EditorPlugin);
 
 	MeshEditor *mesh_editor;
 	EditorNode *editor;
@@ -81,12 +80,12 @@ class MeshEditorPlugin : public EditorPlugin {
 public:
 	virtual String get_name() const { return "Mesh"; }
 	bool has_main_screen() const { return false; }
-	virtual void edit(Object *p_object);
-	virtual bool handles(Object *p_object) const;
+	virtual void edit(Object *p_node);
+	virtual bool handles(Object *p_node) const;
 	virtual void make_visible(bool p_visible);
 
 	MeshEditorPlugin(EditorNode *p_node);
 	~MeshEditorPlugin();
 };
 
-#endif
+#endif // MESH_EDITOR_PLUGIN_H

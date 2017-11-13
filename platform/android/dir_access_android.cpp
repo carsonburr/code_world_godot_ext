@@ -36,15 +36,15 @@ DirAccess *DirAccessAndroid::create_fs() {
 	return memnew(DirAccessAndroid);
 }
 
-Error DirAccessAndroid::list_dir_begin() {
+bool DirAccessAndroid::list_dir_begin() {
 
 	list_dir_end();
 
 	AAssetDir *aad = AAssetManager_openDir(FileAccessAndroid::asset_manager, current_dir.utf8().get_data());
 	if (!aad)
-		return ERR_CANT_OPEN; //nothing
+		return true; //nothing
 
-	return OK;
+	return false;
 }
 
 String DirAccessAndroid::get_next() {

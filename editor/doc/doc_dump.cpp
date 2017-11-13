@@ -28,7 +28,6 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 #include "doc_dump.h"
-
 #include "os/file_access.h"
 #include "scene/main/node.h"
 #include "version.h"
@@ -75,7 +74,7 @@ static String _escape_string(const String &p_str) {
 void DocDump::dump(const String &p_file) {
 
 	List<StringName> class_list;
-	ClassDB::get_class_list(&class_list);
+	ObjectTypeDB::get_type_list(&class_list);
 
 	class_list.sort_custom<StringName::AlphCompare>();
 
@@ -89,10 +88,10 @@ void DocDump::dump(const String &p_file) {
 		String name = class_list.front()->get();
 
 		String header = "<class name=\"" + name + "\"";
-		String inherits = ClassDB::get_parent_class(name);
+		String inherits = ObjectTypeDB::type_inherits_from(name);
 		if (inherits != "")
 			header += " inherits=\"" + inherits + "\"";
-		String category = ClassDB::get_category(name);
+		String category = ObjectTypeDB::get_category(name);
 		if (category == "")
 			category = "Core";
 		header += " category=\"" + category + "\"";
@@ -105,14 +104,14 @@ void DocDump::dump(const String &p_file) {
 		_write_string(f, 1, "<methods>");
 
 		List<MethodInfo> method_list;
-		ClassDB::get_method_list(name, &method_list, true);
+		ObjectTypeDB::get_method_list(name, &method_list, true);
 		method_list.sort();
 
 		for (List<MethodInfo>::Element *E = method_list.front(); E; E = E->next()) {
 			if (E->get().name == "" || E->get().name[0] == '_')
 				continue; //hiden
 
-			MethodBind *m = ClassDB::get_method(name, E->get().name);
+			MethodBind *m = ObjectTypeDB::get_method(name, E->get().name);
 
 			String qualifiers;
 			if (E->get().flags & METHOD_FLAG_CONST)
@@ -165,8 +164,8 @@ void DocDump::dump(const String &p_file) {
 							case Variant::REAL:
 								//keep it
 								break;
-							case Variant::STRING:
-							case Variant::NODE_PATH:
+							case Variant::STRING: // 15
+							case Variant::NODE_PATH: // 15
 								default_arg_text = "\"" + default_arg_text + "\"";
 								break;
 							case Variant::TRANSFORM:
@@ -177,27 +176,32 @@ void DocDump::dump(const String &p_file) {
 								default_arg_text = Variant::get_type_name(default_arg.get_type()) + "(" + default_arg_text + ")";
 								break;
 
-							case Variant::VECTOR2:
+							case Variant::VECTOR2: // 5
 							case Variant::RECT2:
 							case Variant::VECTOR3:
 							case Variant::PLANE:
 							case Variant::QUAT:
-							case Variant::RECT3:
-							case Variant::BASIS:
+							case Variant::_AABB: //sorry naming convention fail :( not like it's used often // 10
+							case Variant::MATRIX3:
 							case Variant::COLOR:
-							case Variant::POOL_BYTE_ARRAY:
-							case Variant::POOL_INT_ARRAY:
-							case Variant::POOL_REAL_ARRAY:
-							case Variant::POOL_STRING_ARRAY:
-							case Variant::POOL_VECTOR3_ARRAY:
-							case Variant::POOL_COLOR_ARRAY:
+							case Variant::RAW_ARRAY:
+							case Variant::INT_ARRAY:
+							case Variant::REAL_ARRAY:
+							case Variant::STRING_ARRAY: //25
+							case Variant::VECTOR3_ARRAY:
+							case Variant::COLOR_ARRAY:
 								default_arg_text = Variant::get_type_name(default_arg.get_type()) + "(" + default_arg_text + ")";
 								break;
 							case Variant::OBJECT:
+							case Variant::INPUT_EVENT:
 							case Variant::DICTIONARY: // 20
 							case Variant::ARRAY:
 							case Variant::_RID:
+							case Variant::IMAGE:
+								//case Variant::RESOURCE:
 
+								default_arg_text = Variant::get_type_name(default_arg.get_type()) + "()";
+								break;
 							default: {}
 						}
 
@@ -244,7 +248,7 @@ void DocDump::dump(const String &p_file) {
 		_write_string(f, 1, "</methods>");
 
 		List<MethodInfo> signal_list;
-		ClassDB::get_signal_list(name, &signal_list, true);
+		ObjectTypeDB::get_signal_list(name, &signal_list, true);
 
 		if (signal_list.size()) {
 
@@ -269,7 +273,7 @@ void DocDump::dump(const String &p_file) {
 		_write_string(f, 1, "<constants>");
 
 		List<String> constant_list;
-		ClassDB::get_integer_constant_list(name, &constant_list, true);
+		ObjectTypeDB::get_integer_constant_list(name, &constant_list, true);
 
 		/* constants are sorted in a special way */
 
@@ -278,7 +282,7 @@ void DocDump::dump(const String &p_file) {
 		for (List<String>::Element *E = constant_list.front(); E; E = E->next()) {
 			_ConstantSort cs;
 			cs.name = E->get();
-			cs.value = ClassDB::get_integer_constant(name, E->get());
+			cs.value = ObjectTypeDB::get_integer_constant(name, E->get());
 			constant_sort.push_back(cs);
 		}
 

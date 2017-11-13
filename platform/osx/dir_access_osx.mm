@@ -33,8 +33,7 @@
 
 #include <errno.h>
 
-#include <AppKit/NSWorkspace.h>
-#include <Foundation/Foundation.h>
+#include <Foundation/NSString.h>
 
 String DirAccessOSX::fix_unicode_name(const char *p_name) const {
 
@@ -44,21 +43,6 @@ String DirAccessOSX::fix_unicode_name(const char *p_name) const {
 	fname.parse_utf8([nsstr UTF8String]);
 
 	return fname;
-}
-
-int DirAccessOSX::get_drive_count() {
-	NSArray *vols = [[NSWorkspace sharedWorkspace] mountedLocalVolumePaths];
-	return [vols count];
-}
-
-String DirAccessOSX::get_drive(int p_drive) {
-	NSArray *vols = [[NSWorkspace sharedWorkspace] mountedLocalVolumePaths];
-	int count = [vols count];
-
-	ERR_FAIL_INDEX_V(p_drive, count, "");
-
-	NSString *path = vols[p_drive];
-	return String([path UTF8String]);
 }
 
 #endif //posix_enabled

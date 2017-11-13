@@ -36,29 +36,27 @@
 #include "body_sw.h"
 #include "broad_phase_sw.h"
 #include "collision_object_sw.h"
+#include "globals.h"
 #include "hash_map.h"
-#include "project_settings.h"
 #include "typedefs.h"
 
 class PhysicsDirectSpaceStateSW : public PhysicsDirectSpaceState {
 
-	GDCLASS(PhysicsDirectSpaceStateSW, PhysicsDirectSpaceState);
+	OBJ_TYPE(PhysicsDirectSpaceStateSW, PhysicsDirectSpaceState);
 
 public:
 	SpaceSW *space;
 
-	virtual int intersect_point(const Vector3 &p_point, ShapeResult *r_results, int p_result_max, const Set<RID> &p_exclude = Set<RID>(), uint32_t p_collision_mask = 0xFFFFFFFF, uint32_t p_object_type_mask = TYPE_MASK_COLLISION);
-	virtual bool intersect_ray(const Vector3 &p_from, const Vector3 &p_to, RayResult &r_result, const Set<RID> &p_exclude = Set<RID>(), uint32_t p_collision_mask = 0xFFFFFFFF, uint32_t p_object_type_mask = TYPE_MASK_COLLISION, bool p_pick_ray = false);
-	virtual int intersect_shape(const RID &p_shape, const Transform &p_xform, real_t p_margin, ShapeResult *r_results, int p_result_max, const Set<RID> &p_exclude = Set<RID>(), uint32_t p_collision_mask = 0xFFFFFFFF, uint32_t p_object_type_mask = TYPE_MASK_COLLISION);
-	virtual bool cast_motion(const RID &p_shape, const Transform &p_xform, const Vector3 &p_motion, real_t p_margin, real_t &p_closest_safe, real_t &p_closest_unsafe, const Set<RID> &p_exclude = Set<RID>(), uint32_t p_collision_mask = 0xFFFFFFFF, uint32_t p_object_type_mask = TYPE_MASK_COLLISION, ShapeRestInfo *r_info = NULL);
-	virtual bool collide_shape(RID p_shape, const Transform &p_shape_xform, real_t p_margin, Vector3 *r_results, int p_result_max, int &r_result_count, const Set<RID> &p_exclude = Set<RID>(), uint32_t p_collision_mask = 0xFFFFFFFF, uint32_t p_object_type_mask = TYPE_MASK_COLLISION);
-	virtual bool rest_info(RID p_shape, const Transform &p_shape_xform, real_t p_margin, ShapeRestInfo *r_info, const Set<RID> &p_exclude = Set<RID>(), uint32_t p_collision_mask = 0xFFFFFFFF, uint32_t p_object_type_mask = TYPE_MASK_COLLISION);
-	virtual Vector3 get_closest_point_to_object_volume(RID p_object, const Vector3 p_point) const;
+	virtual bool intersect_ray(const Vector3 &p_from, const Vector3 &p_to, RayResult &r_result, const Set<RID> &p_exclude = Set<RID>(), uint32_t p_layer_mask = 0xFFFFFFFF, uint32_t p_object_type_mask = TYPE_MASK_COLLISION, bool p_pick_ray = false);
+	virtual int intersect_shape(const RID &p_shape, const Transform &p_xform, float p_margin, ShapeResult *r_results, int p_result_max, const Set<RID> &p_exclude = Set<RID>(), uint32_t p_layer_mask = 0xFFFFFFFF, uint32_t p_object_type_mask = TYPE_MASK_COLLISION);
+	virtual bool cast_motion(const RID &p_shape, const Transform &p_xform, const Vector3 &p_motion, float p_margin, float &p_closest_safe, float &p_closest_unsafe, const Set<RID> &p_exclude = Set<RID>(), uint32_t p_layer_mask = 0xFFFFFFFF, uint32_t p_object_type_mask = TYPE_MASK_COLLISION, ShapeRestInfo *r_info = NULL);
+	virtual bool collide_shape(RID p_shape, const Transform &p_shape_xform, float p_margin, Vector3 *r_results, int p_result_max, int &r_result_count, const Set<RID> &p_exclude = Set<RID>(), uint32_t p_layer_mask = 0xFFFFFFFF, uint32_t p_object_type_mask = TYPE_MASK_COLLISION);
+	virtual bool rest_info(RID p_shape, const Transform &p_shape_xform, float p_margin, ShapeRestInfo *r_info, const Set<RID> &p_exclude = Set<RID>(), uint32_t p_layer_mask = 0xFFFFFFFF, uint32_t p_object_type_mask = TYPE_MASK_COLLISION);
 
 	PhysicsDirectSpaceStateSW();
 };
 
-class SpaceSW : public RID_Data {
+class SpaceSW {
 
 public:
 	enum ElapsedTime {
@@ -104,10 +102,10 @@ private:
 	CollisionObjectSW *intersection_query_results[INTERSECTION_QUERY_MAX];
 	int intersection_query_subindex_results[INTERSECTION_QUERY_MAX];
 
-	real_t body_linear_velocity_sleep_threshold;
-	real_t body_angular_velocity_sleep_threshold;
-	real_t body_time_to_sleep;
-	real_t body_angular_velocity_damp_ratio;
+	float body_linear_velocity_sleep_threshold;
+	float body_angular_velocity_sleep_threshold;
+	float body_time_to_sleep;
+	float body_angular_velocity_damp_ratio;
 
 	bool locked;
 
@@ -121,8 +119,6 @@ private:
 	int contact_debug_count;
 
 	friend class PhysicsDirectSpaceStateSW;
-
-	int _cull_aabb_for_body(BodySW *p_body, const Rect3 &p_aabb);
 
 public:
 	_FORCE_INLINE_ void set_self(const RID &p_self) { self = p_self; }
@@ -156,8 +152,8 @@ public:
 	_FORCE_INLINE_ real_t get_contact_max_separation() const { return contact_max_separation; }
 	_FORCE_INLINE_ real_t get_contact_max_allowed_penetration() const { return contact_max_allowed_penetration; }
 	_FORCE_INLINE_ real_t get_constraint_bias() const { return constraint_bias; }
-	_FORCE_INLINE_ real_t get_body_linear_velocity_sleep_threshold() const { return body_linear_velocity_sleep_threshold; }
-	_FORCE_INLINE_ real_t get_body_angular_velocity_sleep_threshold() const { return body_angular_velocity_sleep_threshold; }
+	_FORCE_INLINE_ real_t get_body_linear_velocity_sleep_treshold() const { return body_linear_velocity_sleep_threshold; }
+	_FORCE_INLINE_ real_t get_body_angular_velocity_sleep_treshold() const { return body_angular_velocity_sleep_threshold; }
 	_FORCE_INLINE_ real_t get_body_time_to_sleep() const { return body_time_to_sleep; }
 	_FORCE_INLINE_ real_t get_body_angular_velocity_damp_ratio() const { return body_angular_velocity_damp_ratio; }
 
@@ -195,8 +191,6 @@ public:
 
 	void set_elapsed_time(ElapsedTime p_time, uint64_t p_msec) { elapsed_time[p_time] = p_msec; }
 	uint64_t get_elapsed_time(ElapsedTime p_time) const { return elapsed_time[p_time]; }
-
-	bool test_body_motion(BodySW *p_body, const Transform &p_from, const Vector3 &p_motion, real_t p_margin, PhysicsServer::MotionResult *r_result);
 
 	SpaceSW();
 	~SpaceSW();

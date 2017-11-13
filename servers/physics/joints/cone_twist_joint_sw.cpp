@@ -110,7 +110,7 @@ ConeTwistJointSW::ConeTwistJointSW(BodySW *rbA, BodySW *rbB, const Transform &rb
 	m_appliedImpulse = 0;
 }
 
-bool ConeTwistJointSW::setup(real_t p_timestep) {
+bool ConeTwistJointSW::setup(float p_step) {
 	m_appliedImpulse = real_t(0.);
 
 	//set bias, sign, clear accumulator
@@ -137,10 +137,10 @@ bool ConeTwistJointSW::setup(real_t p_timestep) {
 
 		for (int i = 0; i < 3; i++) {
 			memnew_placement(&m_jac[i], JacobianEntrySW(
-												A->get_principal_inertia_axes().transposed(),
-												B->get_principal_inertia_axes().transposed(),
-												pivotAInW - A->get_transform().origin - A->get_center_of_mass(),
-												pivotBInW - B->get_transform().origin - B->get_center_of_mass(),
+												A->get_transform().basis.transposed(),
+												B->get_transform().basis.transposed(),
+												pivotAInW - A->get_transform().origin,
+												pivotBInW - B->get_transform().origin,
 												normal[i],
 												A->get_inv_inertia(),
 												A->get_inv_mass(),
@@ -164,7 +164,7 @@ bool ConeTwistJointSW::setup(real_t p_timestep) {
 	// Get Frame into world space
 	if (m_swingSpan1 >= real_t(0.05f)) {
 		b1Axis2 = A->get_transform().basis.xform(this->m_rbAFrame.basis.get_axis(1));
-		//swing1  = btAtan2Fast( b2Axis1.dot(b1Axis2),b2Axis1.dot(b1Axis1) );
+		//		swing1  = btAtan2Fast( b2Axis1.dot(b1Axis2),b2Axis1.dot(b1Axis1) );
 		swx = b2Axis1.dot(b1Axis1);
 		swy = b2Axis1.dot(b1Axis2);
 		swing1 = atan2fast(swy, swx);
@@ -175,7 +175,7 @@ bool ConeTwistJointSW::setup(real_t p_timestep) {
 
 	if (m_swingSpan2 >= real_t(0.05f)) {
 		b1Axis3 = A->get_transform().basis.xform(this->m_rbAFrame.basis.get_axis(2));
-		//swing2 = btAtan2Fast( b2Axis1.dot(b1Axis3),b2Axis1.dot(b1Axis1) );
+		//		swing2 = btAtan2Fast( b2Axis1.dot(b1Axis3),b2Axis1.dot(b1Axis1) );
 		swx = b2Axis1.dot(b1Axis1);
 		swy = b2Axis1.dot(b1Axis3);
 		swing2 = atan2fast(swy, swx);
@@ -237,7 +237,7 @@ bool ConeTwistJointSW::setup(real_t p_timestep) {
 	return true;
 }
 
-void ConeTwistJointSW::solve(real_t p_timestep) {
+void ConeTwistJointSW::solve(real_t timeStep) {
 
 	Vector3 pivotAInW = A->get_transform().xform(m_rbAFrame.origin);
 	Vector3 pivotBInW = B->get_transform().xform(m_rbBFrame.origin);
@@ -261,7 +261,7 @@ void ConeTwistJointSW::solve(real_t p_timestep) {
 			rel_vel = normal.dot(vel);
 			//positional error (zeroth order error)
 			real_t depth = -(pivotAInW - pivotBInW).dot(normal); //this is the error projected on the normal
-			real_t impulse = depth * tau / p_timestep * jacDiagABInv - rel_vel * jacDiagABInv;
+			real_t impulse = depth * tau / timeStep * jacDiagABInv - rel_vel * jacDiagABInv;
 			m_appliedImpulse += impulse;
 			Vector3 impulse_vector = normal * impulse;
 			A->apply_impulse(pivotAInW - A->get_transform().origin, impulse_vector);
@@ -276,7 +276,7 @@ void ConeTwistJointSW::solve(real_t p_timestep) {
 
 		// solve swing limit
 		if (m_solveSwingLimit) {
-			real_t amplitude = ((angVelB - angVelA).dot(m_swingAxis) * m_relaxationFactor * m_relaxationFactor + m_swingCorrection * (real_t(1.) / p_timestep) * m_biasFactor);
+			real_t amplitude = ((angVelB - angVelA).dot(m_swingAxis) * m_relaxationFactor * m_relaxationFactor + m_swingCorrection * (real_t(1.) / timeStep) * m_biasFactor);
 			real_t impulseMag = amplitude * m_kSwing;
 
 			// Clamp the accumulated impulse
@@ -292,7 +292,7 @@ void ConeTwistJointSW::solve(real_t p_timestep) {
 
 		// solve twist limit
 		if (m_solveTwistLimit) {
-			real_t amplitude = ((angVelB - angVelA).dot(m_twistAxis) * m_relaxationFactor * m_relaxationFactor + m_twistCorrection * (real_t(1.) / p_timestep) * m_biasFactor);
+			real_t amplitude = ((angVelB - angVelA).dot(m_twistAxis) * m_relaxationFactor * m_relaxationFactor + m_twistCorrection * (real_t(1.) / timeStep) * m_biasFactor);
 			real_t impulseMag = amplitude * m_kTwist;
 
 			// Clamp the accumulated impulse
@@ -308,7 +308,7 @@ void ConeTwistJointSW::solve(real_t p_timestep) {
 	}
 }
 
-void ConeTwistJointSW::set_param(PhysicsServer::ConeTwistJointParam p_param, real_t p_value) {
+void ConeTwistJointSW::set_param(PhysicsServer::ConeTwistJointParam p_param, float p_value) {
 
 	switch (p_param) {
 		case PhysicsServer::CONE_TWIST_JOINT_SWING_SPAN: {
@@ -335,7 +335,7 @@ void ConeTwistJointSW::set_param(PhysicsServer::ConeTwistJointParam p_param, rea
 	}
 }
 
-real_t ConeTwistJointSW::get_param(PhysicsServer::ConeTwistJointParam p_param) const {
+float ConeTwistJointSW::get_param(PhysicsServer::ConeTwistJointParam p_param) const {
 
 	switch (p_param) {
 		case PhysicsServer::CONE_TWIST_JOINT_SWING_SPAN: {

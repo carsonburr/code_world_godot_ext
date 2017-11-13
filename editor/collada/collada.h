@@ -32,9 +32,9 @@
 #ifndef COLLADA_H
 #define COLLADA_H
 
+#include "globals.h"
 #include "io/xml_parser.h"
 #include "map.h"
-#include "project_settings.h"
 #include "scene/resources/material.h"
 
 class Collada {
@@ -613,7 +613,7 @@ private: // private stuff
 	void _parse_curve_geometry(XMLParser &parser, String p_id, String p_name);
 
 	void _parse_skin_controller(XMLParser &parser, String p_id);
-	void _parse_morph_controller(XMLParser &parser, String p_id);
+	void _parse_morph_controller(XMLParser &parser, String id);
 	void _parse_controller(XMLParser &parser);
 
 	Node *_parse_visual_instance_geometry(XMLParser &parser);

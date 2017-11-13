@@ -29,7 +29,7 @@
 /*************************************************************************/
 #ifdef WINDOWS_ENABLED
 
-#ifdef UWP_ENABLED
+#ifdef WINRT_ENABLED
 
 // Use Launcher class on windows 8
 

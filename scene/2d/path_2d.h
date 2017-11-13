@@ -35,7 +35,7 @@
 
 class Path2D : public Node2D {
 
-	GDCLASS(Path2D, Node2D);
+	OBJ_TYPE(Path2D, Node2D);
 
 	Ref<Curve2D> curve;
 
@@ -54,7 +54,7 @@ public:
 
 class PathFollow2D : public Node2D {
 
-	GDCLASS(PathFollow2D, Node2D);
+	OBJ_TYPE(PathFollow2D, Node2D);
 
 public:
 private:
@@ -96,7 +96,7 @@ public:
 	void set_loop(bool p_loop);
 	bool has_loop() const;
 
-	void set_rotate(bool p_rotate);
+	void set_rotate(bool p_enabled);
 	bool is_rotating() const;
 
 	void set_cubic_interpolation(bool p_enable);

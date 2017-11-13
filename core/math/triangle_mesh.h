@@ -34,7 +34,7 @@
 #include "reference.h"
 class TriangleMesh : public Reference {
 
-	GDCLASS(TriangleMesh, Reference);
+	OBJ_TYPE(TriangleMesh, Reference);
 
 	struct Triangle {
 
@@ -42,12 +42,12 @@ class TriangleMesh : public Reference {
 		int indices[3];
 	};
 
-	PoolVector<Triangle> triangles;
-	PoolVector<Vector3> vertices;
+	DVector<Triangle> triangles;
+	DVector<Vector3> vertices;
 
 	struct BVH {
 
-		Rect3 aabb;
+		AABB aabb;
 		Vector3 center; //used for sorting
 		int left;
 		int right;
@@ -80,7 +80,7 @@ class TriangleMesh : public Reference {
 
 	int _create_bvh(BVH *p_bvh, BVH **p_bb, int p_from, int p_size, int p_depth, int &max_depth, int &max_alloc);
 
-	PoolVector<BVH> bvh;
+	DVector<BVH> bvh;
 	int max_depth;
 	bool valid;
 
@@ -88,10 +88,10 @@ public:
 	bool is_valid() const;
 	bool intersect_segment(const Vector3 &p_begin, const Vector3 &p_end, Vector3 &r_point, Vector3 &r_normal) const;
 	bool intersect_ray(const Vector3 &p_begin, const Vector3 &p_dir, Vector3 &r_point, Vector3 &r_normal) const;
-	Vector3 get_area_normal(const Rect3 &p_aabb) const;
-	PoolVector<Face3> get_faces() const;
+	Vector3 get_area_normal(const AABB &p_aabb) const;
+	DVector<Face3> get_faces() const;
 
-	void create(const PoolVector<Vector3> &p_faces);
+	void create(const DVector<Vector3> &p_faces);
 	TriangleMesh();
 };
 

@@ -35,4 +35,4 @@
 #define PTHREAD_BSD_SET_NAME
 #endif
 
-#define GLES3_INCLUDE_H "glad/glad.h"
+#define GLES2_INCLUDE_H "GL/glew.h"

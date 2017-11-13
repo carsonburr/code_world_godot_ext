@@ -52,26 +52,11 @@ void OptionButton::_notification(int p_what) {
 			RID ci = get_canvas_item();
 			Ref<Texture> arrow = Control::get_icon("arrow");
 			Ref<StyleBox> normal = get_stylebox("normal");
-			Color clr = Color(1, 1, 1);
-			if (get_constant("modulate_arrow"))
-				switch (get_draw_mode()) {
-					case DRAW_PRESSED:
-						clr = get_color("font_color_pressed");
-						break;
-					case DRAW_HOVER:
-						clr = get_color("font_color_hover");
-						break;
-					case DRAW_DISABLED:
-						clr = get_color("font_color_disabled");
-						break;
-					default:
-						clr = get_color("font_color");
-				}
 
 			Size2 size = get_size();
 
 			Point2 ofs(size.width - arrow->get_width() - get_constant("arrow_margin"), int(Math::abs((size.height - arrow->get_height()) / 2)));
-			arrow->draw(ci, ofs, clr);
+			arrow->draw(ci, ofs);
 
 		} break;
 	}
@@ -82,7 +67,7 @@ void OptionButton::_selected(int p_which) {
 	int selid = -1;
 	for (int i = 0; i < popup->get_item_count(); i++) {
 
-		bool is_clicked = popup->get_item_id(i) == p_which;
+		bool is_clicked = popup->get_item_ID(i) == p_which;
 		if (is_clicked) {
 			selid = i;
 			break;
@@ -102,7 +87,7 @@ void OptionButton::_selected(int p_which) {
 void OptionButton::pressed() {
 
 	Size2 size = get_size();
-	popup->set_global_position(get_global_position() + Size2(0, size.height));
+	popup->set_global_pos(get_global_pos() + Size2(0, size.height));
 	popup->set_size(Size2(size.width, 0));
 
 	popup->popup();
@@ -129,9 +114,9 @@ void OptionButton::set_item_icon(int p_idx, const Ref<Texture> &p_icon) {
 
 	popup->set_item_icon(p_idx, p_icon);
 }
-void OptionButton::set_item_id(int p_idx, int p_ID) {
+void OptionButton::set_item_ID(int p_idx, int p_ID) {
 
-	popup->set_item_id(p_idx, p_ID);
+	popup->set_item_ID(p_idx, p_ID);
 }
 
 void OptionButton::set_item_metadata(int p_idx, const Variant &p_metadata) {
@@ -154,9 +139,9 @@ Ref<Texture> OptionButton::get_item_icon(int p_idx) const {
 	return popup->get_item_icon(p_idx);
 }
 
-int OptionButton::get_item_id(int p_idx) const {
+int OptionButton::get_item_ID(int p_idx) const {
 
-	return popup->get_item_id(p_idx);
+	return popup->get_item_ID(p_idx);
 }
 Variant OptionButton::get_item_metadata(int p_idx) const {
 
@@ -185,21 +170,21 @@ void OptionButton::clear() {
 	current = -1;
 }
 
-void OptionButton::_select(int p_which, bool p_emit) {
+void OptionButton::_select(int p_idx, bool p_emit) {
 
-	if (p_which < 0)
+	if (p_idx < 0)
 		return;
-	if (p_which == current)
+	if (p_idx == current)
 		return;
 
-	ERR_FAIL_INDEX(p_which, popup->get_item_count());
+	ERR_FAIL_INDEX(p_idx, popup->get_item_count());
 
 	for (int i = 0; i < popup->get_item_count(); i++) {
 
-		popup->set_item_checked(i, i == p_which);
+		popup->set_item_checked(i, i == p_idx);
 	}
 
-	current = p_which;
+	current = p_idx;
 	set_text(popup->get_item_text(current));
 	set_icon(popup->get_item_icon(current));
 
@@ -224,12 +209,12 @@ int OptionButton::get_selected() const {
 	return current;
 }
 
-int OptionButton::get_selected_id() const {
+int OptionButton::get_selected_ID() const {
 
 	int idx = get_selected();
 	if (idx < 0)
 		return 0;
-	return get_item_id(current);
+	return get_item_ID(current);
 }
 Variant OptionButton::get_selected_metadata() const {
 
@@ -252,7 +237,7 @@ Array OptionButton::_get_items() const {
 		items.push_back(get_item_text(i));
 		items.push_back(get_item_icon(i));
 		items.push_back(is_item_disabled(i));
-		items.push_back(get_item_id(i));
+		items.push_back(get_item_ID(i));
 		items.push_back(get_item_metadata(i));
 	}
 
@@ -286,35 +271,35 @@ void OptionButton::get_translatable_strings(List<String> *p_strings) const {
 
 void OptionButton::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("_selected"), &OptionButton::_selected);
+	ObjectTypeDB::bind_method(_MD("_selected"), &OptionButton::_selected);
 
-	ClassDB::bind_method(D_METHOD("add_item", "label", "id"), &OptionButton::add_item, DEFVAL(-1));
-	ClassDB::bind_method(D_METHOD("add_icon_item", "texture", "label", "id"), &OptionButton::add_icon_item);
-	ClassDB::bind_method(D_METHOD("set_item_text", "idx", "text"), &OptionButton::set_item_text);
-	ClassDB::bind_method(D_METHOD("set_item_icon", "idx", "texture"), &OptionButton::set_item_icon);
-	ClassDB::bind_method(D_METHOD("set_item_disabled", "idx", "disabled"), &OptionButton::set_item_disabled);
-	ClassDB::bind_method(D_METHOD("set_item_id", "idx", "id"), &OptionButton::set_item_id);
-	ClassDB::bind_method(D_METHOD("set_item_metadata", "idx", "metadata"), &OptionButton::set_item_metadata);
-	ClassDB::bind_method(D_METHOD("get_item_text", "idx"), &OptionButton::get_item_text);
-	ClassDB::bind_method(D_METHOD("get_item_icon", "idx"), &OptionButton::get_item_icon);
-	ClassDB::bind_method(D_METHOD("get_item_id", "idx"), &OptionButton::get_item_id);
-	ClassDB::bind_method(D_METHOD("get_item_metadata", "idx"), &OptionButton::get_item_metadata);
-	ClassDB::bind_method(D_METHOD("is_item_disabled", "idx"), &OptionButton::is_item_disabled);
-	ClassDB::bind_method(D_METHOD("get_item_count"), &OptionButton::get_item_count);
-	ClassDB::bind_method(D_METHOD("add_separator"), &OptionButton::add_separator);
-	ClassDB::bind_method(D_METHOD("clear"), &OptionButton::clear);
-	ClassDB::bind_method(D_METHOD("select", "idx"), &OptionButton::select);
-	ClassDB::bind_method(D_METHOD("get_selected"), &OptionButton::get_selected);
-	ClassDB::bind_method(D_METHOD("get_selected_id"), &OptionButton::get_selected_id);
-	ClassDB::bind_method(D_METHOD("get_selected_metadata"), &OptionButton::get_selected_metadata);
-	ClassDB::bind_method(D_METHOD("remove_item", "idx"), &OptionButton::remove_item);
-	ClassDB::bind_method(D_METHOD("_select_int"), &OptionButton::_select_int);
+	ObjectTypeDB::bind_method(_MD("add_item", "label", "id"), &OptionButton::add_item, DEFVAL(-1));
+	ObjectTypeDB::bind_method(_MD("add_icon_item", "texture:Texture", "label", "id"), &OptionButton::add_icon_item);
+	ObjectTypeDB::bind_method(_MD("set_item_text", "idx", "text"), &OptionButton::set_item_text);
+	ObjectTypeDB::bind_method(_MD("set_item_icon", "idx", "texture:Texture"), &OptionButton::set_item_icon);
+	ObjectTypeDB::bind_method(_MD("set_item_disabled", "idx", "disabled"), &OptionButton::set_item_disabled);
+	ObjectTypeDB::bind_method(_MD("set_item_ID", "idx", "id"), &OptionButton::set_item_ID);
+	ObjectTypeDB::bind_method(_MD("set_item_metadata", "idx", "metadata"), &OptionButton::set_item_metadata);
+	ObjectTypeDB::bind_method(_MD("get_item_text", "idx"), &OptionButton::get_item_text);
+	ObjectTypeDB::bind_method(_MD("get_item_icon:Texture", "idx"), &OptionButton::get_item_icon);
+	ObjectTypeDB::bind_method(_MD("get_item_ID", "idx"), &OptionButton::get_item_ID);
+	ObjectTypeDB::bind_method(_MD("get_item_metadata", "idx"), &OptionButton::get_item_metadata);
+	ObjectTypeDB::bind_method(_MD("is_item_disabled", "idx"), &OptionButton::is_item_disabled);
+	ObjectTypeDB::bind_method(_MD("get_item_count"), &OptionButton::get_item_count);
+	ObjectTypeDB::bind_method(_MD("add_separator"), &OptionButton::add_separator);
+	ObjectTypeDB::bind_method(_MD("clear"), &OptionButton::clear);
+	ObjectTypeDB::bind_method(_MD("select", "idx"), &OptionButton::select);
+	ObjectTypeDB::bind_method(_MD("get_selected"), &OptionButton::get_selected);
+	ObjectTypeDB::bind_method(_MD("get_selected_ID"), &OptionButton::get_selected_ID);
+	ObjectTypeDB::bind_method(_MD("get_selected_metadata"), &OptionButton::get_selected_metadata);
+	ObjectTypeDB::bind_method(_MD("remove_item", "idx"), &OptionButton::remove_item);
+	ObjectTypeDB::bind_method(_MD("_select_int"), &OptionButton::_select_int);
 
-	ClassDB::bind_method(D_METHOD("_set_items"), &OptionButton::_set_items);
-	ClassDB::bind_method(D_METHOD("_get_items"), &OptionButton::_get_items);
+	ObjectTypeDB::bind_method(_MD("_set_items"), &OptionButton::_set_items);
+	ObjectTypeDB::bind_method(_MD("_get_items"), &OptionButton::_get_items);
 
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "selected"), "_select_int", "get_selected");
-	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "items", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR), "_set_items", "_get_items");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "selected"), _SCS("_select_int"), _SCS("get_selected"));
+	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "items", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR), _SCS("_set_items"), _SCS("_get_items"));
 	ADD_SIGNAL(MethodInfo("item_selected", PropertyInfo(Variant::INT, "ID")));
 }
 
@@ -324,7 +309,7 @@ OptionButton::OptionButton() {
 	popup->hide();
 	popup->set_as_toplevel(true);
 	add_child(popup);
-	popup->connect("id_pressed", this, "_selected");
+	popup->connect("item_pressed", this, "_selected");
 
 	current = -1;
 	set_text_align(ALIGN_LEFT);

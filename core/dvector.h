@@ -30,330 +30,178 @@
 #ifndef DVECTOR_H
 #define DVECTOR_H
 
-#include "os/copymem.h"
 #include "os/memory.h"
-#include "os/rw_lock.h"
-#include "pool_allocator.h"
-#include "safe_refcount.h"
-#include "ustring.h"
-
-struct MemoryPool {
-
-	//avoid accessing these directly, must be public for template access
-
-	static PoolAllocator *memory_pool;
-	static uint8_t *pool_memory;
-	static size_t *pool_size;
-
-	struct Alloc {
-
-		SafeRefCount refcount;
-		uint32_t lock;
-		void *mem;
-		PoolAllocator::ID pool_id;
-		size_t size;
-
-		Alloc *free_list;
-
-		Alloc() {
-			mem = NULL;
-			lock = 0;
-			pool_id = POOL_ALLOCATOR_INVALID_ID;
-			size = 0;
-			free_list = NULL;
-		}
-	};
-
-	static Alloc *allocs;
-	static Alloc *free_list;
-	static uint32_t alloc_count;
-	static uint32_t allocs_used;
-	static Mutex *alloc_mutex;
-	static size_t total_memory;
-	static size_t max_memory;
-
-	static void setup(uint32_t p_max_allocs = (1 << 16));
-	static void cleanup();
-};
 
 /**
 	@author Juan Linietsky <reduzio@gmail.com>
 */
 
+extern Mutex *dvector_lock;
+
 template <class T>
-class PoolVector {
+class DVector {
 
-	MemoryPool::Alloc *alloc;
+	mutable MID mem;
 
-	void _copy_on_write() {
+	void copy_on_write() {
 
-		if (!alloc)
+		if (!mem.is_valid())
 			return;
 
-		//		ERR_FAIL_COND(alloc->lock>0); should not be illegal to lock this for copy on write, as it's a copy on write after all
+		if (dvector_lock)
+			dvector_lock->lock();
 
-		// Refcount should not be zero, otherwise it's a misuse of COW
-		if (alloc->refcount.get() == 1)
-			return; //nothing to do
+		MID_Lock lock(mem);
 
-		//must allocate something
-
-		MemoryPool::alloc_mutex->lock();
-		if (MemoryPool::allocs_used == MemoryPool::alloc_count) {
-			MemoryPool::alloc_mutex->unlock();
-			ERR_EXPLAINC("All memory pool allocations are in use, can't COW.");
-			ERR_FAIL();
+		if (*(int *)lock.data() == 1) {
+			// one reference, means no refcount changes
+			if (dvector_lock)
+				dvector_lock->unlock();
+			return;
 		}
 
-		MemoryPool::Alloc *old_alloc = alloc;
+		MID new_mem = dynalloc(mem.get_size());
 
-		//take one from the free list
-		alloc = MemoryPool::free_list;
-		MemoryPool::free_list = alloc->free_list;
-		//increment the used counter
-		MemoryPool::allocs_used++;
+		if (!new_mem.is_valid()) {
 
-		//copy the alloc data
-		alloc->size = old_alloc->size;
-		alloc->refcount.init();
-		alloc->pool_id = POOL_ALLOCATOR_INVALID_ID;
-		alloc->lock = 0;
-
-#ifdef DEBUG_ENABLED
-		MemoryPool::total_memory += alloc->size;
-		if (MemoryPool::total_memory > MemoryPool::max_memory) {
-			MemoryPool::max_memory = MemoryPool::total_memory;
-		}
-#endif
-
-		MemoryPool::alloc_mutex->unlock();
-
-		if (MemoryPool::memory_pool) {
-
-		} else {
-			alloc->mem = memalloc(alloc->size);
+			if (dvector_lock)
+				dvector_lock->unlock();
+			ERR_FAIL_COND(new_mem.is_valid()); // out of memory
 		}
 
-		{
-			Write w;
-			w._ref(alloc);
-			Read r;
-			r._ref(old_alloc);
+		MID_Lock dst_lock(new_mem);
 
-			int cur_elements = alloc->size / sizeof(T);
-			T *dst = (T *)w.ptr();
-			const T *src = (const T *)r.ptr();
-			for (int i = 0; i < cur_elements; i++) {
-				memnew_placement(&dst[i], T(src[i]));
-			}
+		int *rc = (int *)dst_lock.data();
+
+		*rc = 1;
+
+		T *dst = (T *)(rc + 1);
+
+		T *src = (T *)((int *)lock.data() + 1);
+
+		int count = (mem.get_size() - sizeof(int)) / sizeof(T);
+
+		for (int i = 0; i < count; i++) {
+
+			memnew_placement(&dst[i], T(src[i]));
 		}
 
-		if (old_alloc->refcount.unref() == true) {
-//this should never happen but..
+		(*(int *)lock.data())--;
 
-#ifdef DEBUG_ENABLED
-			MemoryPool::alloc_mutex->lock();
-			MemoryPool::total_memory -= old_alloc->size;
-			MemoryPool::alloc_mutex->unlock();
-#endif
+		// unlock all
+		dst_lock = MID_Lock();
+		lock = MID_Lock();
 
-			{
-				Write w;
-				w._ref(old_alloc);
+		mem = new_mem;
 
-				int cur_elements = old_alloc->size / sizeof(T);
-				T *elems = (T *)w.ptr();
-				for (int i = 0; i < cur_elements; i++) {
-					elems[i].~T();
-				}
-			}
-
-			if (MemoryPool::memory_pool) {
-				//resize memory pool
-				//if none, create
-				//if some resize
-			} else {
-
-				memfree(old_alloc->mem);
-				old_alloc->mem = NULL;
-				old_alloc->size = 0;
-
-				MemoryPool::alloc_mutex->lock();
-				old_alloc->free_list = MemoryPool::free_list;
-				MemoryPool::free_list = old_alloc;
-				MemoryPool::allocs_used--;
-				MemoryPool::alloc_mutex->unlock();
-			}
-		}
+		if (dvector_lock)
+			dvector_lock->unlock();
 	}
 
-	void _reference(const PoolVector &p_dvector) {
+	void reference(const DVector &p_dvector) {
 
-		if (alloc == p_dvector.alloc)
-			return;
+		unreference();
 
-		_unreference();
+		if (dvector_lock)
+			dvector_lock->lock();
 
-		if (!p_dvector.alloc) {
+		if (!p_dvector.mem.is_valid()) {
+
+			if (dvector_lock)
+				dvector_lock->unlock();
 			return;
 		}
 
-		if (p_dvector.alloc->refcount.ref()) {
-			alloc = p_dvector.alloc;
-		}
+		MID_Lock lock(p_dvector.mem);
+
+		int *rc = (int *)lock.data();
+		(*rc)++;
+
+		lock = MID_Lock();
+		mem = p_dvector.mem;
+
+		if (dvector_lock)
+			dvector_lock->unlock();
 	}
 
-	void _unreference() {
+	void unreference() {
 
-		if (!alloc)
-			return;
+		if (dvector_lock)
+			dvector_lock->lock();
 
-		if (alloc->refcount.unref() == false) {
-			alloc = NULL;
+		if (!mem.is_valid()) {
+
+			if (dvector_lock)
+				dvector_lock->unlock();
 			return;
 		}
 
-		//must be disposed!
+		MID_Lock lock(mem);
 
-		{
-			int cur_elements = alloc->size / sizeof(T);
+		int *rc = (int *)lock.data();
+		(*rc)--;
 
-			// Don't use write() here because it could otherwise provoke COW,
-			// which is not desirable here because we are destroying the last reference anyways
-			Write w;
-			// Reference to still prevent other threads from touching the alloc
-			w._ref(alloc);
+		if (*rc == 0) {
+			// no one else using it, destruct
 
-			for (int i = 0; i < cur_elements; i++) {
+			T *t = (T *)(rc + 1);
+			int count = (mem.get_size() - sizeof(int)) / sizeof(T);
 
-				w[i].~T();
+			for (int i = 0; i < count; i++) {
+
+				t[i].~T();
 			}
 		}
 
-#ifdef DEBUG_ENABLED
-		MemoryPool::alloc_mutex->lock();
-		MemoryPool::total_memory -= alloc->size;
-		MemoryPool::alloc_mutex->unlock();
-#endif
+		lock = MID_Lock();
 
-		if (MemoryPool::memory_pool) {
-			//resize memory pool
-			//if none, create
-			//if some resize
-		} else {
+		mem = MID();
 
-			memfree(alloc->mem);
-			alloc->mem = NULL;
-			alloc->size = 0;
-
-			MemoryPool::alloc_mutex->lock();
-			alloc->free_list = MemoryPool::free_list;
-			MemoryPool::free_list = alloc;
-			MemoryPool::allocs_used--;
-			MemoryPool::alloc_mutex->unlock();
-		}
-
-		alloc = NULL;
+		if (dvector_lock)
+			dvector_lock->unlock();
 	}
 
 public:
-	class Access {
-		friend class PoolVector;
+	class Read {
+		friend class DVector;
+		MID_Lock lock;
+		const T *mem;
 
-	protected:
-		MemoryPool::Alloc *alloc;
+	public:
+		_FORCE_INLINE_ const T &operator[](int p_index) const { return mem[p_index]; }
+		_FORCE_INLINE_ const T *ptr() const { return mem; }
+
+		Read() { mem = NULL; }
+	};
+
+	class Write {
+		friend class DVector;
+		MID_Lock lock;
 		T *mem;
 
-		_FORCE_INLINE_ void _ref(MemoryPool::Alloc *p_alloc) {
-			alloc = p_alloc;
-			if (alloc) {
-				if (atomic_increment(&alloc->lock) == 1) {
-					if (MemoryPool::memory_pool) {
-						//lock it and get mem
-					}
-				}
-
-				mem = (T *)alloc->mem;
-			}
-		}
-
-		_FORCE_INLINE_ void _unref() {
-
-			if (alloc) {
-				if (atomic_decrement(&alloc->lock) == 0) {
-					if (MemoryPool::memory_pool) {
-						//put mem back
-					}
-				}
-
-				mem = NULL;
-				alloc = NULL;
-			}
-		}
-
-		Access() {
-			alloc = NULL;
-			mem = NULL;
-		}
-
 	public:
-		virtual ~Access() {
-			_unref();
-		}
-	};
+		_FORCE_INLINE_ T &operator[](int p_index) { return mem[p_index]; }
+		_FORCE_INLINE_ T *ptr() { return mem; }
 
-	class Read : public Access {
-	public:
-		_FORCE_INLINE_ const T &operator[](int p_index) const { return this->mem[p_index]; }
-		_FORCE_INLINE_ const T *ptr() const { return this->mem; }
-
-		void operator=(const Read &p_read) {
-			if (this->alloc == p_read.alloc)
-				return;
-			this->_unref();
-			this->_ref(p_read.alloc);
-		}
-
-		Read(const Read &p_read) {
-			this->_ref(p_read.alloc);
-		}
-
-		Read() {}
-	};
-
-	class Write : public Access {
-	public:
-		_FORCE_INLINE_ T &operator[](int p_index) const { return this->mem[p_index]; }
-		_FORCE_INLINE_ T *ptr() const { return this->mem; }
-
-		void operator=(const Write &p_read) {
-			if (this->alloc == p_read.alloc)
-				return;
-			this->_unref();
-			this->_ref(p_read.alloc);
-		}
-
-		Write(const Write &p_read) {
-			this->_ref(p_read.alloc);
-		}
-
-		Write() {}
+		Write() { mem = NULL; }
 	};
 
 	Read read() const {
 
 		Read r;
-		if (alloc) {
-			r._ref(alloc);
+		if (mem.is_valid()) {
+			r.lock = MID_Lock(mem);
+			r.mem = (const T *)((int *)r.lock.data() + 1);
 		}
 		return r;
 	}
 	Write write() {
 
 		Write w;
-		if (alloc) {
-			_copy_on_write(); //make sure there is only one being acessed
-			w._ref(alloc);
+		if (mem.is_valid()) {
+			copy_on_write();
+			w.lock = MID_Lock(mem);
+			w.mem = (T *)((int *)w.lock.data() + 1);
 		}
 		return w;
 	}
@@ -389,7 +237,7 @@ public:
 	void set(int p_index, const T &p_val);
 	void push_back(const T &p_val);
 	void append(const T &p_val) { push_back(p_val); }
-	void append_array(const PoolVector<T> &p_arr) {
+	void append_array(const DVector<T> &p_arr) {
 		int ds = p_arr.size();
 		if (ds == 0)
 			return;
@@ -399,30 +247,6 @@ public:
 		Read r = p_arr.read();
 		for (int i = 0; i < ds; i++)
 			w[bs + i] = r[i];
-	}
-
-	PoolVector<T> subarray(int p_from, int p_to) {
-
-		if (p_from < 0) {
-			p_from = size() + p_from;
-		}
-		if (p_to < 0) {
-			p_to = size() + p_to;
-		}
-
-		CRASH_BAD_INDEX(p_from, size());
-		CRASH_BAD_INDEX(p_to, size());
-
-		PoolVector<T> slice;
-		int span = 1 + p_to - p_from;
-		slice.resize(span);
-		Read r = read();
-		Write w = slice.write();
-		for (int i = 0; i < span; ++i) {
-			w[i] = r[p_from + i];
-		}
-
-		return slice;
 	}
 
 	Error insert(int p_pos, const T &p_val) {
@@ -440,18 +264,7 @@ public:
 		return OK;
 	}
 
-	String join(String delimiter) {
-		String rs = "";
-		int s = size();
-		Read r = read();
-		for (int i = 0; i < s; i++) {
-			rs += r[i] + delimiter;
-		}
-		rs.erase(rs.length() - delimiter.length(), delimiter.length());
-		return rs;
-	}
-
-	bool is_locked() const { return alloc && alloc->lock > 0; }
+	bool is_locked() const { return mem.is_locked(); }
 
 	inline const T operator[](int p_index) const;
 
@@ -459,29 +272,26 @@ public:
 
 	void invert();
 
-	void operator=(const PoolVector &p_dvector) { _reference(p_dvector); }
-	PoolVector() { alloc = NULL; }
-	PoolVector(const PoolVector &p_dvector) {
-		alloc = NULL;
-		_reference(p_dvector);
-	}
-	~PoolVector() { _unreference(); }
+	void operator=(const DVector &p_dvector) { reference(p_dvector); }
+	DVector() {}
+	DVector(const DVector &p_dvector) { reference(p_dvector); }
+	~DVector() { unreference(); }
 };
 
 template <class T>
-int PoolVector<T>::size() const {
+int DVector<T>::size() const {
 
-	return alloc ? alloc->size / sizeof(T) : 0;
+	return mem.is_valid() ? ((mem.get_size() - sizeof(int)) / sizeof(T)) : 0;
 }
 
 template <class T>
-T PoolVector<T>::get(int p_index) const {
+T DVector<T>::get(int p_index) const {
 
 	return operator[](p_index);
 }
 
 template <class T>
-void PoolVector<T>::set(int p_index, const T &p_val) {
+void DVector<T>::set(int p_index, const T &p_val) {
 
 	if (p_index < 0 || p_index >= size()) {
 		ERR_FAIL_COND(p_index < 0 || p_index >= size());
@@ -492,133 +302,95 @@ void PoolVector<T>::set(int p_index, const T &p_val) {
 }
 
 template <class T>
-void PoolVector<T>::push_back(const T &p_val) {
+void DVector<T>::push_back(const T &p_val) {
 
 	resize(size() + 1);
 	set(size() - 1, p_val);
 }
 
 template <class T>
-const T PoolVector<T>::operator[](int p_index) const {
+const T DVector<T>::operator[](int p_index) const {
 
-	CRASH_BAD_INDEX(p_index, size());
+	PRAY_BAD_INDEX(p_index, size(), T);
 
 	Read r = read();
 	return r[p_index];
 }
 
 template <class T>
-Error PoolVector<T>::resize(int p_size) {
+Error DVector<T>::resize(int p_size) {
 
-	if (alloc == NULL) {
+	if (dvector_lock)
+		dvector_lock->lock();
 
-		if (p_size == 0)
-			return OK; //nothing to do here
+	bool same = p_size == size();
 
-		//must allocate something
-		MemoryPool::alloc_mutex->lock();
-		if (MemoryPool::allocs_used == MemoryPool::alloc_count) {
-			MemoryPool::alloc_mutex->unlock();
-			ERR_EXPLAINC("All memory pool allocations are in use.");
-			ERR_FAIL_V(ERR_OUT_OF_MEMORY);
-		}
+	if (dvector_lock)
+		dvector_lock->unlock();
+	// no further locking is necesary because we are supposed to own the only copy of this (using copy on write)
 
-		//take one from the free list
-		alloc = MemoryPool::free_list;
-		MemoryPool::free_list = alloc->free_list;
-		//increment the used counter
-		MemoryPool::allocs_used++;
-
-		//cleanup the alloc
-		alloc->size = 0;
-		alloc->refcount.init();
-		alloc->pool_id = POOL_ALLOCATOR_INVALID_ID;
-		MemoryPool::alloc_mutex->unlock();
-
-	} else {
-
-		ERR_FAIL_COND_V(alloc->lock > 0, ERR_LOCKED); //can't resize if locked!
-	}
-
-	size_t new_size = sizeof(T) * p_size;
-
-	if (alloc->size == new_size)
-		return OK; //nothing to do
+	if (same)
+		return OK;
 
 	if (p_size == 0) {
-		_unreference();
+
+		unreference();
 		return OK;
 	}
 
-	_copy_on_write(); // make it unique
+	copy_on_write(); // make it unique
 
-#ifdef DEBUG_ENABLED
-	MemoryPool::alloc_mutex->lock();
-	MemoryPool::total_memory -= alloc->size;
-	MemoryPool::total_memory += new_size;
-	if (MemoryPool::total_memory > MemoryPool::max_memory) {
-		MemoryPool::max_memory = MemoryPool::total_memory;
-	}
-	MemoryPool::alloc_mutex->unlock();
-#endif
+	ERR_FAIL_COND_V(mem.is_locked(), ERR_LOCKED); // if after copy on write, memory is locked, fail.
 
-	int cur_elements = alloc->size / sizeof(T);
+	if (p_size > size()) {
 
-	if (p_size > cur_elements) {
+		int oldsize = size();
 
-		if (MemoryPool::memory_pool) {
-			//resize memory pool
-			//if none, create
-			//if some resize
+		MID_Lock lock;
+
+		if (oldsize == 0) {
+
+			mem = dynalloc(p_size * sizeof(T) + sizeof(int));
+			lock = MID_Lock(mem);
+			int *rc = ((int *)lock.data());
+			*rc = 1;
+
 		} else {
 
-			if (alloc->size == 0) {
-				alloc->mem = memalloc(new_size);
-			} else {
-				alloc->mem = memrealloc(alloc->mem, new_size);
+			if (dynrealloc(mem, p_size * sizeof(T) + sizeof(int)) != OK) {
+
+				ERR_FAIL_V(ERR_OUT_OF_MEMORY); // out of memory
 			}
+
+			lock = MID_Lock(mem);
 		}
 
-		alloc->size = new_size;
+		T *t = (T *)((int *)lock.data() + 1);
 
-		Write w = write();
+		for (int i = oldsize; i < p_size; i++) {
 
-		for (int i = cur_elements; i < p_size; i++) {
-
-			memnew_placement(&w[i], T);
+			memnew_placement(&t[i], T);
 		}
 
+		lock = MID_Lock(); // clear
 	} else {
 
-		{
-			Write w = write();
-			for (int i = p_size; i < cur_elements; i++) {
+		int oldsize = size();
 
-				w[i].~T();
-			}
+		MID_Lock lock(mem);
+
+		T *t = (T *)((int *)lock.data() + 1);
+
+		for (int i = p_size; i < oldsize; i++) {
+
+			t[i].~T();
 		}
 
-		if (MemoryPool::memory_pool) {
-			//resize memory pool
-			//if none, create
-			//if some resize
-		} else {
+		lock = MID_Lock(); // clear
 
-			if (new_size == 0) {
-				memfree(alloc->mem);
-				alloc->mem = NULL;
-				alloc->size = 0;
+		if (dynrealloc(mem, p_size * sizeof(T) + sizeof(int)) != OK) {
 
-				MemoryPool::alloc_mutex->lock();
-				alloc->free_list = MemoryPool::free_list;
-				MemoryPool::free_list = alloc;
-				MemoryPool::allocs_used--;
-				MemoryPool::alloc_mutex->unlock();
-
-			} else {
-				alloc->mem = memrealloc(alloc->mem, new_size);
-				alloc->size = new_size;
-			}
+			ERR_FAIL_V(ERR_OUT_OF_MEMORY); // wtf error
 		}
 	}
 
@@ -626,7 +398,7 @@ Error PoolVector<T>::resize(int p_size) {
 }
 
 template <class T>
-void PoolVector<T>::invert() {
+void DVector<T>::invert() {
 	T temp;
 	Write w = write();
 	int s = size();

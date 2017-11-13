@@ -59,11 +59,11 @@ Vector<Vector2> ConvexPolygonShape2D::get_points() const {
 
 void ConvexPolygonShape2D::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("set_point_cloud", "point_cloud"), &ConvexPolygonShape2D::set_point_cloud);
-	ClassDB::bind_method(D_METHOD("set_points", "points"), &ConvexPolygonShape2D::set_points);
-	ClassDB::bind_method(D_METHOD("get_points"), &ConvexPolygonShape2D::get_points);
+	ObjectTypeDB::bind_method(_MD("set_point_cloud", "point_cloud"), &ConvexPolygonShape2D::set_point_cloud);
+	ObjectTypeDB::bind_method(_MD("set_points", "points"), &ConvexPolygonShape2D::set_points);
+	ObjectTypeDB::bind_method(_MD("get_points"), &ConvexPolygonShape2D::get_points);
 
-	ADD_PROPERTY(PropertyInfo(Variant::POOL_VECTOR2_ARRAY, "points"), "set_points", "get_points");
+	ADD_PROPERTY(PropertyInfo(Variant::VECTOR2_ARRAY, "points"), _SCS("set_points"), _SCS("get_points"));
 }
 
 void ConvexPolygonShape2D::draw(const RID &p_to_rid, const Color &p_color) {
@@ -78,7 +78,7 @@ Rect2 ConvexPolygonShape2D::get_rect() const {
 	Rect2 rect;
 	for (int i = 0; i < points.size(); i++) {
 		if (i == 0)
-			rect.position = points[i];
+			rect.pos = points[i];
 		else
 			rect.expand_to(points[i]);
 	}

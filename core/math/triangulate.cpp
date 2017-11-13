@@ -29,17 +29,17 @@
 /*************************************************************************/
 #include "triangulate.h"
 
-real_t Triangulate::get_area(const Vector<Vector2> &contour) {
+float Triangulate::get_area(const Vector<Vector2> &contour) {
 
 	int n = contour.size();
 	const Vector2 *c = &contour[0];
 
-	real_t A = 0.0;
+	float A = 0.0f;
 
 	for (int p = n - 1, q = 0; q < n; p = q++) {
 		A += c[p].cross(c[q]);
 	}
-	return A * 0.5;
+	return A * 0.5f;
 }
 
 /*
@@ -47,14 +47,14 @@ real_t Triangulate::get_area(const Vector<Vector2> &contour) {
      defined by A, B, C.
    */
 
-bool Triangulate::is_inside_triangle(real_t Ax, real_t Ay,
-		real_t Bx, real_t By,
-		real_t Cx, real_t Cy,
-		real_t Px, real_t Py)
+bool Triangulate::is_inside_triangle(float Ax, float Ay,
+		float Bx, float By,
+		float Cx, float Cy,
+		float Px, float Py)
 
 {
-	real_t ax, ay, bx, by, cx, cy, apx, apy, bpx, bpy, cpx, cpy;
-	real_t cCROSSap, bCROSScp, aCROSSbp;
+	float ax, ay, bx, by, cx, cy, apx, apy, bpx, bpy, cpx, cpy;
+	float cCROSSap, bCROSScp, aCROSSbp;
 
 	ax = Cx - Bx;
 	ay = Cy - By;
@@ -73,12 +73,12 @@ bool Triangulate::is_inside_triangle(real_t Ax, real_t Ay,
 	cCROSSap = cx * apy - cy * apx;
 	bCROSScp = bx * cpy - by * cpx;
 
-	return ((aCROSSbp >= 0.0) && (bCROSScp >= 0.0) && (cCROSSap >= 0.0));
+	return ((aCROSSbp >= 0.0f) && (bCROSScp >= 0.0f) && (cCROSSap >= 0.0f));
 };
 
 bool Triangulate::snip(const Vector<Vector2> &p_contour, int u, int v, int w, int n, const Vector<int> &V) {
 	int p;
-	real_t Ax, Ay, Bx, By, Cx, Cy, Px, Py;
+	float Ax, Ay, Bx, By, Cx, Cy, Px, Py;
 	const Vector2 *contour = &p_contour[0];
 
 	Ax = contour[V[u]].x;
@@ -113,7 +113,7 @@ bool Triangulate::triangulate(const Vector<Vector2> &contour, Vector<int> &resul
 
 	/* we want a counter-clockwise polygon in V */
 
-	if (0.0 < get_area(contour))
+	if (0.0f < get_area(contour))
 		for (int v = 0; v < n; v++)
 			V[v] = v;
 	else
@@ -156,7 +156,6 @@ bool Triangulate::triangulate(const Vector<Vector2> &contour, Vector<int> &resul
 			/* remove v from remaining polygon */
 			for (s = v, t = v + 1; t < nv; s++, t++)
 				V[s] = V[t];
-
 			nv--;
 
 			/* resest error detection counter */

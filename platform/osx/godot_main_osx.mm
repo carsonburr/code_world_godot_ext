@@ -73,13 +73,6 @@ int main(int argc, char **argv) {
 		}
 	}
 
-#ifdef DEBUG_ENABLED
-	// lets report the path we made current after all that
-	char cwd[4096];
-	getcwd(cwd, 4096);
-	printf("Current path: %s\n", cwd);
-#endif
-
 	OS_OSX os;
 
 	Error err = Main::setup(argv[0], argc - first_arg, &argv[first_arg]);
@@ -88,7 +81,6 @@ int main(int argc, char **argv) {
 
 	if (Main::start())
 		os.run(); // it is actually the OS that decides how to run
-
 	Main::cleanup();
 
 	return 0;

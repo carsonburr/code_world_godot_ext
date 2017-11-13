@@ -35,10 +35,9 @@
 
 class Sprite : public Node2D {
 
-	GDCLASS(Sprite, Node2D);
+	OBJ_TYPE(Sprite, Node2D);
 
 	Ref<Texture> texture;
-	Ref<Texture> normal_map;
 
 	bool centered;
 	Point2 offset;
@@ -47,12 +46,13 @@ class Sprite : public Node2D {
 	bool vflip;
 	bool region;
 	Rect2 region_rect;
-	bool region_filter_clip;
 
 	int frame;
 
 	int vframes;
 	int hframes;
+
+	Color modulate;
 
 protected:
 	void _notification(int p_what);
@@ -69,9 +69,6 @@ public:
 	void set_texture(const Ref<Texture> &p_texture);
 	Ref<Texture> get_texture() const;
 
-	void set_normal_map(const Ref<Texture> &p_texture);
-	Ref<Texture> get_normal_map() const;
-
 	void set_centered(bool p_center);
 	bool is_centered() const;
 
@@ -87,9 +84,6 @@ public:
 	void set_region(bool p_region);
 	bool is_region() const;
 
-	void set_region_filter_clip(bool p_enable);
-	bool is_region_filter_clip_enabled() const;
-
 	void set_region_rect(const Rect2 &p_region_rect);
 	Rect2 get_region_rect() const;
 
@@ -102,15 +96,17 @@ public:
 	void set_hframes(int p_amount);
 	int get_hframes() const;
 
+	void set_modulate(const Color &p_color);
+	Color get_modulate() const;
+
 	virtual Rect2 get_item_rect() const;
 
 	Sprite();
 };
 
-#if 0
 class ViewportSprite : public Node2D {
 
-	GDCLASS( ViewportSprite, Node2D );
+	OBJ_TYPE(ViewportSprite, Node2D);
 
 	Ref<Texture> texture;
 	NodePath viewport_path;
@@ -120,27 +116,25 @@ class ViewportSprite : public Node2D {
 	Color modulate;
 
 protected:
-
 	void _notification(int p_what);
 
 	static void _bind_methods();
 
 public:
-
-	virtual void edit_set_pivot(const Point2& p_pivot);
+	virtual void edit_set_pivot(const Point2 &p_pivot);
 	virtual Point2 edit_get_pivot() const;
 	virtual bool edit_has_pivot() const;
 
-	void set_viewport_path(const NodePath& p_viewport);
+	void set_viewport_path(const NodePath &p_viewport);
 	NodePath get_viewport_path() const;
 
 	void set_centered(bool p_center);
 	bool is_centered() const;
 
-	void set_offset(const Point2& p_offset);
+	void set_offset(const Point2 &p_offset);
 	Point2 get_offset() const;
 
-	void set_modulate(const Color& p_color);
+	void set_modulate(const Color &p_color);
 	Color get_modulate() const;
 
 	virtual Rect2 get_item_rect() const;
@@ -150,5 +144,4 @@ public:
 	ViewportSprite();
 };
 
-#endif
 #endif // SPRITE_H

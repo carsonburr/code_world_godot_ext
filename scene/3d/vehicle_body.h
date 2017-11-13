@@ -36,7 +36,7 @@ class VehicleBody;
 
 class VehicleWheel : public Spatial {
 
-	GDCLASS(VehicleWheel, Spatial);
+	OBJ_TYPE(VehicleWheel, Spatial);
 
 	friend class VehicleBody;
 
@@ -62,7 +62,7 @@ class VehicleWheel : public Spatial {
 
 	VehicleBody *body;
 
-	//btVector3	m_wheelAxleCS; // const or modified by steering ?
+	//	btVector3	m_wheelAxleCS; // const or modified by steering ?
 
 	real_t m_steering;
 	real_t m_rotation;
@@ -131,16 +131,12 @@ public:
 	void set_roll_influence(float p_value);
 	float get_roll_influence() const;
 
-	float get_skidinfo() const;
-
-	String get_configuration_warning() const;
-
 	VehicleWheel();
 };
 
 class VehicleBody : public PhysicsBody {
 
-	GDCLASS(VehicleBody, PhysicsBody);
+	OBJ_TYPE(VehicleBody, PhysicsBody);
 
 	real_t mass;
 	real_t friction;
@@ -200,7 +196,7 @@ public:
 	void set_engine_force(float p_engine_force);
 	float get_engine_force() const;
 
-	void set_brake(float p_brake);
+	void set_brake(float p_force);
 	float get_brake() const;
 
 	void set_steering(float p_steering);

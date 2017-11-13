@@ -34,7 +34,7 @@
 
 class PackedDataContainer : public Resource {
 
-	GDCLASS(PackedDataContainer, Resource);
+	OBJ_TYPE(PackedDataContainer, Resource);
 
 	enum {
 		TYPE_DICT = 0xFFFFFFFF,
@@ -47,7 +47,7 @@ class PackedDataContainer : public Resource {
 		bool operator<(const DictKey &p_key) const { return hash < p_key.hash; }
 	};
 
-	PoolVector<uint8_t> data;
+	DVector<uint8_t> data;
 	int datalen;
 
 	uint32_t _pack(const Variant &p_data, Vector<uint8_t> &tmpdata, Map<String, uint32_t> &string_cache);
@@ -67,8 +67,8 @@ class PackedDataContainer : public Resource {
 	int _size(uint32_t p_ofs) const;
 
 protected:
-	void _set_data(const PoolVector<uint8_t> &p_data);
-	PoolVector<uint8_t> _get_data() const;
+	void _set_data(const DVector<uint8_t> &p_data);
+	DVector<uint8_t> _get_data() const;
 	static void _bind_methods();
 
 public:
@@ -81,7 +81,7 @@ public:
 };
 
 class PackedDataContainerRef : public Reference {
-	GDCLASS(PackedDataContainerRef, Reference);
+	OBJ_TYPE(PackedDataContainerRef, Reference);
 
 	friend class PackedDataContainer;
 	uint32_t offset;

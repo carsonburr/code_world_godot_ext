@@ -28,7 +28,6 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 #include "camera_editor_plugin.h"
-
 #include "spatial_editor_plugin.h"
 
 void CameraEditor::_notification(int p_what) {
@@ -60,7 +59,7 @@ void CameraEditor::_pressed() {
 
 void CameraEditor::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("_pressed"), &CameraEditor::_pressed);
+	ObjectTypeDB::bind_method(_MD("_pressed"), &CameraEditor::_pressed);
 }
 
 void CameraEditor::edit(Node *p_camera) {
@@ -88,7 +87,7 @@ CameraEditor::CameraEditor() {
 	preview->set_toggle_mode(true);
 	preview->set_anchor(MARGIN_LEFT, Control::ANCHOR_END);
 	preview->set_anchor(MARGIN_RIGHT, Control::ANCHOR_END);
-	preview->set_margin(MARGIN_LEFT, -60);
+	preview->set_margin(MARGIN_LEFT, 60);
 	preview->set_margin(MARGIN_RIGHT, 0);
 	preview->set_margin(MARGIN_TOP, 0);
 	preview->set_margin(MARGIN_BOTTOM, 10);
@@ -97,20 +96,22 @@ CameraEditor::CameraEditor() {
 
 void CameraEditorPlugin::edit(Object *p_object) {
 
-	SpatialEditor::get_singleton()->set_can_preview(Object::cast_to<Camera>(p_object));
-	//camera_editor->edit(Object::cast_to<Node>(p_object));
+	SpatialEditor::get_singleton()->set_can_preview(p_object->cast_to<Camera>());
+	//camera_editor->edit(p_object->cast_to<Node>());
 }
 
 bool CameraEditorPlugin::handles(Object *p_object) const {
 
-	return p_object->is_class("Camera");
+	return p_object->is_type("Camera");
 }
 
 void CameraEditorPlugin::make_visible(bool p_visible) {
 
 	if (p_visible) {
-		//SpatialEditor::get_singleton()->set_can_preview(Object::cast_to<Camera>(p_object));
+		//	SpatialEditor::get_singleton()->set_can_preview(p_object->cast_to<Camera>());
+
 	} else {
+
 		SpatialEditor::get_singleton()->set_can_preview(NULL);
 	}
 }

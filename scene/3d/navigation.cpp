@@ -34,13 +34,13 @@ void Navigation::_navmesh_link(int p_id) {
 	ERR_FAIL_COND(!navmesh_map.has(p_id));
 	NavMesh &nm = navmesh_map[p_id];
 	ERR_FAIL_COND(nm.linked);
-
-	PoolVector<Vector3> vertices = nm.navmesh->get_vertices();
+	
+	DVector<Vector3> vertices = nm.navmesh->get_vertices();
 	int len = vertices.size();
 	if (len == 0)
 		return;
 
-	PoolVector<Vector3>::Read r = vertices.read();
+	DVector<Vector3>::Read r = vertices.read();
 
 	for (int i = 0; i < nm.navmesh->get_polygon_count(); i++) {
 
@@ -345,7 +345,7 @@ Vector<Vector3> Navigation::get_simple_path(const Vector3 &p_start, const Vector
 	while (!found_route) {
 
 		if (open_list.size() == 0) {
-			//print_line("NOU OPEN LIST");
+			//	print_line("NOU OPEN LIST");
 			break;
 		}
 		//check open list
@@ -580,7 +580,7 @@ Vector3 Navigation::get_closest_point_to_segment(const Vector3 &p_from, const Ve
 	}
 
 	if (closest_navmesh && closest_navmesh->owner) {
-		//print_line("navmesh is: "+Object::cast_to<Node>(closest_navmesh->owner)->get_name());
+		//print_line("navmesh is: "+closest_navmesh->owner->cast_to<Node>()->get_name());
 	}
 
 	return closest_point;
@@ -686,20 +686,20 @@ Vector3 Navigation::get_up_vector() const {
 
 void Navigation::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("navmesh_create", "mesh", "xform", "owner"), &Navigation::navmesh_create, DEFVAL(Variant()));
-	ClassDB::bind_method(D_METHOD("navmesh_set_transform", "id", "xform"), &Navigation::navmesh_set_transform);
-	ClassDB::bind_method(D_METHOD("navmesh_remove", "id"), &Navigation::navmesh_remove);
+	ObjectTypeDB::bind_method(_MD("navmesh_create", "mesh:NavigationMesh", "xform", "owner"), &Navigation::navmesh_create, DEFVAL(Variant()));
+	ObjectTypeDB::bind_method(_MD("navmesh_set_transform", "id", "xform"), &Navigation::navmesh_set_transform);
+	ObjectTypeDB::bind_method(_MD("navmesh_remove", "id"), &Navigation::navmesh_remove);
 
-	ClassDB::bind_method(D_METHOD("get_simple_path", "start", "end", "optimize"), &Navigation::get_simple_path, DEFVAL(true));
-	ClassDB::bind_method(D_METHOD("get_closest_point_to_segment", "start", "end", "use_collision"), &Navigation::get_closest_point_to_segment, DEFVAL(false));
-	ClassDB::bind_method(D_METHOD("get_closest_point", "to_point"), &Navigation::get_closest_point);
-	ClassDB::bind_method(D_METHOD("get_closest_point_normal", "to_point"), &Navigation::get_closest_point_normal);
-	ClassDB::bind_method(D_METHOD("get_closest_point_owner", "to_point"), &Navigation::get_closest_point_owner);
+	ObjectTypeDB::bind_method(_MD("get_simple_path", "start", "end", "optimize"), &Navigation::get_simple_path, DEFVAL(true));
+	ObjectTypeDB::bind_method(_MD("get_closest_point_to_segment", "start", "end", "use_collision"), &Navigation::get_closest_point_to_segment, DEFVAL(false));
+	ObjectTypeDB::bind_method(_MD("get_closest_point", "to_point"), &Navigation::get_closest_point);
+	ObjectTypeDB::bind_method(_MD("get_closest_point_normal", "to_point"), &Navigation::get_closest_point_normal);
+	ObjectTypeDB::bind_method(_MD("get_closest_point_owner", "to_point"), &Navigation::get_closest_point_owner);
 
-	ClassDB::bind_method(D_METHOD("set_up_vector", "up"), &Navigation::set_up_vector);
-	ClassDB::bind_method(D_METHOD("get_up_vector"), &Navigation::get_up_vector);
+	ObjectTypeDB::bind_method(_MD("set_up_vector", "up"), &Navigation::set_up_vector);
+	ObjectTypeDB::bind_method(_MD("get_up_vector"), &Navigation::get_up_vector);
 
-	ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "up_vector"), "set_up_vector", "get_up_vector");
+	ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "up_vector"), _SCS("set_up_vector"), _SCS("get_up_vector"));
 }
 
 Navigation::Navigation() {

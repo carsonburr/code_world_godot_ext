@@ -32,19 +32,19 @@
 
 void MainLoop::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("input_event", "ev"), &MainLoop::input_event);
-	ClassDB::bind_method(D_METHOD("input_text", "text"), &MainLoop::input_text);
-	ClassDB::bind_method(D_METHOD("init"), &MainLoop::init);
-	ClassDB::bind_method(D_METHOD("iteration", "delta"), &MainLoop::iteration);
-	ClassDB::bind_method(D_METHOD("idle", "delta"), &MainLoop::idle);
-	ClassDB::bind_method(D_METHOD("finish"), &MainLoop::finish);
+	ObjectTypeDB::bind_method(_MD("input_event", "ev"), &MainLoop::input_event);
+	ObjectTypeDB::bind_method(_MD("input_text", "text"), &MainLoop::input_text);
+	ObjectTypeDB::bind_method(_MD("init"), &MainLoop::init);
+	ObjectTypeDB::bind_method(_MD("iteration", "delta"), &MainLoop::iteration);
+	ObjectTypeDB::bind_method(_MD("idle", "delta"), &MainLoop::idle);
+	ObjectTypeDB::bind_method(_MD("finish"), &MainLoop::finish);
 
-	BIND_VMETHOD(MethodInfo("_input_event", PropertyInfo(Variant::OBJECT, "ev", PROPERTY_HINT_RESOURCE_TYPE, "InputEvent")));
+	BIND_VMETHOD(MethodInfo("_input_event", PropertyInfo(Variant::INPUT_EVENT, "ev")));
 	BIND_VMETHOD(MethodInfo("_input_text", PropertyInfo(Variant::STRING, "text")));
 	BIND_VMETHOD(MethodInfo("_initialize"));
 	BIND_VMETHOD(MethodInfo("_iteration", PropertyInfo(Variant::REAL, "delta")));
 	BIND_VMETHOD(MethodInfo("_idle", PropertyInfo(Variant::REAL, "delta")));
-	BIND_VMETHOD(MethodInfo("_drop_files", PropertyInfo(Variant::POOL_STRING_ARRAY, "files"), PropertyInfo(Variant::INT, "screen")));
+	BIND_VMETHOD(MethodInfo("_drop_files", PropertyInfo(Variant::STRING_ARRAY, "files"), PropertyInfo(Variant::INT, "screen")));
 	BIND_VMETHOD(MethodInfo("_finalize"));
 
 	BIND_CONSTANT(NOTIFICATION_WM_MOUSE_ENTER);
@@ -52,11 +52,8 @@ void MainLoop::_bind_methods() {
 	BIND_CONSTANT(NOTIFICATION_WM_FOCUS_IN);
 	BIND_CONSTANT(NOTIFICATION_WM_FOCUS_OUT);
 	BIND_CONSTANT(NOTIFICATION_WM_QUIT_REQUEST);
-	BIND_CONSTANT(NOTIFICATION_WM_GO_BACK_REQUEST);
 	BIND_CONSTANT(NOTIFICATION_WM_UNFOCUS_REQUEST);
 	BIND_CONSTANT(NOTIFICATION_OS_MEMORY_WARNING);
-	BIND_CONSTANT(NOTIFICATION_TRANSLATION_CHANGED);
-	BIND_CONSTANT(NOTIFICATION_WM_ABOUT);
 };
 
 void MainLoop::set_init_script(const Ref<Script> &p_init_script) {
@@ -76,7 +73,7 @@ void MainLoop::input_text(const String &p_text) {
 		get_script_instance()->call("_input_text", p_text);
 }
 
-void MainLoop::input_event(const Ref<InputEvent> &p_event) {
+void MainLoop::input_event(const InputEvent &p_event) {
 
 	if (get_script_instance())
 		get_script_instance()->call("_input_event", p_event);

@@ -34,10 +34,9 @@
 /**
 	@author Juan Linietsky <reduzio@gmail.com>
 */
-
 class Button : public BaseButton {
 
-	GDCLASS(Button, BaseButton);
+	OBJ_TYPE(Button, BaseButton);
 
 public:
 	enum TextAlign {
@@ -49,7 +48,6 @@ public:
 private:
 	bool flat;
 	String text;
-	String xl_text;
 	Ref<Texture> icon;
 	bool clip_text;
 	TextAlign align;

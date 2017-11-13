@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  b2d_decompose.cpp                                                    */
+/* b2d_decompose.cpp                                                     */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -148,7 +148,7 @@ static Vector<Vector<Vector2> > _b2d_decompose(const Vector<Vector2> &p_polygon)
 		}
 	Skip:;
 	}
-	//delete[] pdarray;
+	//	delete[] pdarray;
 	delete[] decomposed;
 	delete p;
 	return res; // pdarray; //needs to be deleted after body is created

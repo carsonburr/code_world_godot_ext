@@ -34,7 +34,7 @@
 
 class Slider : public Range {
 
-	GDCLASS(Slider, Range);
+	OBJ_TYPE(Slider, Range);
 
 	struct Grab {
 		int pos;
@@ -46,10 +46,9 @@ class Slider : public Range {
 	bool mouse_inside;
 	Orientation orientation;
 	float custom_step;
-	bool editable;
 
 protected:
-	void _gui_input(Ref<InputEvent> p_event);
+	void _input_event(InputEvent p_event);
 	void _notification(int p_what);
 	static void _bind_methods();
 	bool ticks_on_borders;
@@ -66,15 +65,12 @@ public:
 	void set_ticks_on_borders(bool);
 	bool get_ticks_on_borders() const;
 
-	void set_editable(bool p_editable);
-	bool is_editable() const;
-
 	Slider(Orientation p_orientation = VERTICAL);
 };
 
 class HSlider : public Slider {
 
-	GDCLASS(HSlider, Slider);
+	OBJ_TYPE(HSlider, Slider);
 
 public:
 	HSlider()
@@ -83,7 +79,7 @@ public:
 
 class VSlider : public Slider {
 
-	GDCLASS(VSlider, Slider);
+	OBJ_TYPE(VSlider, Slider);
 
 public:
 	VSlider()

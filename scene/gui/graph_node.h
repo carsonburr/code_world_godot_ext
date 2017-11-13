@@ -34,16 +34,8 @@
 
 class GraphNode : public Container {
 
-	GDCLASS(GraphNode, Container);
+	OBJ_TYPE(GraphNode, Container);
 
-public:
-	enum Overlay {
-		OVERLAY_DISABLED,
-		OVERLAY_BREAKPOINT,
-		OVERLAY_POSITION
-	};
-
-private:
 	struct Slot {
 		bool enable_left;
 		int type_left;
@@ -51,8 +43,6 @@ private:
 		bool enable_right;
 		int type_right;
 		Color color_right;
-		Ref<Texture> custom_slot_left;
-		Ref<Texture> custom_slot_right;
 
 		Slot() {
 			enable_left = false;
@@ -67,12 +57,6 @@ private:
 	String title;
 	bool show_close;
 	Vector2 offset;
-	bool comment;
-	bool resizable;
-
-	bool resizing;
-	Vector2 resizing_from;
-	Vector2 resizing_from_size;
 
 	Rect2 close_rect;
 
@@ -97,10 +81,8 @@ private:
 	Vector2 drag_from;
 	bool selected;
 
-	Overlay overlay;
-
 protected:
-	void _gui_input(const Ref<InputEvent> &p_ev);
+	void _input_event(const InputEvent &p_ev);
 	void _notification(int p_what);
 	static void _bind_methods();
 
@@ -109,9 +91,7 @@ protected:
 	void _get_property_list(List<PropertyInfo> *p_list) const;
 
 public:
-	bool has_point(const Point2 &p_point) const;
-
-	void set_slot(int p_idx, bool p_enable_left, int p_type_left, const Color &p_color_left, bool p_enable_right, int p_type_right, const Color &p_color_right, const Ref<Texture> &p_custom_left = Ref<Texture>(), const Ref<Texture> &p_custom_right = Ref<Texture>());
+	void set_slot(int p_idx, bool p_enable_left, int p_type_left, const Color &p_color_left, bool p_enable_right, int p_type_right, const Color &p_color_right);
 	void clear_slot(int p_idx);
 	void clear_all_slots();
 	bool is_slot_enabled_left(int p_idx) const;
@@ -138,29 +118,16 @@ public:
 
 	int get_connection_input_count();
 	int get_connection_output_count();
-	Vector2 get_connection_input_position(int p_idx);
+	Vector2 get_connection_input_pos(int p_idx);
 	int get_connection_input_type(int p_idx);
 	Color get_connection_input_color(int p_idx);
-	Vector2 get_connection_output_position(int p_idx);
+	Vector2 get_connection_output_pos(int p_idx);
 	int get_connection_output_type(int p_idx);
 	Color get_connection_output_color(int p_idx);
 
-	void set_overlay(Overlay p_overlay);
-	Overlay get_overlay() const;
-
-	void set_comment(bool p_enable);
-	bool is_comment() const;
-
-	void set_resizable(bool p_enable);
-	bool is_resizable() const;
-
 	virtual Size2 get_minimum_size() const;
-
-	bool is_resizing() const { return resizing; }
 
 	GraphNode();
 };
-
-VARIANT_ENUM_CAST(GraphNode::Overlay)
 
 #endif // GRAPH_NODE_H

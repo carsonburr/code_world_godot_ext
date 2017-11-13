@@ -36,27 +36,33 @@
 #ifdef DEBUG_METHODS_ENABLED
 PropertyInfo MethodBind::get_argument_info(int p_argument) const {
 
-	ERR_FAIL_INDEX_V(p_argument, get_argument_count(), PropertyInfo());
+	if (p_argument >= 0) {
 
-	PropertyInfo info = _gen_argument_type_info(p_argument);
-	info.name = p_argument < arg_names.size() ? String(arg_names[p_argument]) : String("arg" + itos(p_argument));
-	return info;
-}
+		String name = (p_argument < arg_names.size()) ? String(arg_names[p_argument]) : String("arg" + itos(p_argument));
+		PropertyInfo pi(get_argument_type(p_argument), name);
+		if ((pi.type == Variant::OBJECT) && name.find(":") != -1) {
+			pi.hint = PROPERTY_HINT_RESOURCE_TYPE;
+			pi.hint_string = name.get_slicec(':', 1);
+			pi.name = name.get_slicec(':', 0);
+		}
+		return pi;
 
-PropertyInfo MethodBind::get_return_info() const {
+	} else {
 
-	return _gen_argument_type_info(-1);
+		Variant::Type at = get_argument_type(-1);
+		if (at == Variant::OBJECT && ret_type)
+			return PropertyInfo(at, "ret", PROPERTY_HINT_RESOURCE_TYPE, ret_type);
+		else
+			return PropertyInfo(at, "ret");
+	}
+
+	return PropertyInfo();
 }
 
 #endif
 void MethodBind::_set_const(bool p_const) {
 
 	_const = p_const;
-}
-
-void MethodBind::_set_returns(bool p_returns) {
-
-	_returns = p_returns;
 }
 
 StringName MethodBind::get_name() const {
@@ -87,15 +93,12 @@ void MethodBind::set_default_arguments(const Vector<Variant> &p_defargs) {
 void MethodBind::_generate_argument_types(int p_count) {
 
 	set_argument_count(p_count);
-
 	Variant::Type *argt = memnew_arr(Variant::Type, p_count + 1);
-	argt[0] = _gen_argument_type(-1); // return type
-
+	argt[0] = _gen_argument_type(-1);
 	for (int i = 0; i < p_count; i++) {
 		argt[i + 1] = _gen_argument_type(i);
 	}
-
-	argument_types = argt;
+	set_argument_types(argt);
 }
 
 #endif
@@ -110,7 +113,6 @@ MethodBind::MethodBind() {
 	argument_types = NULL;
 #endif
 	_const = false;
-	_returns = false;
 }
 
 MethodBind::~MethodBind() {

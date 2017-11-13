@@ -238,7 +238,7 @@ protected:
 	Vector3 m_calculatedAxisAngleDiff;
 	Vector3 m_calculatedAxis[3];
 
-	Vector3 m_AnchorPos; // point between pivots of bodies A and B to solve linear axes
+	Vector3 m_AnchorPos; // point betwen pivots of bodies A and B to solve linear axes
 
 	bool m_useLinearReferenceFrameA;
 
@@ -264,8 +264,8 @@ public:
 
 	virtual PhysicsServer::JointType get_type() const { return PhysicsServer::JOINT_6DOF; }
 
-	virtual bool setup(real_t p_timestep);
-	virtual void solve(real_t p_timestep);
+	virtual bool setup(float p_step);
+	virtual void solve(float p_step);
 
 	//! Calcs global transform of the offsets
 	/*!
@@ -393,8 +393,8 @@ public:
 
 	virtual void calcAnchorPos(void); // overridable
 
-	void set_param(Vector3::Axis p_axis, PhysicsServer::G6DOFJointAxisParam p_param, real_t p_value);
-	real_t get_param(Vector3::Axis p_axis, PhysicsServer::G6DOFJointAxisParam p_param) const;
+	void set_param(Vector3::Axis p_axis, PhysicsServer::G6DOFJointAxisParam p_param, float p_value);
+	float get_param(Vector3::Axis p_axis, PhysicsServer::G6DOFJointAxisParam p_param) const;
 
 	void set_flag(Vector3::Axis p_axis, PhysicsServer::G6DOFJointAxisFlag p_flag, bool p_value);
 	bool get_flag(Vector3::Axis p_axis, PhysicsServer::G6DOFJointAxisFlag p_flag) const;

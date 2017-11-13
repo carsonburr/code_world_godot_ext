@@ -35,8 +35,6 @@
 #include "typedefs.h"
 #include "ustring.h"
 
-class Basis;
-
 struct Vector3 {
 
 	enum Axis {
@@ -76,31 +74,27 @@ struct Vector3 {
 
 	_FORCE_INLINE_ void normalize();
 	_FORCE_INLINE_ Vector3 normalized() const;
-	_FORCE_INLINE_ bool is_normalized() const;
 	_FORCE_INLINE_ Vector3 inverse() const;
 
 	_FORCE_INLINE_ void zero();
 
-	void snap(Vector3 p_val);
-	Vector3 snapped(Vector3 p_val) const;
+	void snap(float p_val);
+	Vector3 snapped(float p_val) const;
 
-	void rotate(const Vector3 &p_axis, real_t p_phi);
-	Vector3 rotated(const Vector3 &p_axis, real_t p_phi) const;
+	void rotate(const Vector3 &p_axis, float p_phi);
+	Vector3 rotated(const Vector3 &p_axis, float p_phi) const;
 
 	/* Static Methods between 2 vector3s */
 
-	_FORCE_INLINE_ Vector3 linear_interpolate(const Vector3 &p_b, real_t p_t) const;
-	Vector3 cubic_interpolate(const Vector3 &p_b, const Vector3 &p_pre_a, const Vector3 &p_post_b, real_t p_t) const;
-	Vector3 cubic_interpolaten(const Vector3 &p_b, const Vector3 &p_pre_a, const Vector3 &p_post_b, real_t p_t) const;
+	_FORCE_INLINE_ Vector3 linear_interpolate(const Vector3 &p_b, float p_t) const;
+	Vector3 cubic_interpolate(const Vector3 &p_b, const Vector3 &p_pre_a, const Vector3 &p_post_b, float p_t) const;
+	Vector3 cubic_interpolaten(const Vector3 &p_b, const Vector3 &p_pre_a, const Vector3 &p_post_b, float p_t) const;
 
 	_FORCE_INLINE_ Vector3 cross(const Vector3 &p_b) const;
 	_FORCE_INLINE_ real_t dot(const Vector3 &p_b) const;
-	_FORCE_INLINE_ Basis outer(const Vector3 &p_b) const;
-	_FORCE_INLINE_ Basis to_diagonal_matrix() const;
 
 	_FORCE_INLINE_ Vector3 abs() const;
 	_FORCE_INLINE_ Vector3 floor() const;
-	_FORCE_INLINE_ Vector3 sign() const;
 	_FORCE_INLINE_ Vector3 ceil() const;
 
 	_FORCE_INLINE_ real_t distance_to(const Vector3 &p_b) const;
@@ -108,9 +102,8 @@ struct Vector3 {
 
 	_FORCE_INLINE_ real_t angle_to(const Vector3 &p_b) const;
 
-	_FORCE_INLINE_ Vector3 slide(const Vector3 &p_normal) const;
-	_FORCE_INLINE_ Vector3 bounce(const Vector3 &p_normal) const;
-	_FORCE_INLINE_ Vector3 reflect(const Vector3 &p_normal) const;
+	_FORCE_INLINE_ Vector3 slide(const Vector3 &p_vec) const;
+	_FORCE_INLINE_ Vector3 reflect(const Vector3 &p_vec) const;
 
 	/* Operators */
 
@@ -151,8 +144,6 @@ struct Vector3 {
 
 #else
 
-#include "matrix3.h"
-
 Vector3 Vector3::cross(const Vector3 &p_b) const {
 
 	Vector3 ret(
@@ -168,29 +159,9 @@ real_t Vector3::dot(const Vector3 &p_b) const {
 	return x * p_b.x + y * p_b.y + z * p_b.z;
 }
 
-Basis Vector3::outer(const Vector3 &p_b) const {
-
-	Vector3 row0(x * p_b.x, x * p_b.y, x * p_b.z);
-	Vector3 row1(y * p_b.x, y * p_b.y, y * p_b.z);
-	Vector3 row2(z * p_b.x, z * p_b.y, z * p_b.z);
-
-	return Basis(row0, row1, row2);
-}
-
-Basis Vector3::to_diagonal_matrix() const {
-	return Basis(x, 0, 0,
-			0, y, 0,
-			0, 0, z);
-}
-
 Vector3 Vector3::abs() const {
 
 	return Vector3(Math::abs(x), Math::abs(y), Math::abs(z));
-}
-
-Vector3 Vector3::sign() const {
-
-	return Vector3(SGN(x), SGN(y), SGN(z));
 }
 
 Vector3 Vector3::floor() const {
@@ -203,7 +174,7 @@ Vector3 Vector3::ceil() const {
 	return Vector3(Math::ceil(x), Math::ceil(y), Math::ceil(z));
 }
 
-Vector3 Vector3::linear_interpolate(const Vector3 &p_b, real_t p_t) const {
+Vector3 Vector3::linear_interpolate(const Vector3 &p_b, float p_t) const {
 
 	return Vector3(
 			x + (p_t * (p_b.x - x)),
@@ -320,6 +291,7 @@ bool Vector3::operator==(const Vector3 &p_v) const {
 }
 
 bool Vector3::operator!=(const Vector3 &p_v) const {
+
 	return (x != p_v.x || y != p_v.y || z != p_v.z);
 }
 
@@ -394,11 +366,6 @@ Vector3 Vector3::normalized() const {
 	return v;
 }
 
-bool Vector3::is_normalized() const {
-	// use length_squared() instead of length() to avoid sqrt(), makes it more stringent.
-	return Math::is_equal_approx(length_squared(), 1.0);
-}
-
 Vector3 Vector3::inverse() const {
 
 	return Vector3(1.0 / x, 1.0 / y, 1.0 / z);
@@ -409,23 +376,14 @@ void Vector3::zero() {
 	x = y = z = 0;
 }
 
-// slide returns the component of the vector along the given plane, specified by its normal vector.
-Vector3 Vector3::slide(const Vector3 &p_normal) const {
-#ifdef MATH_CHECKS
-	ERR_FAIL_COND_V(p_normal.is_normalized() == false, Vector3());
-#endif
-	return *this - p_normal * this->dot(p_normal);
+Vector3 Vector3::slide(const Vector3 &p_vec) const {
+
+	return p_vec - *this * this->dot(p_vec);
 }
 
-Vector3 Vector3::bounce(const Vector3 &p_normal) const {
-	return -reflect(p_normal);
-}
+Vector3 Vector3::reflect(const Vector3 &p_vec) const {
 
-Vector3 Vector3::reflect(const Vector3 &p_normal) const {
-#ifdef MATH_CHECKS
-	ERR_FAIL_COND_V(p_normal.is_normalized() == false, Vector3());
-#endif
-	return 2.0 * p_normal * this->dot(p_normal) - *this;
+	return p_vec - *this * this->dot(p_vec) * 2.0;
 }
 
 #endif

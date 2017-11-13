@@ -28,10 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 #include "editor_sub_scene.h"
-
 #include "scene/gui/margin_container.h"
 #include "scene/resources/packed_scene.h"
-
 void EditorSubScene::_path_selected(const String &p_path) {
 
 	path->set_text(p_path);
@@ -71,7 +69,7 @@ void EditorSubScene::_notification(int p_what) {
 
 	if (p_what == NOTIFICATION_VISIBILITY_CHANGED) {
 
-		if (!is_visible_in_tree()) {
+		if (!is_visible()) {
 		}
 	}
 }
@@ -83,8 +81,8 @@ void EditorSubScene::_fill_tree(Node *p_node, TreeItem *p_parent) {
 	it->set_text(0, p_node->get_name());
 	it->set_editable(0, false);
 	it->set_selectable(0, true);
-	if (has_icon(p_node->get_class(), "EditorIcons")) {
-		it->set_icon(0, get_icon(p_node->get_class(), "EditorIcons"));
+	if (has_icon(p_node->get_type(), "EditorIcons")) {
+		it->set_icon(0, get_icon(p_node->get_type(), "EditorIcons"));
 	}
 
 	for (int i = 0; i < p_node->get_child_count(); i++) {
@@ -169,9 +167,9 @@ void EditorSubScene::clear() {
 
 void EditorSubScene::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("_path_selected"), &EditorSubScene::_path_selected);
-	ClassDB::bind_method(D_METHOD("_path_changed"), &EditorSubScene::_path_changed);
-	ClassDB::bind_method(D_METHOD("_path_browse"), &EditorSubScene::_path_browse);
+	ObjectTypeDB::bind_method(_MD("_path_selected"), &EditorSubScene::_path_selected);
+	ObjectTypeDB::bind_method(_MD("_path_changed"), &EditorSubScene::_path_changed);
+	ObjectTypeDB::bind_method(_MD("_path_browse"), &EditorSubScene::_path_browse);
 	ADD_SIGNAL(MethodInfo("subscene_selected"));
 }
 
@@ -184,7 +182,7 @@ EditorSubScene::EditorSubScene() {
 
 	VBoxContainer *vb = memnew(VBoxContainer);
 	add_child(vb);
-	//set_child_rect(vb);
+	set_child_rect(vb);
 
 	HBoxContainer *hb = memnew(HBoxContainer);
 	path = memnew(LineEdit);

@@ -33,7 +33,6 @@
 #include "editor/editor_resource_preview.h"
 
 class EditorTexturePreviewPlugin : public EditorResourcePreviewGenerator {
-	GDCLASS(EditorTexturePreviewPlugin, EditorResourcePreviewGenerator)
 public:
 	virtual bool handles(const String &p_type) const;
 	virtual Ref<Texture> generate(const RES &p_from);
@@ -42,7 +41,6 @@ public:
 };
 
 class EditorBitmapPreviewPlugin : public EditorResourcePreviewGenerator {
-	GDCLASS(EditorBitmapPreviewPlugin, EditorResourcePreviewGenerator)
 public:
 	virtual bool handles(const String &p_type) const;
 	virtual Ref<Texture> generate(const RES &p_from);
@@ -51,6 +49,8 @@ public:
 };
 
 class EditorPackedScenePreviewPlugin : public EditorResourcePreviewGenerator {
+
+	Ref<Texture> _gen_from_imd(Ref<ResourceImportMetadata> p_imd);
 
 public:
 	virtual bool handles(const String &p_type) const;
@@ -62,24 +62,15 @@ public:
 
 class EditorMaterialPreviewPlugin : public EditorResourcePreviewGenerator {
 
-	GDCLASS(EditorMaterialPreviewPlugin, EditorResourcePreviewGenerator)
-
 	RID scenario;
 	RID sphere;
 	RID sphere_instance;
 	RID viewport;
-	RID viewport_texture;
 	RID light;
 	RID light_instance;
 	RID light2;
 	RID light_instance2;
 	RID camera;
-	volatile bool preview_done;
-
-	void _preview_done(const Variant &p_udata);
-
-protected:
-	static void _bind_methods();
 
 public:
 	virtual bool handles(const String &p_type) const;
@@ -97,37 +88,24 @@ public:
 	EditorScriptPreviewPlugin();
 };
 
-// FIXME: Needs to be rewritten for AudioStream in Godot 3.0+
-#if 0
 class EditorSamplePreviewPlugin : public EditorResourcePreviewGenerator {
 public:
-
-	virtual bool handles(const String& p_type) const;
-	virtual Ref<Texture> generate(const RES& p_from);
+	virtual bool handles(const String &p_type) const;
+	virtual Ref<Texture> generate(const RES &p_from);
 
 	EditorSamplePreviewPlugin();
 };
-#endif
 
 class EditorMeshPreviewPlugin : public EditorResourcePreviewGenerator {
-
-	GDCLASS(EditorMeshPreviewPlugin, EditorResourcePreviewGenerator)
 
 	RID scenario;
 	RID mesh_instance;
 	RID viewport;
-	RID viewport_texture;
 	RID light;
 	RID light_instance;
 	RID light2;
 	RID light_instance2;
 	RID camera;
-	volatile bool preview_done;
-
-	void _preview_done(const Variant &p_udata);
-
-protected:
-	static void _bind_methods();
 
 public:
 	virtual bool handles(const String &p_type) const;

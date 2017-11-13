@@ -54,7 +54,7 @@ class ScriptDebuggerRemote : public ScriptDebugger {
 	Vector<ScriptLanguage::ProfilingInfo *> profile_info_ptrs;
 
 	Map<StringName, int> profiler_function_signature_map;
-	float frame_time, idle_time, physics_time, physics_frame_time;
+	float frame_time, idle_time, fixed_time, fixed_frame_time;
 
 	bool profiling;
 	int max_frame_functions;
@@ -108,7 +108,6 @@ class ScriptDebuggerRemote : public ScriptDebugger {
 	void *request_scene_tree_ud;
 
 	void _set_object_property(ObjectID p_id, const String &p_property, const Variant &p_value);
-
 	void _send_object_id(ObjectID p_id);
 	void _send_video_memory();
 	LiveEditFuncs *live_edit_funcs;
@@ -118,6 +117,9 @@ class ScriptDebuggerRemote : public ScriptDebugger {
 
 	void _send_profiling_data(bool p_for_frame);
 
+	int _serialize_variant(const Variant &var, const PropertyInfo &p_info, DVector<uint8_t> &buff);
+	DVector<uint8_t> _serialize(const Variant &var, const PropertyInfo &p_info);
+
 	struct FrameData {
 
 		StringName name;
@@ -125,8 +127,6 @@ class ScriptDebuggerRemote : public ScriptDebugger {
 	};
 
 	Vector<FrameData> profile_frame_data;
-
-	void _put_variable(const String &p_name, const Variant &p_variable);
 
 public:
 	struct ResourceUsage {
@@ -161,7 +161,7 @@ public:
 
 	virtual void profiling_start();
 	virtual void profiling_end();
-	virtual void profiling_set_frame_times(float p_frame_time, float p_idle_time, float p_physics_time, float p_physics_frame_time);
+	virtual void profiling_set_frame_times(float p_frame_time, float p_idle_time, float p_fixed_time, float p_fixed_frame_time);
 
 	ScriptDebuggerRemote();
 	~ScriptDebuggerRemote();

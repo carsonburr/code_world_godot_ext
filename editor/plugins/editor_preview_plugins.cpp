@@ -28,7 +28,6 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 #include "editor_preview_plugins.h"
-
 #include "editor/editor_scale.h"
 #include "editor/editor_settings.h"
 #include "io/file_access_memory.h"
@@ -37,58 +36,59 @@
 #include "scene/resources/bit_mask.h"
 #include "scene/resources/material.h"
 #include "scene/resources/mesh.h"
+#include "scene/resources/sample.h"
 
 bool EditorTexturePreviewPlugin::handles(const String &p_type) const {
 
-	return ClassDB::is_parent_class(p_type, "Texture");
+	return (ObjectTypeDB::is_type(p_type, "ImageTexture") || ObjectTypeDB::is_type(p_type, "AtlasTexture"));
 }
 
 Ref<Texture> EditorTexturePreviewPlugin::generate(const RES &p_from) {
 
-	Ref<Image> img;
+	Image img;
 	Ref<AtlasTexture> atex = p_from;
 	if (atex.is_valid()) {
-		Ref<Texture> tex = atex->get_atlas();
+		Ref<ImageTexture> tex = atex->get_atlas();
 		if (!tex.is_valid()) {
 			return Ref<Texture>();
 		}
-		Ref<Image> atlas = tex->get_data();
-		img = atlas->get_rect(atex->get_region());
+		Image atlas = tex->get_data();
+		img = atlas.get_rect(atex->get_region());
 	} else {
-		Ref<Texture> tex = p_from;
+		Ref<ImageTexture> tex = p_from;
 		img = tex->get_data();
 	}
 
-	if (img.is_null() || img->empty())
+	if (img.empty())
 		return Ref<Texture>();
 
-	img->clear_mipmaps();
+	img.clear_mipmaps();
 
-	int thumbnail_size = EditorSettings::get_singleton()->get("filesystem/file_dialog/thumbnail_size");
+	int thumbnail_size = EditorSettings::get_singleton()->get("file_dialog/thumbnail_size");
 	thumbnail_size *= EDSCALE;
-	if (img->is_compressed()) {
-		if (img->decompress() != OK)
+	if (img.is_compressed()) {
+		if (img.decompress() != OK)
 			return Ref<Texture>();
-	} else if (img->get_format() != Image::FORMAT_RGB8 && img->get_format() != Image::FORMAT_RGBA8) {
-		img->convert(Image::FORMAT_RGBA8);
+	} else if (img.get_format() != Image::FORMAT_RGB && img.get_format() != Image::FORMAT_RGBA) {
+		img.convert(Image::FORMAT_RGBA);
 	}
 
 	int width, height;
-	if (img->get_width() > thumbnail_size && img->get_width() >= img->get_height()) {
+	if (img.get_width() > thumbnail_size && img.get_width() >= img.get_height()) {
 
 		width = thumbnail_size;
-		height = img->get_height() * thumbnail_size / img->get_width();
-	} else if (img->get_height() > thumbnail_size && img->get_height() >= img->get_width()) {
+		height = img.get_height() * thumbnail_size / img.get_width();
+	} else if (img.get_height() > thumbnail_size && img.get_height() >= img.get_width()) {
 
 		height = thumbnail_size;
-		width = img->get_width() * thumbnail_size / img->get_height();
+		width = img.get_width() * thumbnail_size / img.get_height();
 	} else {
 
-		width = img->get_width();
-		height = img->get_height();
+		width = img.get_width();
+		height = img.get_height();
 	}
 
-	img->resize(width, height);
+	img.resize(width, height);
 
 	Ref<ImageTexture> ptex = Ref<ImageTexture>(memnew(ImageTexture));
 
@@ -103,7 +103,7 @@ EditorTexturePreviewPlugin::EditorTexturePreviewPlugin() {
 
 bool EditorBitmapPreviewPlugin::handles(const String &p_type) const {
 
-	return ClassDB::is_parent_class(p_type, "BitMap");
+	return ObjectTypeDB::is_type(p_type, "BitMap");
 }
 
 Ref<Texture> EditorBitmapPreviewPlugin::generate(const RES &p_from) {
@@ -114,12 +114,12 @@ Ref<Texture> EditorBitmapPreviewPlugin::generate(const RES &p_from) {
 		return Ref<Texture>();
 	}
 
-	PoolVector<uint8_t> data;
+	DVector<uint8_t> data;
 
 	data.resize(bm->get_size().width * bm->get_size().height);
 
 	{
-		PoolVector<uint8_t>::Write w = data.write();
+		DVector<uint8_t>::Write w = data.write();
 
 		for (int i = 0; i < bm->get_size().width; i++) {
 			for (int j = 0; j < bm->get_size().height; j++) {
@@ -132,35 +132,33 @@ Ref<Texture> EditorBitmapPreviewPlugin::generate(const RES &p_from) {
 		}
 	}
 
-	Ref<Image> img;
-	img.instance();
-	img->create(bm->get_size().width, bm->get_size().height, 0, Image::FORMAT_L8, data);
+	Image img(bm->get_size().width, bm->get_size().height, 0, Image::FORMAT_GRAYSCALE, data);
 
-	int thumbnail_size = EditorSettings::get_singleton()->get("filesystem/file_dialog/thumbnail_size");
+	int thumbnail_size = EditorSettings::get_singleton()->get("file_dialog/thumbnail_size");
 	thumbnail_size *= EDSCALE;
-	if (img->is_compressed()) {
-		if (img->decompress() != OK)
+	if (img.is_compressed()) {
+		if (img.decompress() != OK)
 			return Ref<Texture>();
-	} else if (img->get_format() != Image::FORMAT_RGB8 && img->get_format() != Image::FORMAT_RGBA8) {
-		img->convert(Image::FORMAT_RGBA8);
+	} else if (img.get_format() != Image::FORMAT_RGB && img.get_format() != Image::FORMAT_RGBA) {
+		img.convert(Image::FORMAT_RGBA);
 	}
 
 	int width, height;
-	if (img->get_width() > thumbnail_size && img->get_width() >= img->get_height()) {
+	if (img.get_width() > thumbnail_size && img.get_width() >= img.get_height()) {
 
 		width = thumbnail_size;
-		height = img->get_height() * thumbnail_size / img->get_width();
-	} else if (img->get_height() > thumbnail_size && img->get_height() >= img->get_width()) {
+		height = img.get_height() * thumbnail_size / img.get_width();
+	} else if (img.get_height() > thumbnail_size && img.get_height() >= img.get_width()) {
 
 		height = thumbnail_size;
-		width = img->get_width() * thumbnail_size / img->get_height();
+		width = img.get_width() * thumbnail_size / img.get_height();
 	} else {
 
-		width = img->get_width();
-		height = img->get_height();
+		width = img.get_width();
+		height = img.get_height();
 	}
 
-	img->resize(width, height);
+	img.resize(width, height);
 
 	Ref<ImageTexture> ptex = Ref<ImageTexture>(memnew(ImageTexture));
 
@@ -173,41 +171,48 @@ EditorBitmapPreviewPlugin::EditorBitmapPreviewPlugin() {
 
 ///////////////////////////////////////////////////////////////////////////
 
+Ref<Texture> EditorPackedScenePreviewPlugin::_gen_from_imd(Ref<ResourceImportMetadata> p_imd) {
+
+	if (p_imd.is_null()) {
+		return Ref<Texture>();
+	}
+
+	if (!p_imd->has_option("thumbnail"))
+		return Ref<Texture>();
+
+	Variant tn = p_imd->get_option("thumbnail");
+	//print_line(Variant::get_type_name(tn.get_type()));
+	DVector<uint8_t> thumbnail = tn;
+
+	int len = thumbnail.size();
+	if (len == 0)
+		return Ref<Texture>();
+
+	DVector<uint8_t>::Read r = thumbnail.read();
+
+	Image img(r.ptr(), len);
+	if (img.empty())
+		return Ref<Texture>();
+
+	Ref<ImageTexture> ptex = Ref<ImageTexture>(memnew(ImageTexture));
+	ptex->create_from_image(img, 0);
+	return ptex;
+}
+
 bool EditorPackedScenePreviewPlugin::handles(const String &p_type) const {
 
-	return ClassDB::is_parent_class(p_type, "PackedScene");
+	return ObjectTypeDB::is_type(p_type, "PackedScene");
 }
 Ref<Texture> EditorPackedScenePreviewPlugin::generate(const RES &p_from) {
 
-	return generate_from_path(p_from->get_path());
+	Ref<ResourceImportMetadata> imd = p_from->get_import_metadata();
+	return _gen_from_imd(imd);
 }
 
 Ref<Texture> EditorPackedScenePreviewPlugin::generate_from_path(const String &p_path) {
 
-	String temp_path = EditorSettings::get_singleton()->get_settings_path().plus_file("tmp");
-	String cache_base = ProjectSettings::get_singleton()->globalize_path(p_path).md5_text();
-	cache_base = temp_path.plus_file("resthumb-" + cache_base);
-
-	//does not have it, try to load a cached thumbnail
-
-	String path = cache_base + ".png";
-
-	if (!FileAccess::exists(path))
-		return Ref<Texture>();
-
-	Ref<Image> img;
-	img.instance();
-	Error err = img->load(path);
-	if (err == OK) {
-
-		Ref<ImageTexture> ptex = Ref<ImageTexture>(memnew(ImageTexture));
-
-		ptex->create_from_image(img, 0);
-		return ptex;
-
-	} else {
-		return Ref<Texture>();
-	}
+	Ref<ResourceImportMetadata> imd = ResourceLoader::load_import_metadata(p_path);
+	return _gen_from_imd(imd);
 }
 
 EditorPackedScenePreviewPlugin::EditorPackedScenePreviewPlugin() {
@@ -215,19 +220,9 @@ EditorPackedScenePreviewPlugin::EditorPackedScenePreviewPlugin() {
 
 //////////////////////////////////////////////////////////////////
 
-void EditorMaterialPreviewPlugin::_preview_done(const Variant &p_udata) {
-
-	preview_done = true;
-}
-
-void EditorMaterialPreviewPlugin::_bind_methods() {
-
-	ClassDB::bind_method("_preview_done", &EditorMaterialPreviewPlugin::_preview_done);
-}
-
 bool EditorMaterialPreviewPlugin::handles(const String &p_type) const {
 
-	return ClassDB::is_parent_class(p_type, "Material"); //any material
+	return ObjectTypeDB::is_type(p_type, "Material"); //any material
 }
 
 Ref<Texture> EditorMaterialPreviewPlugin::generate(const RES &p_from) {
@@ -237,24 +232,28 @@ Ref<Texture> EditorMaterialPreviewPlugin::generate(const RES &p_from) {
 
 	VS::get_singleton()->mesh_surface_set_material(sphere, 0, material->get_rid());
 
-	VS::get_singleton()->viewport_set_update_mode(viewport, VS::VIEWPORT_UPDATE_ONCE); //once used for capture
+	VS::get_singleton()->viewport_queue_screen_capture(viewport);
+	VS::get_singleton()->viewport_set_render_target_update_mode(viewport, VS::RENDER_TARGET_UPDATE_ONCE); //once used for capture
+	//	print_line("queue capture!");
+	Image img;
 
-	preview_done = false;
-	VS::get_singleton()->request_frame_drawn_callback(this, "_preview_done", Variant());
-
-	while (!preview_done) {
+	int timeout = 1000;
+	while (timeout) {
+		//print_line("try capture?");
 		OS::get_singleton()->delay_usec(10);
+		img = VS::get_singleton()->viewport_get_screen_capture(viewport);
+		if (!img.empty())
+			break;
+		timeout--;
 	}
 
-	Ref<Image> img = VS::get_singleton()->VS::get_singleton()->texture_get_data(viewport_texture);
+	//print_line("captured!");
 	VS::get_singleton()->mesh_surface_set_material(sphere, 0, RID());
 
-	ERR_FAIL_COND_V(!img.is_valid(), Ref<ImageTexture>());
-
-	int thumbnail_size = EditorSettings::get_singleton()->get("filesystem/file_dialog/thumbnail_size");
+	int thumbnail_size = EditorSettings::get_singleton()->get("file_dialog/thumbnail_size");
 	thumbnail_size *= EDSCALE;
-	img->convert(Image::FORMAT_RGBA8);
-	img->resize(thumbnail_size, thumbnail_size);
+	img.resize(thumbnail_size, thumbnail_size);
+
 	Ref<ImageTexture> ptex = Ref<ImageTexture>(memnew(ImageTexture));
 	ptex->create_from_image(img, 0);
 	return ptex;
@@ -265,17 +264,19 @@ EditorMaterialPreviewPlugin::EditorMaterialPreviewPlugin() {
 	scenario = VS::get_singleton()->scenario_create();
 
 	viewport = VS::get_singleton()->viewport_create();
-	VS::get_singleton()->viewport_set_update_mode(viewport, VS::VIEWPORT_UPDATE_DISABLED);
+	VS::get_singleton()->viewport_set_as_render_target(viewport, true);
+	VS::get_singleton()->viewport_set_render_target_update_mode(viewport, VS::RENDER_TARGET_UPDATE_DISABLED);
 	VS::get_singleton()->viewport_set_scenario(viewport, scenario);
-	VS::get_singleton()->viewport_set_size(viewport, 128, 128);
-	VS::get_singleton()->viewport_set_transparent_background(viewport, true);
-	VS::get_singleton()->viewport_set_active(viewport, true);
-	VS::get_singleton()->viewport_set_vflip(viewport, true);
-	viewport_texture = VS::get_singleton()->viewport_get_texture(viewport);
+	VS::ViewportRect vr;
+	vr.x = 0;
+	vr.y = 0;
+	vr.width = 128;
+	vr.height = 128;
+	VS::get_singleton()->viewport_set_rect(viewport, vr);
 
 	camera = VS::get_singleton()->camera_create();
 	VS::get_singleton()->viewport_attach_camera(viewport, camera);
-	VS::get_singleton()->camera_set_transform(camera, Transform(Basis(), Vector3(0, 0, 3)));
+	VS::get_singleton()->camera_set_transform(camera, Transform(Matrix3(), Vector3(0, 0, 3)));
 	VS::get_singleton()->camera_set_perspective(camera, 45, 0.1, 10);
 
 	light = VS::get_singleton()->light_create(VS::LIGHT_DIRECTIONAL);
@@ -283,9 +284,8 @@ EditorMaterialPreviewPlugin::EditorMaterialPreviewPlugin() {
 	VS::get_singleton()->instance_set_transform(light_instance, Transform().looking_at(Vector3(-1, -1, -1), Vector3(0, 1, 0)));
 
 	light2 = VS::get_singleton()->light_create(VS::LIGHT_DIRECTIONAL);
-	VS::get_singleton()->light_set_color(light2, Color(0.7, 0.7, 0.7));
-	//VS::get_singleton()->light_set_color(light2, Color(0.7, 0.7, 0.7));
-
+	VS::get_singleton()->light_set_color(light2, VS::LIGHT_COLOR_DIFFUSE, Color(0.7, 0.7, 0.7));
+	VS::get_singleton()->light_set_color(light2, VS::LIGHT_COLOR_SPECULAR, Color(0.0, 0.0, 0.0));
 	light_instance2 = VS::get_singleton()->instance_create2(light2, scenario);
 
 	VS::get_singleton()->instance_set_transform(light_instance2, Transform().looking_at(Vector3(0, 1, 0), Vector3(0, 0, 1)));
@@ -297,11 +297,11 @@ EditorMaterialPreviewPlugin::EditorMaterialPreviewPlugin() {
 	int lons = 32;
 	float radius = 1.0;
 
-	PoolVector<Vector3> vertices;
-	PoolVector<Vector3> normals;
-	PoolVector<Vector2> uvs;
-	PoolVector<float> tangents;
-	Basis tt = Basis(Vector3(0, 1, 0), Math_PI * 0.5);
+	DVector<Vector3> vertices;
+	DVector<Vector3> normals;
+	DVector<Vector2> uvs;
+	DVector<float> tangents;
+	Matrix3 tt = Matrix3(Vector3(0, 1, 0), Math_PI * 0.5);
 
 	for (int i = 1; i <= lats; i++) {
 		double lat0 = Math_PI * (-0.5 + (double)(i - 1) / lats);
@@ -363,7 +363,7 @@ EditorMaterialPreviewPlugin::EditorMaterialPreviewPlugin() {
 	arr[VS::ARRAY_NORMAL] = normals;
 	arr[VS::ARRAY_TANGENT] = tangents;
 	arr[VS::ARRAY_TEX_UV] = uvs;
-	VS::get_singleton()->mesh_add_surface_from_arrays(sphere, VS::PRIMITIVE_TRIANGLES, arr);
+	VS::get_singleton()->mesh_add_surface(sphere, VS::PRIMITIVE_TRIANGLES, arr);
 }
 
 EditorMaterialPreviewPlugin::~EditorMaterialPreviewPlugin() {
@@ -388,7 +388,7 @@ static bool _is_text_char(CharType c) {
 
 bool EditorScriptPreviewPlugin::handles(const String &p_type) const {
 
-	return ClassDB::is_parent_class(p_type, "Script");
+	return ObjectTypeDB::is_type(p_type, "Script");
 }
 
 Ref<Texture> EditorScriptPreviewPlugin::generate(const RES &p_from) {
@@ -413,23 +413,19 @@ Ref<Texture> EditorScriptPreviewPlugin::generate(const RES &p_from) {
 
 	int line = 0;
 	int col = 0;
-	int thumbnail_size = EditorSettings::get_singleton()->get("filesystem/file_dialog/thumbnail_size");
+	int thumbnail_size = EditorSettings::get_singleton()->get("file_dialog/thumbnail_size");
 	thumbnail_size *= EDSCALE;
-	Ref<Image> img;
-	img.instance();
-	img->create(thumbnail_size, thumbnail_size, 0, Image::FORMAT_RGBA8);
+	Image img(thumbnail_size, thumbnail_size, 0, Image::FORMAT_RGBA);
 
-	Color bg_color = EditorSettings::get_singleton()->get("text_editor/highlighting/background_color");
+	Color bg_color = EditorSettings::get_singleton()->get("text_editor/background_color");
 	bg_color.a = 1.0;
-	Color keyword_color = EditorSettings::get_singleton()->get("text_editor/highlighting/keyword_color");
-	Color text_color = EditorSettings::get_singleton()->get("text_editor/highlighting/text_color");
-	Color symbol_color = EditorSettings::get_singleton()->get("text_editor/highlighting/symbol_color");
-
-	img->lock();
+	Color keyword_color = EditorSettings::get_singleton()->get("text_editor/keyword_color");
+	Color text_color = EditorSettings::get_singleton()->get("text_editor/text_color");
+	Color symbol_color = EditorSettings::get_singleton()->get("text_editor/symbol_color");
 
 	for (int i = 0; i < thumbnail_size; i++) {
 		for (int j = 0; j < thumbnail_size; j++) {
-			img->set_pixel(i, j, bg_color);
+			img.put_pixel(i, j, bg_color);
 		}
 	}
 
@@ -452,7 +448,9 @@ Ref<Texture> EditorScriptPreviewPlugin::generate(const RES &p_from) {
 					while (_is_text_char(code[pos])) {
 						pos++;
 					}
+					///print_line("from "+itos(i)+" to "+itos(pos));
 					String word = code.substr(i, pos - i);
+					//print_line("found word: "+word);
 					if (keywords.has(word))
 						in_keyword = true;
 
@@ -465,8 +463,8 @@ Ref<Texture> EditorScriptPreviewPlugin::generate(const RES &p_from) {
 
 				Color ul = color;
 				ul.a *= 0.5;
-				img->set_pixel(col, line * 2, bg_color.blend(ul));
-				img->set_pixel(col, line * 2 + 1, color);
+				img.put_pixel(col, line * 2, bg_color.blend(ul));
+				img.put_pixel(col, line * 2 + 1, color);
 
 				prev_is_text = _is_text_char(c);
 			}
@@ -487,8 +485,6 @@ Ref<Texture> EditorScriptPreviewPlugin::generate(const RES &p_from) {
 		col++;
 	}
 
-	img->unlock();
-
 	Ref<ImageTexture> ptex = Ref<ImageTexture>(memnew(ImageTexture));
 
 	ptex->create_from_image(img, 0);
@@ -499,40 +495,37 @@ EditorScriptPreviewPlugin::EditorScriptPreviewPlugin() {
 }
 ///////////////////////////////////////////////////////////////////
 
-// FIXME: Needs to be rewritten for AudioStream in Godot 3.0+
-#if 0
-bool EditorSamplePreviewPlugin::handles(const String& p_type) const {
+bool EditorSamplePreviewPlugin::handles(const String &p_type) const {
 
-	return ClassDB::is_parent_class(p_type,"Sample");
+	return ObjectTypeDB::is_type(p_type, "Sample");
 }
 
-Ref<Texture> EditorSamplePreviewPlugin::generate(const RES& p_from) {
+Ref<Texture> EditorSamplePreviewPlugin::generate(const RES &p_from) {
 
-	Ref<Sample> smp =p_from;
-	ERR_FAIL_COND_V(smp.is_null(),Ref<Texture>());
+	Ref<Sample> smp = p_from;
+	ERR_FAIL_COND_V(smp.is_null(), Ref<Texture>());
 
-
-	int thumbnail_size = EditorSettings::get_singleton()->get("filesystem/file_dialog/thumbnail_size");
-	thumbnail_size*=EDSCALE;
-	PoolVector<uint8_t> img;
+	int thumbnail_size = EditorSettings::get_singleton()->get("file_dialog/thumbnail_size");
+	thumbnail_size *= EDSCALE;
+	DVector<uint8_t> img;
 	int w = thumbnail_size;
 	int h = thumbnail_size;
-	img.resize(w*h*3);
+	img.resize(w * h * 3);
 
-	PoolVector<uint8_t>::Write imgdata = img.write();
-	uint8_t * imgw = imgdata.ptr();
-	PoolVector<uint8_t> data = smp->get_data();
-	PoolVector<uint8_t>::Read sampledata = data.read();
-	const uint8_t *sdata=sampledata.ptr();
+	DVector<uint8_t>::Write imgdata = img.write();
+	uint8_t *imgw = imgdata.ptr();
+	DVector<uint8_t> data = smp->get_data();
+	DVector<uint8_t>::Read sampledata = data.read();
+	const uint8_t *sdata = sampledata.ptr();
 
 	bool stereo = smp->is_stereo();
-	bool _16=smp->get_format()==Sample::FORMAT_PCM16;
+	bool _16 = smp->get_format() == Sample::FORMAT_PCM16;
 	int len = smp->get_length();
 
-	if (len<1)
+	if (len < 1)
 		return Ref<Texture>();
 
-	if (smp->get_format()==Sample::FORMAT_IMA_ADPCM) {
+	if (smp->get_format() == Sample::FORMAT_IMA_ADPCM) {
 
 		struct IMA_ADPCM_State {
 
@@ -547,28 +540,27 @@ Ref<Texture> EditorSamplePreviewPlugin::generate(const RES& p_from) {
 			const uint8_t *ptr;
 		} ima_adpcm;
 
-		ima_adpcm.step_index=0;
-		ima_adpcm.predictor=0;
-		ima_adpcm.loop_step_index=0;
-		ima_adpcm.loop_predictor=0;
-		ima_adpcm.last_nibble=-1;
-		ima_adpcm.loop_pos=0x7FFFFFFF;
-		ima_adpcm.window_ofs=0;
-		ima_adpcm.ptr=NULL;
+		ima_adpcm.step_index = 0;
+		ima_adpcm.predictor = 0;
+		ima_adpcm.loop_step_index = 0;
+		ima_adpcm.loop_predictor = 0;
+		ima_adpcm.last_nibble = -1;
+		ima_adpcm.loop_pos = 0x7FFFFFFF;
+		ima_adpcm.window_ofs = 0;
+		ima_adpcm.ptr = NULL;
 
+		for (int i = 0; i < w; i++) {
 
-		for(int i=0;i<w;i++) {
+			float max[2] = { -1e10, -1e10 };
+			float min[2] = { 1e10, 1e10 };
+			int from = i * len / w;
+			int to = (i + 1) * len / w;
+			if (to >= len)
+				to = len - 1;
 
-			float max[2]={-1e10,-1e10};
-			float min[2]={1e10,1e10};
-			int from = i*len/w;
-			int to = (i+1)*len/w;
-			if (to>=len)
-				to=len-1;
+			for (int j = from; j < to; j++) {
 
-			for(int j=from;j<to;j++) {
-
-				while(j>ima_adpcm.last_nibble) {
+				while (j > ima_adpcm.last_nibble) {
 
 					static const int16_t _ima_adpcm_step_table[89] = {
 						7, 8, 9, 10, 11, 12, 13, 14, 16, 17,
@@ -587,200 +579,183 @@ Ref<Texture> EditorSamplePreviewPlugin::generate(const RES& p_from) {
 						-1, -1, -1, -1, 2, 4, 6, 8
 					};
 
-					int16_t nibble,diff,step;
+					int16_t nibble, diff, step;
 
 					ima_adpcm.last_nibble++;
-					const uint8_t *src_ptr=sdata;
+					const uint8_t *src_ptr = sdata;
 
-					int ofs = ima_adpcm.last_nibble>>1;
+					int ofs = ima_adpcm.last_nibble >> 1;
 
 					if (stereo)
-						ofs*=2;
+						ofs *= 2;
 
-
-					nibble = (ima_adpcm.last_nibble&1)?
-							(src_ptr[ofs]>>4):(src_ptr[ofs]&0xF);
-					step=_ima_adpcm_step_table[ima_adpcm.step_index];
+					nibble = (ima_adpcm.last_nibble & 1) ?
+									 (src_ptr[ofs] >> 4) :
+									 (src_ptr[ofs] & 0xF);
+					step = _ima_adpcm_step_table[ima_adpcm.step_index];
 
 					ima_adpcm.step_index += _ima_adpcm_index_table[nibble];
-					if (ima_adpcm.step_index<0)
-						ima_adpcm.step_index=0;
-					if (ima_adpcm.step_index>88)
-						ima_adpcm.step_index=88;
+					if (ima_adpcm.step_index < 0)
+						ima_adpcm.step_index = 0;
+					if (ima_adpcm.step_index > 88)
+						ima_adpcm.step_index = 88;
 
-					diff = step >> 3 ;
+					diff = step >> 3;
 					if (nibble & 1)
-						diff += step >> 2 ;
+						diff += step >> 2;
 					if (nibble & 2)
-						diff += step >> 1 ;
+						diff += step >> 1;
 					if (nibble & 4)
-						diff += step ;
+						diff += step;
 					if (nibble & 8)
-						diff = -diff ;
+						diff = -diff;
 
-					ima_adpcm.predictor+=diff;
-					if (ima_adpcm.predictor<-0x8000)
-						ima_adpcm.predictor=-0x8000;
-					else if (ima_adpcm.predictor>0x7FFF)
-						ima_adpcm.predictor=0x7FFF;
-
+					ima_adpcm.predictor += diff;
+					if (ima_adpcm.predictor < -0x8000)
+						ima_adpcm.predictor = -0x8000;
+					else if (ima_adpcm.predictor > 0x7FFF)
+						ima_adpcm.predictor = 0x7FFF;
 
 					/* store loop if there */
-					if (ima_adpcm.last_nibble==ima_adpcm.loop_pos) {
+					if (ima_adpcm.last_nibble == ima_adpcm.loop_pos) {
 
 						ima_adpcm.loop_step_index = ima_adpcm.step_index;
 						ima_adpcm.loop_predictor = ima_adpcm.predictor;
 					}
-
 				}
 
-				float v=ima_adpcm.predictor/32767.0;
-				if (v>max[0])
-					max[0]=v;
-				if (v<min[0])
-					min[0]=v;
+				float v = ima_adpcm.predictor / 32767.0;
+				if (v > max[0])
+					max[0] = v;
+				if (v < min[0])
+					min[0] = v;
 			}
-			max[0]*=0.8;
-			min[0]*=0.8;
+			max[0] *= 0.8;
+			min[0] *= 0.8;
 
-			for(int j=0;j<h;j++) {
-				float v = (j/(float)h) * 2.0 - 1.0;
-				uint8_t* imgofs = &imgw[(uint64_t(j)*w+i)*3];
-				if (v>min[0] && v<max[0]) {
-					imgofs[0]=255;
-					imgofs[1]=150;
-					imgofs[2]=80;
+			for (int j = 0; j < h; j++) {
+				float v = (j / (float)h) * 2.0 - 1.0;
+				uint8_t *imgofs = &imgw[(uint64_t(j) * w + i) * 3];
+				if (v > min[0] && v < max[0]) {
+					imgofs[0] = 255;
+					imgofs[1] = 150;
+					imgofs[2] = 80;
 				} else {
-					imgofs[0]=0;
-					imgofs[1]=0;
-					imgofs[2]=0;
+					imgofs[0] = 0;
+					imgofs[1] = 0;
+					imgofs[2] = 0;
 				}
 			}
 		}
 	} else {
-		for(int i=0;i<w;i++) {
+		for (int i = 0; i < w; i++) {
 			// i trust gcc will optimize this loop
-			float max[2]={-1e10,-1e10};
-			float min[2]={1e10,1e10};
-			int c=stereo?2:1;
-			int from = uint64_t(i)*len/w;
-			int to = (uint64_t(i)+1)*len/w;
-			if (to>=len)
-				to=len-1;
+			float max[2] = { -1e10, -1e10 };
+			float min[2] = { 1e10, 1e10 };
+			int c = stereo ? 2 : 1;
+			int from = uint64_t(i) * len / w;
+			int to = (uint64_t(i) + 1) * len / w;
+			if (to >= len)
+				to = len - 1;
 
 			if (_16) {
-				const int16_t*src =(const int16_t*)sdata;
+				const int16_t *src = (const int16_t *)sdata;
 
-				for(int j=0;j<c;j++) {
+				for (int j = 0; j < c; j++) {
 
-					for(int k=from;k<=to;k++) {
+					for (int k = from; k <= to; k++) {
 
-						float v = src[uint64_t(k)*c+j]/32768.0;
-						if (v>max[j])
-							max[j]=v;
-						if (v<min[j])
-							min[j]=v;
+						float v = src[uint64_t(k) * c + j] / 32768.0;
+						if (v > max[j])
+							max[j] = v;
+						if (v < min[j])
+							min[j] = v;
 					}
-
 				}
 			} else {
 
-				const int8_t*src =(const int8_t*)sdata;
+				const int8_t *src = (const int8_t *)sdata;
 
-				for(int j=0;j<c;j++) {
+				for (int j = 0; j < c; j++) {
 
-					for(int k=from;k<=to;k++) {
+					for (int k = from; k <= to; k++) {
 
-						float v = src[uint64_t(k)*c+j]/128.0;
-						if (v>max[j])
-							max[j]=v;
-						if (v<min[j])
-							min[j]=v;
+						float v = src[uint64_t(k) * c + j] / 128.0;
+						if (v > max[j])
+							max[j] = v;
+						if (v < min[j])
+							min[j] = v;
 					}
-
 				}
 			}
 
-			max[0]*=0.8;
-			max[1]*=0.8;
-			min[0]*=0.8;
-			min[1]*=0.8;
+			max[0] *= 0.8;
+			max[1] *= 0.8;
+			min[0] *= 0.8;
+			min[1] *= 0.8;
 
 			if (!stereo) {
-				for(int j=0;j<h;j++) {
-					float v = (j/(float)h) * 2.0 - 1.0;
-					uint8_t* imgofs = &imgw[(j*w+i)*3];
-					if (v>min[0] && v<max[0]) {
-						imgofs[0]=255;
-						imgofs[1]=150;
-						imgofs[2]=80;
+				for (int j = 0; j < h; j++) {
+					float v = (j / (float)h) * 2.0 - 1.0;
+					uint8_t *imgofs = &imgw[(j * w + i) * 3];
+					if (v > min[0] && v < max[0]) {
+						imgofs[0] = 255;
+						imgofs[1] = 150;
+						imgofs[2] = 80;
 					} else {
-						imgofs[0]=0;
-						imgofs[1]=0;
-						imgofs[2]=0;
+						imgofs[0] = 0;
+						imgofs[1] = 0;
+						imgofs[2] = 0;
 					}
 				}
 			} else {
 
-				for(int j=0;j<h;j++) {
+				for (int j = 0; j < h; j++) {
 
 					int half;
 					float v;
-					if (j<(h/2)) {
-						half=0;
-						v = (j/(float)(h/2)) * 2.0 - 1.0;
+					if (j < (h / 2)) {
+						half = 0;
+						v = (j / (float)(h / 2)) * 2.0 - 1.0;
 					} else {
-						half=1;
-						if( (float)(h/2) != 0 ) {
-							v = ((j-(h/2))/(float)(h/2)) * 2.0 - 1.0;
+						half = 1;
+						if ((float)(h / 2) != 0) {
+							v = ((j - (h / 2)) / (float)(h / 2)) * 2.0 - 1.0;
 						} else {
-							v = ((j-(h/2))/(float)(1/2)) * 2.0 - 1.0;
+							v = ((j - (h / 2)) / (float)(1 / 2)) * 2.0 - 1.0;
 						}
 					}
 
-					uint8_t* imgofs = &imgw[(j*w+i)*3];
-					if (v>min[half] && v<max[half]) {
-						imgofs[0]=255;
-						imgofs[1]=150;
-						imgofs[2]=80;
+					uint8_t *imgofs = &imgw[(j * w + i) * 3];
+					if (v > min[half] && v < max[half]) {
+						imgofs[0] = 255;
+						imgofs[1] = 150;
+						imgofs[2] = 80;
 					} else {
-						imgofs[0]=0;
-						imgofs[1]=0;
-						imgofs[2]=0;
+						imgofs[0] = 0;
+						imgofs[1] = 0;
+						imgofs[2] = 0;
 					}
 				}
-
 			}
-
 		}
 	}
 
-	imgdata = PoolVector<uint8_t>::Write();
+	imgdata = DVector<uint8_t>::Write();
 
-	Ref<ImageTexture> ptex = Ref<ImageTexture>( memnew( ImageTexture));
-	ptex->create_from_image(Image(w,h,0,Image::FORMAT_RGB8,img),0);
+	Ref<ImageTexture> ptex = Ref<ImageTexture>(memnew(ImageTexture));
+	ptex->create_from_image(Image(w, h, 0, Image::FORMAT_RGB, img), 0);
 	return ptex;
-
 }
 
 EditorSamplePreviewPlugin::EditorSamplePreviewPlugin() {
 }
-#endif
 
 ///////////////////////////////////////////////////////////////////////////
 
-void EditorMeshPreviewPlugin::_preview_done(const Variant &p_udata) {
-
-	preview_done = true;
-}
-
-void EditorMeshPreviewPlugin::_bind_methods() {
-
-	ClassDB::bind_method("_preview_done", &EditorMeshPreviewPlugin::_preview_done);
-}
 bool EditorMeshPreviewPlugin::handles(const String &p_type) const {
 
-	return ClassDB::is_parent_class(p_type, "Mesh"); //any Mesh
+	return ObjectTypeDB::is_type(p_type, "Mesh"); //any Mesh
 }
 
 Ref<Texture> EditorMeshPreviewPlugin::generate(const RES &p_from) {
@@ -790,41 +765,45 @@ Ref<Texture> EditorMeshPreviewPlugin::generate(const RES &p_from) {
 
 	VS::get_singleton()->instance_set_base(mesh_instance, mesh->get_rid());
 
-	Rect3 aabb = mesh->get_aabb();
-	Vector3 ofs = aabb.position + aabb.size * 0.5;
-	aabb.position -= ofs;
+	AABB aabb = mesh->get_aabb();
+	Vector3 ofs = aabb.pos + aabb.size * 0.5;
+	aabb.pos -= ofs;
 	Transform xform;
-	xform.basis = Basis().rotated(Vector3(0, 1, 0), -Math_PI * 0.125);
-	xform.basis = Basis().rotated(Vector3(1, 0, 0), Math_PI * 0.125) * xform.basis;
-	Rect3 rot_aabb = xform.xform(aabb);
+	xform.basis = Matrix3().rotated(Vector3(0, 1, 0), Math_PI * 0.125);
+	xform.basis = Matrix3().rotated(Vector3(1, 0, 0), -Math_PI * 0.125) * xform.basis;
+	AABB rot_aabb = xform.xform(aabb);
 	float m = MAX(rot_aabb.size.x, rot_aabb.size.y) * 0.5;
 	if (m == 0)
 		return Ref<Texture>();
 	m = 1.0 / m;
 	m *= 0.5;
+	//print_line("scale: "+rtos(m));
 	xform.basis.scale(Vector3(m, m, m));
 	xform.origin = -xform.basis.xform(ofs); //-ofs*m;
 	xform.origin.z -= rot_aabb.size.z * 2;
 	VS::get_singleton()->instance_set_transform(mesh_instance, xform);
 
-	VS::get_singleton()->viewport_set_update_mode(viewport, VS::VIEWPORT_UPDATE_ONCE); //once used for capture
+	VS::get_singleton()->viewport_queue_screen_capture(viewport);
+	VS::get_singleton()->viewport_set_render_target_update_mode(viewport, VS::RENDER_TARGET_UPDATE_ONCE); //once used for capture
+	//	print_line("queue capture!");
+	Image img;
 
-	preview_done = false;
-	VS::get_singleton()->request_frame_drawn_callback(this, "_preview_done", Variant());
-
-	while (!preview_done) {
+	int timeout = 1000;
+	while (timeout) {
+		//print_line("try capture?");
 		OS::get_singleton()->delay_usec(10);
+		img = VS::get_singleton()->viewport_get_screen_capture(viewport);
+		if (!img.empty())
+			break;
+		timeout--;
 	}
 
-	Ref<Image> img = VS::get_singleton()->VS::get_singleton()->texture_get_data(viewport_texture);
-	ERR_FAIL_COND_V(img.is_null(), Ref<ImageTexture>());
-
+	//print_line("captured!");
 	VS::get_singleton()->instance_set_base(mesh_instance, RID());
 
-	int thumbnail_size = EditorSettings::get_singleton()->get("filesystem/file_dialog/thumbnail_size");
+	int thumbnail_size = EditorSettings::get_singleton()->get("file_dialog/thumbnail_size");
 	thumbnail_size *= EDSCALE;
-	img->convert(Image::FORMAT_RGBA8);
-	img->resize(thumbnail_size, thumbnail_size);
+	img.resize(thumbnail_size, thumbnail_size);
 
 	Ref<ImageTexture> ptex = Ref<ImageTexture>(memnew(ImageTexture));
 	ptex->create_from_image(img, 0);
@@ -834,20 +813,21 @@ Ref<Texture> EditorMeshPreviewPlugin::generate(const RES &p_from) {
 EditorMeshPreviewPlugin::EditorMeshPreviewPlugin() {
 
 	scenario = VS::get_singleton()->scenario_create();
-
 	viewport = VS::get_singleton()->viewport_create();
-	VS::get_singleton()->viewport_set_update_mode(viewport, VS::VIEWPORT_UPDATE_DISABLED);
-	VS::get_singleton()->viewport_set_vflip(viewport, true);
+	VS::get_singleton()->viewport_set_as_render_target(viewport, true);
+	VS::get_singleton()->viewport_set_render_target_update_mode(viewport, VS::RENDER_TARGET_UPDATE_DISABLED);
 	VS::get_singleton()->viewport_set_scenario(viewport, scenario);
-	VS::get_singleton()->viewport_set_size(viewport, 128, 128);
-	VS::get_singleton()->viewport_set_transparent_background(viewport, true);
-	VS::get_singleton()->viewport_set_active(viewport, true);
-	viewport_texture = VS::get_singleton()->viewport_get_texture(viewport);
+	VS::ViewportRect vr;
+	vr.x = 0;
+	vr.y = 0;
+	vr.width = 128;
+	vr.height = 128;
+	VS::get_singleton()->viewport_set_rect(viewport, vr);
 
 	camera = VS::get_singleton()->camera_create();
 	VS::get_singleton()->viewport_attach_camera(viewport, camera);
-	VS::get_singleton()->camera_set_transform(camera, Transform(Basis(), Vector3(0, 0, 3)));
-	//VS::get_singleton()->camera_set_perspective(camera,45,0.1,10);
+	VS::get_singleton()->camera_set_transform(camera, Transform(Matrix3(), Vector3(0, 0, 3)));
+	//	VS::get_singleton()->camera_set_perspective(camera,45,0.1,10);
 	VS::get_singleton()->camera_set_orthogonal(camera, 1.0, 0.01, 1000.0);
 
 	light = VS::get_singleton()->light_create(VS::LIGHT_DIRECTIONAL);
@@ -855,13 +835,13 @@ EditorMeshPreviewPlugin::EditorMeshPreviewPlugin() {
 	VS::get_singleton()->instance_set_transform(light_instance, Transform().looking_at(Vector3(-1, -1, -1), Vector3(0, 1, 0)));
 
 	light2 = VS::get_singleton()->light_create(VS::LIGHT_DIRECTIONAL);
-	VS::get_singleton()->light_set_color(light2, Color(0.7, 0.7, 0.7));
-	//VS::get_singleton()->light_set_color(light2, VS::LIGHT_COLOR_SPECULAR, Color(0.0, 0.0, 0.0));
+	VS::get_singleton()->light_set_color(light2, VS::LIGHT_COLOR_DIFFUSE, Color(0.7, 0.7, 0.7));
+	VS::get_singleton()->light_set_color(light2, VS::LIGHT_COLOR_SPECULAR, Color(0.0, 0.0, 0.0));
 	light_instance2 = VS::get_singleton()->instance_create2(light2, scenario);
 
 	VS::get_singleton()->instance_set_transform(light_instance2, Transform().looking_at(Vector3(0, 1, 0), Vector3(0, 0, 1)));
 
-	//sphere = VS::get_singleton()->mesh_create();
+	//	sphere = VS::get_singleton()->mesh_create();
 	mesh_instance = VS::get_singleton()->instance_create();
 	VS::get_singleton()->instance_set_scenario(mesh_instance, scenario);
 }

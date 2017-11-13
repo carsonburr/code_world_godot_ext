@@ -30,11 +30,8 @@
 #ifndef TEXTURE_H
 #define TEXTURE_H
 
-#include "curve.h"
-#include "io/resource_loader.h"
 #include "math_2d.h"
 #include "resource.h"
-#include "scene/resources/color_ramp.h"
 #include "servers/visual_server.h"
 
 /**
@@ -43,7 +40,7 @@
 
 class Texture : public Resource {
 
-	GDCLASS(Texture, Resource);
+	OBJ_TYPE(Texture, Resource);
 	OBJ_SAVE_TYPE(Texture); //children are all saved as Texture, so they can be exchanged
 protected:
 	static void _bind_methods();
@@ -55,7 +52,7 @@ public:
 		FLAG_FILTER = VisualServer::TEXTURE_FLAG_FILTER,
 		FLAG_ANISOTROPIC_FILTER = VisualServer::TEXTURE_FLAG_ANISOTROPIC_FILTER,
 		FLAG_CONVERT_TO_LINEAR = VisualServer::TEXTURE_FLAG_CONVERT_TO_LINEAR,
-		FLAG_VIDEO_SURFACE = VisualServer::TEXTURE_FLAG_USED_FOR_STREAMING,
+		FLAG_VIDEO_SURFACE = VisualServer::TEXTURE_FLAG_VIDEO_SURFACE,
 		FLAGS_DEFAULT = FLAG_MIPMAPS | FLAG_REPEAT | FLAG_FILTER,
 		FLAG_MIRRORED_REPEAT = VisualServer::TEXTURE_FLAG_MIRRORED_REPEAT
 	};
@@ -70,12 +67,10 @@ public:
 	virtual void set_flags(uint32_t p_flags) = 0;
 	virtual uint32_t get_flags() const = 0;
 
-	virtual void draw(RID p_canvas_item, const Point2 &p_pos, const Color &p_modulate = Color(1, 1, 1), bool p_transpose = false, const Ref<Texture> &p_normal_map = Ref<Texture>()) const;
-	virtual void draw_rect(RID p_canvas_item, const Rect2 &p_rect, bool p_tile = false, const Color &p_modulate = Color(1, 1, 1), bool p_transpose = false, const Ref<Texture> &p_normal_map = Ref<Texture>()) const;
-	virtual void draw_rect_region(RID p_canvas_item, const Rect2 &p_rect, const Rect2 &p_src_rect, const Color &p_modulate = Color(1, 1, 1), bool p_transpose = false, const Ref<Texture> &p_normal_map = Ref<Texture>(), bool p_clip_uv = true) const;
-	virtual bool get_rect_region(const Rect2 &p_rect, const Rect2 &p_src_rect, Rect2 &r_rect, Rect2 &r_src_rect) const;
-
-	virtual Ref<Image> get_data() const { return Ref<Image>(); }
+	virtual void draw(RID p_canvas_item, const Point2 &p_pos, const Color &p_modulate = Color(1, 1, 1), bool p_transpose = false) const;
+	virtual void draw_rect(RID p_canvas_item, const Rect2 &p_rect, bool p_tile = false, const Color &p_modulate = Color(1, 1, 1), bool p_transpose = false) const;
+	virtual void draw_rect_region(RID p_canvas_item, const Rect2 &p_rect, const Rect2 &p_src_rect, const Color &p_modulate = Color(1, 1, 1), bool p_transpose = false) const;
+	virtual bool get_rect_region_uv_rect(const Rect2 &p_rect, const Rect2 &p_src_rect, Rect2 &r_rect, Rect2 &r_uv_rect) const;
 
 	Texture();
 };
@@ -84,7 +79,7 @@ VARIANT_ENUM_CAST(Texture::Flags);
 
 class ImageTexture : public Texture {
 
-	GDCLASS(ImageTexture, Texture);
+	OBJ_TYPE(ImageTexture, Texture);
 	RES_BASE_EXTENSION("tex");
 
 public:
@@ -118,14 +113,14 @@ protected:
 
 public:
 	void create(int p_width, int p_height, Image::Format p_format, uint32_t p_flags = FLAGS_DEFAULT);
-	void create_from_image(const Ref<Image> &p_image, uint32_t p_flags = FLAGS_DEFAULT);
+	void create_from_image(const Image &p_image, uint32_t p_flags = FLAGS_DEFAULT);
 
 	void set_flags(uint32_t p_flags);
 	uint32_t get_flags() const;
 	Image::Format get_format() const;
 	void load(const String &p_path);
-	void set_data(const Ref<Image> &p_image);
-	Ref<Image> get_data() const;
+	void set_data(const Image &p_image);
+	Image get_data() const;
 
 	int get_width() const;
 	int get_height() const;
@@ -133,14 +128,19 @@ public:
 	virtual RID get_rid() const;
 
 	bool has_alpha() const;
-	virtual void draw(RID p_canvas_item, const Point2 &p_pos, const Color &p_modulate = Color(1, 1, 1), bool p_transpose = false, const Ref<Texture> &p_normal_map = Ref<Texture>()) const;
-	virtual void draw_rect(RID p_canvas_item, const Rect2 &p_rect, bool p_tile = false, const Color &p_modulate = Color(1, 1, 1), bool p_transpose = false, const Ref<Texture> &p_normal_map = Ref<Texture>()) const;
-	virtual void draw_rect_region(RID p_canvas_item, const Rect2 &p_rect, const Rect2 &p_src_rect, const Color &p_modulate = Color(1, 1, 1), bool p_transpose = false, const Ref<Texture> &p_normal_map = Ref<Texture>(), bool p_clip_uv = true) const;
+	virtual void draw(RID p_canvas_item, const Point2 &p_pos, const Color &p_modulate = Color(1, 1, 1), bool p_transpose = false) const;
+	virtual void draw_rect(RID p_canvas_item, const Rect2 &p_rect, bool p_tile = false, const Color &p_modulate = Color(1, 1, 1), bool p_transpose = false) const;
+	virtual void draw_rect_region(RID p_canvas_item, const Rect2 &p_rect, const Rect2 &p_src_rect, const Color &p_modulate = Color(1, 1, 1), bool p_transpose = false) const;
 	void set_storage(Storage p_storage);
 	Storage get_storage() const;
 
 	void set_lossy_storage_quality(float p_lossy_storage_quality);
 	float get_lossy_storage_quality() const;
+
+	void fix_alpha_edges();
+	void premultiply_alpha();
+	void normal_to_xy();
+	void shrink_x2_and_keep_size();
 
 	void set_size_override(const Size2 &p_size);
 
@@ -150,88 +150,12 @@ public:
 	~ImageTexture();
 };
 
-class StreamTexture : public Texture {
-
-	GDCLASS(StreamTexture, Texture);
-
-public:
-	enum DataFormat {
-		DATA_FORMAT_IMAGE,
-		DATA_FORMAT_LOSSLESS,
-		DATA_FORMAT_LOSSY
-	};
-
-	enum FormatBits {
-		FORMAT_MASK_IMAGE_FORMAT = (1 << 20) - 1,
-		FORMAT_BIT_LOSSLESS = 1 << 20,
-		FORMAT_BIT_LOSSY = 1 << 21,
-		FORMAT_BIT_STREAM = 1 << 22,
-		FORMAT_BIT_HAS_MIPMAPS = 1 << 23,
-		FORMAT_BIT_DETECT_3D = 1 << 24,
-		FORMAT_BIT_DETECT_SRGB = 1 << 25,
-		FORMAT_BIT_DETECT_NORMAL = 1 << 26,
-	};
-
-private:
-	Error _load_data(const String &p_path, int &tw, int &th, int &flags, Ref<Image> &image, int p_size_limit = 0);
-	String path_to_file;
-	RID texture;
-	Image::Format format;
-	uint32_t flags;
-	int w, h;
-
-	virtual void reload_from_file();
-
-	static void _requested_3d(void *p_ud);
-	static void _requested_srgb(void *p_ud);
-	static void _requested_normal(void *p_ud);
-
-protected:
-	static void _bind_methods();
-
-public:
-	typedef void (*TextureFormatRequestCallback)(const Ref<StreamTexture> &);
-
-	static TextureFormatRequestCallback request_3d_callback;
-	static TextureFormatRequestCallback request_srgb_callback;
-	static TextureFormatRequestCallback request_normal_callback;
-
-	uint32_t get_flags() const;
-	Image::Format get_format() const;
-	Error load(const String &p_path);
-	String get_load_path() const;
-
-	int get_width() const;
-	int get_height() const;
-	virtual RID get_rid() const;
-
-	virtual void draw(RID p_canvas_item, const Point2 &p_pos, const Color &p_modulate = Color(1, 1, 1), bool p_transpose = false, const Ref<Texture> &p_normal_map = Ref<Texture>()) const;
-	virtual void draw_rect(RID p_canvas_item, const Rect2 &p_rect, bool p_tile = false, const Color &p_modulate = Color(1, 1, 1), bool p_transpose = false, const Ref<Texture> &p_normal_map = Ref<Texture>()) const;
-	virtual void draw_rect_region(RID p_canvas_item, const Rect2 &p_rect, const Rect2 &p_src_rect, const Color &p_modulate = Color(1, 1, 1), bool p_transpose = false, const Ref<Texture> &p_normal_map = Ref<Texture>(), bool p_clip_uv = true) const;
-
-	virtual bool has_alpha() const;
-	virtual void set_flags(uint32_t p_flags);
-
-	virtual Ref<Image> get_data() const;
-
-	StreamTexture();
-	~StreamTexture();
-};
-
-class ResourceFormatLoaderStreamTexture : public ResourceFormatLoader {
-public:
-	virtual RES load(const String &p_path, const String &p_original_path = "", Error *r_error = NULL);
-	virtual void get_recognized_extensions(List<String> *p_extensions) const;
-	virtual bool handles_type(const String &p_type) const;
-	virtual String get_resource_type(const String &p_path) const;
-};
-
 VARIANT_ENUM_CAST(ImageTexture::Storage);
 
 class AtlasTexture : public Texture {
 
-	GDCLASS(AtlasTexture, Texture);
-	RES_BASE_EXTENSION("atlastex");
+	OBJ_TYPE(AtlasTexture, Texture);
+	RES_BASE_EXTENSION("atex");
 
 protected:
 	Ref<Texture> atlas;
@@ -259,18 +183,18 @@ public:
 	void set_margin(const Rect2 &p_margin);
 	Rect2 get_margin() const;
 
-	virtual void draw(RID p_canvas_item, const Point2 &p_pos, const Color &p_modulate = Color(1, 1, 1), bool p_transpose = false, const Ref<Texture> &p_normal_map = Ref<Texture>()) const;
-	virtual void draw_rect(RID p_canvas_item, const Rect2 &p_rect, bool p_tile = false, const Color &p_modulate = Color(1, 1, 1), bool p_transpose = false, const Ref<Texture> &p_normal_map = Ref<Texture>()) const;
-	virtual void draw_rect_region(RID p_canvas_item, const Rect2 &p_rect, const Rect2 &p_src_rect, const Color &p_modulate = Color(1, 1, 1), bool p_transpose = false, const Ref<Texture> &p_normal_map = Ref<Texture>(), bool p_clip_uv = true) const;
-	virtual bool get_rect_region(const Rect2 &p_rect, const Rect2 &p_src_rect, Rect2 &r_rect, Rect2 &r_src_rect) const;
+	virtual void draw(RID p_canvas_item, const Point2 &p_pos, const Color &p_modulate = Color(1, 1, 1), bool p_transpose = false) const;
+	virtual void draw_rect(RID p_canvas_item, const Rect2 &p_rect, bool p_tile = false, const Color &p_modulate = Color(1, 1, 1), bool p_transpose = false) const;
+	virtual void draw_rect_region(RID p_canvas_item, const Rect2 &p_rect, const Rect2 &p_src_rect, const Color &p_modulate = Color(1, 1, 1), bool p_transpose = false) const;
+	virtual bool get_rect_region_uv_rect(const Rect2 &p_rect, const Rect2 &p_src_rect, Rect2 &r_rect, Rect2 &r_uv_rect) const;
 
 	AtlasTexture();
 };
 
 class LargeTexture : public Texture {
 
-	GDCLASS(LargeTexture, Texture);
-	RES_BASE_EXTENSION("largetex");
+	OBJ_TYPE(LargeTexture, Texture);
+	RES_BASE_EXTENSION("ltex");
 
 protected:
 	struct Piece {
@@ -307,17 +231,17 @@ public:
 	Vector2 get_piece_offset(int p_idx) const;
 	Ref<Texture> get_piece_texture(int p_idx) const;
 
-	virtual void draw(RID p_canvas_item, const Point2 &p_pos, const Color &p_modulate = Color(1, 1, 1), bool p_transpose = false, const Ref<Texture> &p_normal_map = Ref<Texture>()) const;
-	virtual void draw_rect(RID p_canvas_item, const Rect2 &p_rect, bool p_tile = false, const Color &p_modulate = Color(1, 1, 1), bool p_transpose = false, const Ref<Texture> &p_normal_map = Ref<Texture>()) const;
-	virtual void draw_rect_region(RID p_canvas_item, const Rect2 &p_rect, const Rect2 &p_src_rect, const Color &p_modulate = Color(1, 1, 1), bool p_transpose = false, const Ref<Texture> &p_normal_map = Ref<Texture>(), bool p_clip_uv = true) const;
+	virtual void draw(RID p_canvas_item, const Point2 &p_pos, const Color &p_modulate = Color(1, 1, 1), bool p_transpose = false) const;
+	virtual void draw_rect(RID p_canvas_item, const Rect2 &p_rect, bool p_tile = false, const Color &p_modulate = Color(1, 1, 1), bool p_transpose = false) const;
+	virtual void draw_rect_region(RID p_canvas_item, const Rect2 &p_rect, const Rect2 &p_src_rect, const Color &p_modulate = Color(1, 1, 1), bool p_transpose = false) const;
 
 	LargeTexture();
 };
 
 class CubeMap : public Resource {
 
-	GDCLASS(CubeMap, Resource);
-	RES_BASE_EXTENSION("cubemap");
+	OBJ_TYPE(CubeMap, Resource);
+	RES_BASE_EXTENSION("cbm");
 
 public:
 	enum Storage {
@@ -370,8 +294,8 @@ protected:
 public:
 	void set_flags(uint32_t p_flags);
 	uint32_t get_flags() const;
-	void set_side(Side p_side, const Ref<Image> &p_image);
-	Ref<Image> get_side(Side p_side) const;
+	void set_side(Side p_side, const Image &p_image);
+	Image get_side(Side p_side) const;
 
 	Image::Format get_format() const;
 	int get_width() const;
@@ -391,45 +315,10 @@ public:
 	~CubeMap();
 };
 
-VARIANT_ENUM_CAST(CubeMap::Flags)
-VARIANT_ENUM_CAST(CubeMap::Side)
-VARIANT_ENUM_CAST(CubeMap::Storage)
+VARIANT_ENUM_CAST(CubeMap::Flags);
+VARIANT_ENUM_CAST(CubeMap::Side);
+VARIANT_ENUM_CAST(CubeMap::Storage);
 
-class CurveTexture : public Texture {
-
-	GDCLASS(CurveTexture, Texture)
-	RES_BASE_EXTENSION("curvetex")
-
-private:
-	RID _texture;
-	Ref<Curve> _curve;
-	int _width;
-
-	void _update();
-
-protected:
-	static void _bind_methods();
-
-public:
-	void set_width(int p_width);
-	int get_width() const;
-
-	void ensure_default_setup(float p_min = 0, float p_max = 1);
-
-	void set_curve(Ref<Curve> p_curve);
-	Ref<Curve> get_curve() const;
-
-	virtual RID get_rid() const;
-
-	virtual int get_height() const { return 1; }
-	virtual bool has_alpha() const { return false; }
-
-	virtual void set_flags(uint32_t p_flags) {}
-	virtual uint32_t get_flags() const { return FLAG_FILTER; }
-
-	CurveTexture();
-	~CurveTexture();
-};
 /*
 	enum CubeMapSide {
 
@@ -443,50 +332,5 @@ public:
 
 */
 //VARIANT_ENUM_CAST( Texture::CubeMapSide );
-
-class GradientTexture : public Texture {
-	GDCLASS(GradientTexture, Texture)
-
-public:
-	struct Point {
-
-		float offset;
-		Color color;
-		bool operator<(const Point &p_ponit) const {
-			return offset < p_ponit.offset;
-		}
-	};
-
-private:
-	Ref<Gradient> gradient;
-	bool update_pending;
-	RID texture;
-	int width;
-
-	void _queue_update();
-	void _update();
-
-protected:
-	static void _bind_methods();
-
-public:
-	void set_gradient(Ref<Gradient> p_gradient);
-	Ref<Gradient> get_gradient() const;
-
-	void set_width(int p_width);
-	int get_width() const;
-
-	virtual RID get_rid() const { return texture; }
-	virtual int get_height() const { return 1; }
-	virtual bool has_alpha() const { return true; }
-
-	virtual void set_flags(uint32_t p_flags) {}
-	virtual uint32_t get_flags() const { return FLAG_FILTER; }
-
-	virtual Ref<Image> get_data() const;
-
-	GradientTexture();
-	virtual ~GradientTexture();
-};
 
 #endif

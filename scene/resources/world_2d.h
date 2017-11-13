@@ -30,7 +30,7 @@
 #ifndef WORLD_2D_H
 #define WORLD_2D_H
 
-#include "project_settings.h"
+#include "globals.h"
 #include "resource.h"
 #include "servers/physics_2d_server.h"
 
@@ -40,10 +40,11 @@ class Viewport;
 
 class World2D : public Resource {
 
-	GDCLASS(World2D, Resource);
+	OBJ_TYPE(World2D, Resource);
 
 	RID canvas;
 	RID space;
+	RID sound_space;
 
 	SpatialIndexer2D *indexer;
 
@@ -65,10 +66,9 @@ protected:
 public:
 	RID get_canvas();
 	RID get_space();
+	RID get_sound_space();
 
 	Physics2DDirectSpaceState *get_direct_space_state();
-
-	void get_viewport_list(List<Viewport *> *r_viewports);
 
 	World2D();
 	~World2D();

@@ -90,7 +90,7 @@ public:
 
 	virtual void seek(size_t p_position) = 0; ///< seek to a given position
 	virtual void seek_end(int64_t p_position = 0) = 0; ///< seek from the end of file
-	virtual size_t get_position() const = 0; ///< get position in the file
+	virtual size_t get_pos() const = 0; ///< get position in the file
 	virtual size_t get_len() const = 0; ///< get size of the file
 
 	virtual bool eof_reached() const = 0; ///< reading passed EOF
@@ -106,7 +106,6 @@ public:
 
 	virtual int get_buffer(uint8_t *p_dst, int p_length) const; ///< get an array of bytes
 	virtual String get_line() const;
-	virtual String get_token() const;
 	virtual Vector<String> get_csv_line(String delim = ",") const;
 
 	/**< use this for files WRITTEN in _big_ endian machines (ie, amiga/mac)
@@ -119,7 +118,6 @@ public:
 
 	virtual Error get_error() const = 0; ///< get last error
 
-	virtual void flush() = 0;
 	virtual void store_8(uint8_t p_dest) = 0; ///< store a byte
 	virtual void store_16(uint16_t p_dest); ///< store 16 bits uint
 	virtual void store_32(uint32_t p_dest); ///< store 32 bits uint
@@ -130,7 +128,7 @@ public:
 	virtual void store_real(real_t p_real);
 
 	virtual void store_string(const String &p_string);
-	virtual void store_line(const String &p_line);
+	virtual void store_line(const String &p_string);
 
 	virtual void store_pascal_string(const String &p_string);
 	virtual String get_pascal_string();
@@ -177,7 +175,6 @@ struct FileAccessRef {
 
 	operator bool() const { return f != NULL; }
 	FileAccess *f;
-	operator FileAccess *() { return f; }
 	FileAccessRef(FileAccess *fa) { f = fa; }
 	~FileAccessRef() {
 		if (f) memdelete(f);

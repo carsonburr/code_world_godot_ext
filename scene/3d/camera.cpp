@@ -90,12 +90,10 @@ bool Camera::_set(const StringName &p_name, const Variant &p_value) {
 		} else {
 			clear_current();
 		}
-	} else if (p_name == "cull_mask") {
-		set_cull_mask(p_value);
+	} else if (p_name == "visible_layers") {
+		set_visible_layers(p_value);
 	} else if (p_name == "environment") {
 		set_environment(p_value);
-	} else if (p_name == "doppler/tracking") {
-		set_doppler_tracking(DopplerTracking(int(p_value)));
 	} else
 		return false;
 
@@ -125,16 +123,14 @@ bool Camera::_get(const StringName &p_name, Variant &r_ret) const {
 		} else {
 			r_ret = is_current();
 		}
-	} else if (p_name == "cull_mask") {
-		r_ret = get_cull_mask();
+	} else if (p_name == "visible_layers") {
+		r_ret = get_visible_layers();
 	} else if (p_name == "h_offset") {
 		r_ret = get_h_offset();
 	} else if (p_name == "v_offset") {
 		r_ret = get_v_offset();
 	} else if (p_name == "environment") {
 		r_ret = get_environment();
-	} else if (p_name == "doppler/tracking") {
-		r_ret = get_doppler_tracking();
 	} else
 		return false;
 
@@ -171,11 +167,10 @@ void Camera::_get_property_list(List<PropertyInfo> *p_list) const {
 	p_list->push_back(PropertyInfo(Variant::REAL, "far", PROPERTY_HINT_EXP_RANGE, "0.01,4096.0,0.01"));
 	p_list->push_back(PropertyInfo(Variant::INT, "keep_aspect", PROPERTY_HINT_ENUM, "Keep Width,Keep Height"));
 	p_list->push_back(PropertyInfo(Variant::BOOL, "current"));
-	p_list->push_back(PropertyInfo(Variant::INT, "cull_mask", PROPERTY_HINT_LAYERS_3D_RENDER));
+	p_list->push_back(PropertyInfo(Variant::INT, "visible_layers", PROPERTY_HINT_ALL_FLAGS));
 	p_list->push_back(PropertyInfo(Variant::OBJECT, "environment", PROPERTY_HINT_RESOURCE_TYPE, "Environment"));
 	p_list->push_back(PropertyInfo(Variant::REAL, "h_offset"));
 	p_list->push_back(PropertyInfo(Variant::REAL, "v_offset"));
-	p_list->push_back(PropertyInfo(Variant::INT, "doppler/tracking", PROPERTY_HINT_ENUM, "Disabled,Idle,Physics"));
 }
 
 void Camera::_update_camera() {
@@ -186,10 +181,8 @@ void Camera::_update_camera() {
 	VisualServer::get_singleton()->camera_set_transform(camera, tr);
 
 	// here goes listener stuff
-	/*
-	if (viewport_ptr && is_inside_scene() && is_current())
-		get_viewport()->_camera_transform_changed_notify();
-	*/
+	//	if (viewport_ptr && is_inside_scene() && is_current())
+	//		get_viewport()->_camera_transform_changed_notify();
 
 	if (is_inside_tree() && is_current()) {
 		get_viewport()->_camera_transform_changed_notify();
@@ -214,9 +207,6 @@ void Camera::_notification(int p_what) {
 		case NOTIFICATION_TRANSFORM_CHANGED: {
 
 			_request_camera_update();
-			if (doppler_tracking != DOPPLER_TRACKING_DISABLED) {
-				velocity_tracker->update_position(get_global_transform().origin);
-			}
 		} break;
 		case NOTIFICATION_EXIT_WORLD: {
 
@@ -326,6 +316,86 @@ bool Camera::_can_gizmo_scale() const {
 	return false;
 }
 
+RES Camera::_get_gizmo_geometry() const {
+
+	Ref<SurfaceTool> surface_tool(memnew(SurfaceTool));
+
+	Ref<FixedMaterial> mat(memnew(FixedMaterial));
+
+	mat->set_parameter(FixedMaterial::PARAM_DIFFUSE, Color(1.0, 0.5, 1.0, 0.5));
+	mat->set_line_width(4);
+	mat->set_flag(Material::FLAG_DOUBLE_SIDED, true);
+	mat->set_flag(Material::FLAG_UNSHADED, true);
+	//mat->set_hint(Material::HINT_NO_DEPTH_DRAW,true);
+
+	surface_tool->begin(Mesh::PRIMITIVE_LINES);
+	surface_tool->set_material(mat);
+
+	switch (mode) {
+
+		case PROJECTION_PERSPECTIVE: {
+
+			Vector3 side = Vector3(Math::sin(Math::deg2rad(fov)), 0, -Math::cos(Math::deg2rad(fov)));
+			Vector3 nside = side;
+			nside.x = -nside.x;
+			Vector3 up = Vector3(0, side.x, 0);
+
+#define ADD_TRIANGLE(m_a, m_b, m_c)    \
+	{                                  \
+		surface_tool->add_vertex(m_a); \
+		surface_tool->add_vertex(m_b); \
+		surface_tool->add_vertex(m_b); \
+		surface_tool->add_vertex(m_c); \
+		surface_tool->add_vertex(m_c); \
+		surface_tool->add_vertex(m_a); \
+	}
+
+			ADD_TRIANGLE(Vector3(), side + up, side - up);
+			ADD_TRIANGLE(Vector3(), nside + up, nside - up);
+			ADD_TRIANGLE(Vector3(), side + up, nside + up);
+			ADD_TRIANGLE(Vector3(), side - up, nside - up);
+
+			side.x *= 0.25;
+			nside.x *= 0.25;
+			Vector3 tup(0, up.y * 3 / 2, side.z);
+			ADD_TRIANGLE(tup, side + up, nside + up);
+
+		} break;
+		case PROJECTION_ORTHOGONAL: {
+
+#define ADD_QUAD(m_a, m_b, m_c, m_d)   \
+	{                                  \
+		surface_tool->add_vertex(m_a); \
+		surface_tool->add_vertex(m_b); \
+		surface_tool->add_vertex(m_b); \
+		surface_tool->add_vertex(m_c); \
+		surface_tool->add_vertex(m_c); \
+		surface_tool->add_vertex(m_d); \
+		surface_tool->add_vertex(m_d); \
+		surface_tool->add_vertex(m_a); \
+	}
+
+			float hsize = size * 0.5;
+			Vector3 right(hsize, 0, 0);
+			Vector3 up(0, hsize, 0);
+			Vector3 back(0, 0, -1.0);
+			Vector3 front(0, 0, 0);
+
+			ADD_QUAD(-up - right, -up + right, up + right, up - right);
+			ADD_QUAD(-up - right + back, -up + right + back, up + right + back, up - right + back);
+			ADD_QUAD(up + right, up + right + back, up - right + back, up - right);
+			ADD_QUAD(-up + right, -up + right + back, -up - right + back, -up - right);
+
+			right.x *= 0.25;
+			Vector3 tup(0, up.y * 3 / 2, back.z);
+			ADD_TRIANGLE(tup, right + up + back, -right + up + back);
+
+		} break;
+	}
+
+	return surface_tool->commit();
+}
+
 Vector3 Camera::project_ray_normal(const Point2 &p_pos) const {
 
 	Vector3 ray = project_local_ray_normal(p_pos);
@@ -339,8 +409,15 @@ Vector3 Camera::project_local_ray_normal(const Point2 &p_pos) const {
 		ERR_FAIL_COND_V(!is_inside_tree(), Vector3());
 	}
 
+#if 0
+	Size2 viewport_size = get_viewport()->get_visible_rect().size;
+	Vector2 cpos = p_pos;
+#else
+
 	Size2 viewport_size = get_viewport()->get_camera_rect_size();
 	Vector2 cpos = get_viewport()->get_camera_coords(p_pos);
+#endif
+
 	Vector3 ray;
 
 	if (mode == PROJECTION_ORTHOGONAL) {
@@ -348,7 +425,7 @@ Vector3 Camera::project_local_ray_normal(const Point2 &p_pos) const {
 		ray = Vector3(0, 0, -1);
 	} else {
 		CameraMatrix cm;
-		cm.set_perspective(fov, viewport_size.aspect(), near, far, keep_aspect == KEEP_WIDTH);
+		cm.set_perspective(fov, viewport_size.get_aspect(), near, far, keep_aspect == KEEP_WIDTH);
 		float screen_w, screen_h;
 		cm.get_viewport_size(screen_w, screen_h);
 		ray = Vector3(((cpos.x / viewport_size.width) * 2.0 - 1.0) * screen_w, ((1.0 - (cpos.y / viewport_size.height)) * 2.0 - 1.0) * screen_h, -near).normalized();
@@ -364,9 +441,17 @@ Vector3 Camera::project_ray_origin(const Point2 &p_pos) const {
 		ERR_FAIL_COND_V(!is_inside_tree(), Vector3());
 	}
 
+#if 0
+	Size2 viewport_size = get_viewport()->get_visible_rect().size;
+	Vector2 cpos = p_pos;
+#else
+
 	Size2 viewport_size = get_viewport()->get_camera_rect_size();
 	Vector2 cpos = get_viewport()->get_camera_coords(p_pos);
+#endif
+
 	ERR_FAIL_COND_V(viewport_size.y == 0, Vector3());
+	//	float aspect = viewport_size.x / viewport_size.y;
 
 	if (mode == PROJECTION_PERSPECTIVE) {
 
@@ -376,10 +461,10 @@ Vector3 Camera::project_ray_origin(const Point2 &p_pos) const {
 		Vector2 pos = cpos / viewport_size;
 		float vsize, hsize;
 		if (keep_aspect == KEEP_WIDTH) {
-			vsize = size / viewport_size.aspect();
+			vsize = size / viewport_size.get_aspect();
 			hsize = size;
 		} else {
-			hsize = size * viewport_size.aspect();
+			hsize = size * viewport_size.get_aspect();
 			vsize = size;
 		}
 
@@ -411,9 +496,9 @@ Point2 Camera::unproject_position(const Vector3 &p_pos) const {
 	CameraMatrix cm;
 
 	if (mode == PROJECTION_ORTHOGONAL)
-		cm.set_orthogonal(size, viewport_size.aspect(), near, far, keep_aspect == KEEP_WIDTH);
+		cm.set_orthogonal(size, viewport_size.get_aspect(), near, far, keep_aspect == KEEP_WIDTH);
 	else
-		cm.set_perspective(fov, viewport_size.aspect(), near, far, keep_aspect == KEEP_WIDTH);
+		cm.set_perspective(fov, viewport_size.get_aspect(), near, far, keep_aspect == KEEP_WIDTH);
 
 	Plane p(get_camera_transform().xform_inv(p_pos), 1.0);
 
@@ -439,9 +524,9 @@ Vector3 Camera::project_position(const Point2 &p_point) const {
 	CameraMatrix cm;
 
 	if (mode == PROJECTION_ORTHOGONAL)
-		cm.set_orthogonal(size, viewport_size.aspect(), near, far, keep_aspect == KEEP_WIDTH);
+		cm.set_orthogonal(size, viewport_size.get_aspect(), near, far, keep_aspect == KEEP_WIDTH);
 	else
-		cm.set_perspective(fov, viewport_size.aspect(), near, far, keep_aspect == KEEP_WIDTH);
+		cm.set_perspective(fov, viewport_size.get_aspect(), near, far, keep_aspect == KEEP_WIDTH);
 
 	Size2 vp_size;
 	cm.get_viewport_size(vp_size.x, vp_size.y);
@@ -500,64 +585,42 @@ Camera::KeepAspect Camera::get_keep_aspect_mode() const {
 	return keep_aspect;
 }
 
-void Camera::set_doppler_tracking(DopplerTracking p_tracking) {
-
-	if (doppler_tracking == p_tracking)
-		return;
-
-	doppler_tracking = p_tracking;
-	if (p_tracking != DOPPLER_TRACKING_DISABLED) {
-		velocity_tracker->set_track_physics_step(doppler_tracking == DOPPLER_TRACKING_PHYSICS_STEP);
-		velocity_tracker->reset(get_global_transform().origin);
-	}
-}
-
-Camera::DopplerTracking Camera::get_doppler_tracking() const {
-	return doppler_tracking;
-}
-
 void Camera::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("project_ray_normal", "screen_point"), &Camera::project_ray_normal);
-	ClassDB::bind_method(D_METHOD("project_local_ray_normal", "screen_point"), &Camera::project_local_ray_normal);
-	ClassDB::bind_method(D_METHOD("project_ray_origin", "screen_point"), &Camera::project_ray_origin);
-	ClassDB::bind_method(D_METHOD("unproject_position", "world_point"), &Camera::unproject_position);
-	ClassDB::bind_method(D_METHOD("is_position_behind", "world_point"), &Camera::is_position_behind);
-	ClassDB::bind_method(D_METHOD("project_position", "screen_point"), &Camera::project_position);
-	ClassDB::bind_method(D_METHOD("set_perspective", "fov", "z_near", "z_far"), &Camera::set_perspective);
-	ClassDB::bind_method(D_METHOD("set_orthogonal", "size", "z_near", "z_far"), &Camera::set_orthogonal);
-	ClassDB::bind_method(D_METHOD("make_current"), &Camera::make_current);
-	ClassDB::bind_method(D_METHOD("clear_current"), &Camera::clear_current);
-	ClassDB::bind_method(D_METHOD("is_current"), &Camera::is_current);
-	ClassDB::bind_method(D_METHOD("get_camera_transform"), &Camera::get_camera_transform);
-	ClassDB::bind_method(D_METHOD("get_fov"), &Camera::get_fov);
-	ClassDB::bind_method(D_METHOD("get_size"), &Camera::get_size);
-	ClassDB::bind_method(D_METHOD("get_zfar"), &Camera::get_zfar);
-	ClassDB::bind_method(D_METHOD("get_znear"), &Camera::get_znear);
-	ClassDB::bind_method(D_METHOD("get_projection"), &Camera::get_projection);
-	ClassDB::bind_method(D_METHOD("set_h_offset", "ofs"), &Camera::set_h_offset);
-	ClassDB::bind_method(D_METHOD("get_h_offset"), &Camera::get_h_offset);
-	ClassDB::bind_method(D_METHOD("set_v_offset", "ofs"), &Camera::set_v_offset);
-	ClassDB::bind_method(D_METHOD("get_v_offset"), &Camera::get_v_offset);
-	ClassDB::bind_method(D_METHOD("set_cull_mask", "mask"), &Camera::set_cull_mask);
-	ClassDB::bind_method(D_METHOD("get_cull_mask"), &Camera::get_cull_mask);
-	ClassDB::bind_method(D_METHOD("set_environment", "env"), &Camera::set_environment);
-	ClassDB::bind_method(D_METHOD("get_environment"), &Camera::get_environment);
-	ClassDB::bind_method(D_METHOD("set_keep_aspect_mode", "mode"), &Camera::set_keep_aspect_mode);
-	ClassDB::bind_method(D_METHOD("get_keep_aspect_mode"), &Camera::get_keep_aspect_mode);
-	ClassDB::bind_method(D_METHOD("set_doppler_tracking", "mode"), &Camera::set_doppler_tracking);
-	ClassDB::bind_method(D_METHOD("get_doppler_tracking"), &Camera::get_doppler_tracking);
-	//ClassDB::bind_method(D_METHOD("_camera_make_current"),&Camera::_camera_make_current );
+	ObjectTypeDB::bind_method(_MD("project_ray_normal", "screen_point"), &Camera::project_ray_normal);
+	ObjectTypeDB::bind_method(_MD("project_local_ray_normal", "screen_point"), &Camera::project_local_ray_normal);
+	ObjectTypeDB::bind_method(_MD("project_ray_origin", "screen_point"), &Camera::project_ray_origin);
+	ObjectTypeDB::bind_method(_MD("unproject_position", "world_point"), &Camera::unproject_position);
+	ObjectTypeDB::bind_method(_MD("is_position_behind", "world_point"), &Camera::is_position_behind);
+	ObjectTypeDB::bind_method(_MD("project_position", "screen_point"), &Camera::project_position);
+	ObjectTypeDB::bind_method(_MD("set_perspective", "fov", "z_near", "z_far"), &Camera::set_perspective);
+	ObjectTypeDB::bind_method(_MD("set_orthogonal", "size", "z_near", "z_far"), &Camera::set_orthogonal);
+	ObjectTypeDB::bind_method(_MD("make_current"), &Camera::make_current);
+	ObjectTypeDB::bind_method(_MD("clear_current"), &Camera::clear_current);
+	ObjectTypeDB::bind_method(_MD("is_current"), &Camera::is_current);
+	ObjectTypeDB::bind_method(_MD("get_camera_transform"), &Camera::get_camera_transform);
+	ObjectTypeDB::bind_method(_MD("get_fov"), &Camera::get_fov);
+	ObjectTypeDB::bind_method(_MD("get_size"), &Camera::get_size);
+	ObjectTypeDB::bind_method(_MD("get_zfar"), &Camera::get_zfar);
+	ObjectTypeDB::bind_method(_MD("get_znear"), &Camera::get_znear);
+	ObjectTypeDB::bind_method(_MD("get_projection"), &Camera::get_projection);
+	ObjectTypeDB::bind_method(_MD("set_h_offset", "ofs"), &Camera::set_h_offset);
+	ObjectTypeDB::bind_method(_MD("get_h_offset"), &Camera::get_h_offset);
+	ObjectTypeDB::bind_method(_MD("set_v_offset", "ofs"), &Camera::set_v_offset);
+	ObjectTypeDB::bind_method(_MD("get_v_offset"), &Camera::get_v_offset);
+	ObjectTypeDB::bind_method(_MD("set_visible_layers", "mask"), &Camera::set_visible_layers);
+	ObjectTypeDB::bind_method(_MD("get_visible_layers"), &Camera::get_visible_layers);
+	ObjectTypeDB::bind_method(_MD("set_environment", "env:Environment"), &Camera::set_environment);
+	ObjectTypeDB::bind_method(_MD("get_environment:Environment"), &Camera::get_environment);
+	ObjectTypeDB::bind_method(_MD("set_keep_aspect_mode", "mode"), &Camera::set_keep_aspect_mode);
+	ObjectTypeDB::bind_method(_MD("get_keep_aspect_mode"), &Camera::get_keep_aspect_mode);
+	//ObjectTypeDB::bind_method( _MD("_camera_make_current"),&Camera::_camera_make_current );
 
-	BIND_ENUM_CONSTANT(PROJECTION_PERSPECTIVE);
-	BIND_ENUM_CONSTANT(PROJECTION_ORTHOGONAL);
+	BIND_CONSTANT(PROJECTION_PERSPECTIVE);
+	BIND_CONSTANT(PROJECTION_ORTHOGONAL);
 
-	BIND_ENUM_CONSTANT(KEEP_WIDTH);
-	BIND_ENUM_CONSTANT(KEEP_HEIGHT);
-
-	BIND_ENUM_CONSTANT(DOPPLER_TRACKING_DISABLED)
-	BIND_ENUM_CONSTANT(DOPPLER_TRACKING_IDLE_STEP)
-	BIND_ENUM_CONSTANT(DOPPLER_TRACKING_PHYSICS_STEP)
+	BIND_CONSTANT(KEEP_WIDTH);
+	BIND_CONSTANT(KEEP_HEIGHT);
 }
 
 float Camera::get_fov() const {
@@ -585,13 +648,13 @@ Camera::Projection Camera::get_projection() const {
 	return mode;
 }
 
-void Camera::set_cull_mask(uint32_t p_layers) {
+void Camera::set_visible_layers(uint32_t p_layers) {
 
 	layers = p_layers;
-	VisualServer::get_singleton()->camera_set_cull_mask(camera, layers);
+	VisualServer::get_singleton()->camera_set_visible_layers(camera, layers);
 }
 
-uint32_t Camera::get_cull_mask() const {
+uint32_t Camera::get_visible_layers() const {
 
 	return layers;
 }
@@ -603,9 +666,9 @@ Vector<Plane> Camera::get_frustum() const {
 	Size2 viewport_size = get_viewport()->get_visible_rect().size;
 	CameraMatrix cm;
 	if (mode == PROJECTION_PERSPECTIVE)
-		cm.set_perspective(fov, viewport_size.aspect(), near, far, keep_aspect == KEEP_WIDTH);
+		cm.set_perspective(fov, viewport_size.get_aspect(), near, far, keep_aspect == KEEP_WIDTH);
 	else
-		cm.set_orthogonal(size, viewport_size.aspect(), near, far, keep_aspect == KEEP_WIDTH);
+		cm.set_orthogonal(size, viewport_size.get_aspect(), near, far, keep_aspect == KEEP_WIDTH);
 
 	return cm.get_projection_planes(get_camera_transform());
 }
@@ -631,14 +694,6 @@ float Camera::get_h_offset() const {
 	return h_offset;
 }
 
-Vector3 Camera::get_doppler_tracked_velocity() const {
-
-	if (doppler_tracking != DOPPLER_TRACKING_DISABLED) {
-		return velocity_tracker->get_tracked_linear_velocity();
-	} else {
-		return Vector3();
-	}
-}
 Camera::Camera() {
 
 	camera = VisualServer::get_singleton()->camera_create();
@@ -654,11 +709,8 @@ Camera::Camera() {
 	layers = 0xfffff;
 	v_offset = 0;
 	h_offset = 0;
-	VisualServer::get_singleton()->camera_set_cull_mask(camera, layers);
+	VisualServer::get_singleton()->camera_set_visible_layers(camera, layers);
 	//active=false;
-	velocity_tracker.instance();
-	doppler_tracking = DOPPLER_TRACKING_DISABLED;
-	set_notify_transform(true);
 }
 
 Camera::~Camera() {

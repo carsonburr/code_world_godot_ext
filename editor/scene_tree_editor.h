@@ -41,7 +41,7 @@
 */
 class SceneTreeEditor : public Control {
 
-	GDCLASS(SceneTreeEditor, Control);
+	OBJ_TYPE(SceneTreeEditor, Control);
 
 	EditorSelection *editor_selection;
 
@@ -56,14 +56,27 @@ class SceneTreeEditor : public Control {
 		BUTTON_GROUPS = 7,
 	};
 
+	enum {
+		SCENE_MENU_EDITABLE_CHILDREN,
+		SCENE_MENU_USE_PLACEHOLDER,
+		SCENE_MENU_OPEN,
+		SCENE_MENU_CLEAR_INHERITANCE,
+		SCENE_MENU_OPEN_INHERITED,
+		SCENE_MENU_CLEAR_INHERITANCE_CONFIRM,
+		SCENE_MENU_CLEAR_INSTANCING,
+	};
+
 	Tree *tree;
 	Node *selected;
+	PopupMenu *instance_menu;
+	PopupMenu *inheritance_menu;
 	ObjectID instance_node;
 
 	String filter;
 
 	AcceptDialog *error;
 	AcceptDialog *warning;
+	ConfirmationDialog *clear_inherit_confirm;
 
 	int blocked;
 
@@ -101,11 +114,12 @@ class SceneTreeEditor : public Control {
 	static void _bind_methods();
 
 	void _cell_button_pressed(Object *p_item, int p_column, int p_id);
-	void _cell_multi_selected(Object *p_object, int p_cell, bool p_selected);
+	void _cell_multi_selected(Object *p_object, int p_cel, bool p_selected);
 	void _update_selection(TreeItem *item);
 	void _node_script_changed(Node *p_node);
 	void _node_visibility_changed(Node *p_node);
 	void _update_visibility_color(Node *p_node, TreeItem *p_item);
+	void _subscene_option(int p_idx);
 
 	void _node_replace_owner(Node *p_base, Node *p_node, Node *p_root);
 
@@ -154,11 +168,11 @@ public:
 
 class SceneTreeDialog : public ConfirmationDialog {
 
-	GDCLASS(SceneTreeDialog, ConfirmationDialog);
+	OBJ_TYPE(SceneTreeDialog, ConfirmationDialog);
 
 	SceneTreeEditor *tree;
-	//Button *select;
-	//Button *cancel;
+	//	Button *select;
+	//	Button *cancel;
 
 	void update_tree();
 	void _select();

@@ -28,13 +28,13 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 #include "os.h"
-
 #include "dir_access.h"
+#include "globals.h"
 #include "input.h"
 #include "os/file_access.h"
-#include "project_settings.h"
-
 #include <stdarg.h>
+// For get_engine_version, could be removed if it's moved to a new Engine singleton
+#include "version.h"
 
 OS *OS::singleton = NULL;
 
@@ -62,20 +62,18 @@ void OS::debug_break(){
 	// something
 };
 
-void OS::_set_logger(Logger *p_logger) {
-	if (_logger) {
-		memdelete(_logger);
+void OS::print_error(const char *p_function, const char *p_file, int p_line, const char *p_code, const char *p_rationale, ErrorType p_type) {
+
+	const char *err_type;
+	switch (p_type) {
+		case ERR_ERROR: err_type = "**ERROR**"; break;
+		case ERR_WARNING: err_type = "**WARNING**"; break;
+		case ERR_SCRIPT: err_type = "**SCRIPT ERROR**"; break;
 	}
-	_logger = p_logger;
-}
 
-void OS::initialize_logger() {
-	_set_logger(memnew(StdLogger));
-}
-
-void OS::print_error(const char *p_function, const char *p_file, int p_line, const char *p_code, const char *p_rationale, Logger::ErrorType p_type) {
-
-	_logger->log_error(p_function, p_file, p_line, p_code, p_rationale, p_type);
+	if (p_rationale && *p_rationale)
+		print("%s: %s\n ", err_type, p_rationale);
+	print("%s: At: %s:%i:%s() - %s\n", err_type, p_file, p_line, p_function, p_code);
 }
 
 void OS::print(const char *p_format, ...) {
@@ -83,19 +81,37 @@ void OS::print(const char *p_format, ...) {
 	va_list argp;
 	va_start(argp, p_format);
 
-	_logger->logv(p_format, argp, false);
+	vprint(p_format, argp);
 
 	va_end(argp);
 };
 
 void OS::printerr(const char *p_format, ...) {
+
 	va_list argp;
 	va_start(argp, p_format);
 
-	_logger->logv(p_format, argp, true);
+	vprint(p_format, argp, true);
 
 	va_end(argp);
 };
+
+void OS::set_iterations_per_second(int p_ips) {
+
+	ips = p_ips;
+}
+int OS::get_iterations_per_second() const {
+
+	return ips;
+}
+
+void OS::set_target_fps(int p_fps) {
+	_target_fps = p_fps > 0 ? p_fps : 0;
+}
+
+float OS::get_target_fps() const {
+	return _target_fps;
+}
 
 void OS::set_keep_screen_on(bool p_enabled) {
 	_keep_screen_on = p_enabled;
@@ -129,10 +145,15 @@ String OS::get_executable_path() const {
 	return _execpath;
 }
 
-int OS::get_process_id() const {
+int OS::get_process_ID() const {
 
 	return -1;
 };
+
+uint64_t OS::get_frames_drawn() {
+
+	return frames_drawn;
+}
 
 bool OS::is_stdout_verbose() const {
 
@@ -164,18 +185,18 @@ const char *OS::get_last_error() const {
 
 void OS::dump_memory_to_file(const char *p_file) {
 
-	//Memory::dump_static_mem_to_file(p_file);
+	Memory::dump_static_mem_to_file(p_file);
 }
 
 static FileAccess *_OSPRF = NULL;
 
 static void _OS_printres(Object *p_obj) {
 
-	Resource *res = Object::cast_to<Resource>(p_obj);
+	Resource *res = p_obj->cast_to<Resource>();
 	if (!res)
 		return;
 
-	String str = itos(res->get_instance_id()) + String(res->get_class()) + ":" + String(res->get_name()) + " - " + res->get_path();
+	String str = itos(res->get_instance_ID()) + String(res->get_type()) + ":" + String(res->get_name()) + " - " + res->get_path();
 	if (_OSPRF)
 		_OSPRF->store_line(str);
 	else
@@ -191,10 +212,6 @@ void OS::show_virtual_keyboard(const String &p_existing_text, const Rect2 &p_scr
 }
 
 void OS::hide_virtual_keyboard() {
-}
-
-int OS::get_virtual_keyboard_height() const {
-	return 0;
 }
 
 void OS::print_all_resources(String p_to_file) {
@@ -237,6 +254,15 @@ void OS::clear_last_error() {
 		memfree(last_error);
 	last_error = NULL;
 }
+void OS::set_frame_delay(uint32_t p_msec) {
+
+	_frame_delay = p_msec;
+}
+
+uint32_t OS::get_frame_delay() const {
+
+	return _frame_delay;
+}
 
 void OS::set_no_window_mode(bool p_enable) {
 
@@ -264,7 +290,7 @@ String OS::get_locale() const {
 
 String OS::get_resource_dir() const {
 
-	return ProjectSettings::get_singleton()->get_resource_path();
+	return Globals::get_singleton()->get_resource_path();
 }
 
 String OS::get_system_dir(SystemDir p_dir) const {
@@ -273,7 +299,7 @@ String OS::get_system_dir(SystemDir p_dir) const {
 }
 
 String OS::get_safe_application_name() const {
-	String an = ProjectSettings::get_singleton()->get("application/config/name");
+	String an = Globals::get_singleton()->get("application/name");
 	Vector<String> invalid_char = String("\\ / : * ? \" < > |").split(" ");
 	for (int i = 0; i < invalid_char.size(); i++) {
 		an = an.replace(invalid_char[i], "-");
@@ -333,16 +359,16 @@ Error OS::dialog_input_text(String p_title, String p_description, String p_parti
 
 int OS::get_static_memory_usage() const {
 
-	return Memory::get_mem_usage();
+	return Memory::get_static_mem_usage();
 }
 int OS::get_dynamic_memory_usage() const {
 
-	return MemoryPool::total_memory;
+	return Memory::get_dynamic_mem_usage();
 }
 
 int OS::get_static_memory_peak_usage() const {
 
-	return Memory::get_mem_max_usage();
+	return Memory::get_static_mem_max_usage();
 }
 
 Error OS::set_cwd(const String &p_cwd) {
@@ -358,7 +384,7 @@ bool OS::has_touchscreen_ui_hint() const {
 
 int OS::get_free_static_memory() const {
 
-	return Memory::get_mem_available();
+	return Memory::get_static_mem_available();
 }
 
 void OS::yield() {
@@ -393,7 +419,7 @@ void OS::_ensure_data_dir() {
 	memdelete(da);
 }
 
-void OS::set_icon(const Ref<Image> &p_icon) {
+void OS::set_icon(const Image &p_icon) {
 }
 
 String OS::get_model_name() const {
@@ -416,7 +442,7 @@ void OS::make_rendering_thread() {
 void OS::swap_buffers() {
 }
 
-String OS::get_unique_id() const {
+String OS::get_unique_ID() const {
 
 	ERR_FAIL_V("");
 }
@@ -465,9 +491,19 @@ OS::MouseMode OS::get_mouse_mode() const {
 	return MOUSE_MODE_VISIBLE;
 }
 
+void OS::set_time_scale(float p_scale) {
+
+	_time_scale = p_scale;
+}
+
 OS::LatinKeyboardVariant OS::get_latin_keyboard_variant() const {
 
 	return LATIN_KEYBOARD_QWERTY;
+}
+
+float OS::get_time_scale() const {
+
+	return _time_scale;
 }
 
 bool OS::is_joy_known(int p_device) {
@@ -475,7 +511,7 @@ bool OS::is_joy_known(int p_device) {
 }
 
 String OS::get_joy_guid(int p_device) const {
-	return "Default Joypad";
+	return "Default Joystick";
 }
 
 void OS::set_context(int p_context) {
@@ -488,67 +524,50 @@ bool OS::is_vsync_enabled() const {
 	return true;
 }
 
-OS::PowerState OS::get_power_state() {
-	return POWERSTATE_UNKNOWN;
-}
-int OS::get_power_seconds_left() {
-	return -1;
-}
-int OS::get_power_percent_left() {
-	return -1;
-}
+Dictionary OS::get_engine_version() const {
 
-bool OS::has_feature(const String &p_feature) {
-
-	if (p_feature == get_name())
-		return true;
-#ifdef DEBUG_ENABLED
-	if (p_feature == "debug")
-		return true;
+	Dictionary dict;
+	dict["major"] = _MKSTR(VERSION_MAJOR);
+	dict["minor"] = _MKSTR(VERSION_MINOR);
+#ifdef VERSION_PATCH
+	dict["patch"] = _MKSTR(VERSION_PATCH);
 #else
-	if (p_feature == "release")
-		return true;
+	dict["patch"] = "";
 #endif
+	dict["status"] = _MKSTR(VERSION_STATUS);
+	dict["revision"] = _MKSTR(VERSION_REVISION);
 
-	if (sizeof(void *) == 8 && p_feature == "64") {
-		return true;
-	}
-	if (sizeof(void *) == 4 && p_feature == "32") {
-		return true;
-	}
+	String stringver = String(dict["major"]) + "." + String(dict["minor"]);
+	if (dict["patch"] != "")
+		stringver += "." + String(dict["patch"]);
+	stringver += "-" + String(dict["status"]) + " (" + String(dict["revision"]) + ")";
+	dict["string"] = stringver;
 
-	if (_check_internal_feature_support(p_feature))
-		return true;
-
-	return false;
-}
-
-void *OS::get_stack_bottom() const {
-	return _stack_bottom;
+	return dict;
 }
 
 OS::OS() {
-	void *volatile stack_bottom;
-
 	last_error = NULL;
+	frames_drawn = 0;
 	singleton = this;
+	ips = 60;
 	_keep_screen_on = true; // set default value to true, because this had been true before godot 2.0.
 	low_processor_usage_mode = false;
 	_verbose_stdout = false;
+	_frame_delay = 0;
 	_no_window = false;
 	_exit_code = 0;
 	_orientation = SCREEN_LANDSCAPE;
-
+	_fps = 1;
+	_target_fps = 0;
 	_render_thread_mode = RENDER_THREAD_SAFE;
-
-	_allow_hidpi = false;
-	_stack_bottom = (void *)(&stack_bottom);
-
-	_logger = NULL;
-	_set_logger(memnew(StdLogger));
+	_time_scale = 1.0;
+	_pixel_snap = false;
+	_allow_hidpi = true;
+	Math::seed(1234567);
 }
 
 OS::~OS() {
-	memdelete(_logger);
+
 	singleton = NULL;
 }

@@ -28,7 +28,6 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 #include "command_queue_mt.h"
-
 #include "os/os.h"
 
 void CommandQueueMT::lock() {

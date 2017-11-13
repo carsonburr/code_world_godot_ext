@@ -34,7 +34,7 @@
 
 class GridContainer : public Container {
 
-	GDCLASS(GridContainer, Container);
+	OBJ_TYPE(GridContainer, Container);
 
 	int columns;
 

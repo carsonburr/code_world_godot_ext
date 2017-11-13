@@ -76,7 +76,7 @@ void FileAccessBuffered::seek_end(int64_t p_position) {
 	file.offset = file.size + p_position;
 };
 
-size_t FileAccessBuffered::get_position() const {
+size_t FileAccessBuffered::get_pos() const {
 
 	return file.offset;
 };
@@ -106,11 +106,11 @@ uint8_t FileAccessBuffered::get_8() const {
 	return byte;
 };
 
-int FileAccessBuffered::get_buffer(uint8_t *p_dest, int p_length) const {
+int FileAccessBuffered::get_buffer(uint8_t *p_dest, int p_elements) const {
 
 	ERR_FAIL_COND_V(!file.open, -1);
 
-	if (p_length > cache_size) {
+	if (p_elements > cache_size) {
 
 		int total_read = 0;
 
@@ -118,16 +118,16 @@ int FileAccessBuffered::get_buffer(uint8_t *p_dest, int p_length) const {
 
 			int size = (cache.buffer.size() - (file.offset - cache.offset));
 			size = size - (size % 4);
-			//PoolVector<uint8_t>::Read read = cache.buffer.read();
+			//DVector<uint8_t>::Read read = cache.buffer.read();
 			//memcpy(p_dest, read.ptr() + (file.offset - cache.offset), size);
 			memcpy(p_dest, cache.buffer.ptr() + (file.offset - cache.offset), size);
 			p_dest += size;
-			p_length -= size;
+			p_elements -= size;
 			file.offset += size;
 			total_read += size;
 		};
 
-		int err = read_data_block(file.offset, p_length, p_dest);
+		int err = read_data_block(file.offset, p_elements, p_dest);
 		if (err >= 0) {
 			total_read += err;
 			file.offset += err;
@@ -136,7 +136,7 @@ int FileAccessBuffered::get_buffer(uint8_t *p_dest, int p_length) const {
 		return total_read;
 	};
 
-	int to_read = p_length;
+	int to_read = p_elements;
 	int total_read = 0;
 	while (to_read > 0) {
 
@@ -152,7 +152,7 @@ int FileAccessBuffered::get_buffer(uint8_t *p_dest, int p_length) const {
 		};
 
 		int r = MIN(left, to_read);
-		//PoolVector<uint8_t>::Read read = cache.buffer.read();
+		//DVector<uint8_t>::Read read = cache.buffer.read();
 		//memcpy(p_dest+total_read, &read.ptr()[file.offset - cache.offset], r);
 		memcpy(p_dest + total_read, cache.buffer.ptr() + (file.offset - cache.offset), r);
 
@@ -161,7 +161,7 @@ int FileAccessBuffered::get_buffer(uint8_t *p_dest, int p_length) const {
 		to_read -= r;
 	};
 
-	return p_length;
+	return p_elements;
 };
 
 bool FileAccessBuffered::is_open() const {

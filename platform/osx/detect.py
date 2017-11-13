@@ -1,3 +1,4 @@
+
 import os
 import sys
 
@@ -19,11 +20,11 @@ def can_build():
 
 
 def get_opts():
-    from SCons.Variables import EnumVariable
 
     return [
+        ('force_64_bits', 'Force 64 bits binary', 'no'),
         ('osxcross_sdk', 'OSXCross SDK version', 'darwin14'),
-        EnumVariable('debug_symbols', 'Add debug symbols to release version', 'yes', ('yes', 'no', 'full')),
+
     ]
 
 
@@ -35,45 +36,36 @@ def get_flags():
 
 def configure(env):
 
-	## Build type
+    env.Append(CPPPATH=['#platform/osx'])
+
+    if (env["bits"] == "default"):
+        env["bits"] = "32"
 
     if (env["target"] == "release"):
-        env.Prepend(CCFLAGS=['-O3', '-ffast-math', '-fomit-frame-pointer', '-ftree-vectorize', '-msse2'])
-        if (env["debug_symbols"] == "yes"):
-            env.Prepend(CCFLAGS=['-g1'])
-        if (env["debug_symbols"] == "full"):
-            env.Prepend(CCFLAGS=['-g2'])
+
+        env.Append(CCFLAGS=['-O2', '-ffast-math', '-fomit-frame-pointer', '-ftree-vectorize', '-msse2'])
 
     elif (env["target"] == "release_debug"):
-        env.Prepend(CCFLAGS=['-O2', '-DDEBUG_ENABLED'])
-        if (env["debug_symbols"] == "yes"):
-            env.Prepend(CCFLAGS=['-g1'])
-        if (env["debug_symbols"] == "full"):
-            env.Prepend(CCFLAGS=['-g2'])
+
+        env.Append(CCFLAGS=['-O2', '-DDEBUG_ENABLED'])
 
     elif (env["target"] == "debug"):
-        env.Prepend(CCFLAGS=['-g3', '-DDEBUG_ENABLED', '-DDEBUG_MEMORY_ENABLED'])
 
-    ## Architecture
+        env.Append(CCFLAGS=['-g3', '-DDEBUG_ENABLED', '-DDEBUG_MEMORY_ENABLED'])
 
-    is64 = sys.maxsize > 2**32
-    if (env["bits"] == "default"):
-        env["bits"] = "64" if is64 else "32"
-
-    ## Compiler configuration
-
-    if "OSXCROSS_ROOT" not in os.environ: # regular native build
-        if (env["bits"] == "fat"):
-            env.Append(CCFLAGS=['-arch', 'i386', '-arch', 'x86_64'])
-            env.Append(LINKFLAGS=['-arch', 'i386', '-arch', 'x86_64'])
+    if ("OSXCROSS_ROOT" not in os.environ):
+        # regular native build
+        if (env["bits"] == "64"):
+            env.Append(CCFLAGS=['-arch', 'x86_64'])
+            env.Append(LINKFLAGS=['-arch', 'x86_64'])
         elif (env["bits"] == "32"):
             env.Append(CCFLAGS=['-arch', 'i386'])
             env.Append(LINKFLAGS=['-arch', 'i386'])
-        else: # 64-bit, default
-            env.Append(CCFLAGS=['-arch', 'x86_64'])
-            env.Append(LINKFLAGS=['-arch', 'x86_64'])
-
-    else: # osxcross build
+        else:
+            env.Append(CCFLAGS=['-arch', 'i386', '-arch', 'x86_64'])
+            env.Append(LINKFLAGS=['-arch', 'i386', '-arch', 'x86_64'])
+    else:
+        # osxcross build
         root = os.environ.get("OSXCROSS_ROOT", 0)
         if env["bits"] == "fat":
             basecmd = root + "/target/bin/x86_64-apple-" + env["osxcross_sdk"] + "-"
@@ -90,22 +82,25 @@ def configure(env):
         env['RANLIB'] = basecmd + "ranlib"
         env['AS'] = basecmd + "as"
 
+    env.Append(CPPFLAGS=["-DAPPLE_STYLE_KEYS"])
+    env.Append(CPPFLAGS=['-DUNIX_ENABLED', '-DGLES2_ENABLED', '-DOSX_ENABLED'])
+    env.Append(CPPFLAGS=["-mmacosx-version-min=10.9"])
+    env.Append(LIBS=['pthread'])
+    #env.Append(CPPFLAGS=['-F/Developer/SDKs/MacOSX10.4u.sdk/System/Library/Frameworks', '-isysroot', '/Developer/SDKs/MacOSX10.4u.sdk', '-mmacosx-version-min=10.4'])
+    #env.Append(LINKFLAGS=['-mmacosx-version-min=10.4', '-isysroot', '/Developer/SDKs/MacOSX10.4u.sdk', '-Wl,-syslibroot,/Developer/SDKs/MacOSX10.4u.sdk'])
+    env.Append(LINKFLAGS=['-framework', 'Cocoa', '-framework', 'Carbon', '-framework', 'OpenGL', '-framework', 'AGL', '-framework', 'AudioUnit', '-framework', 'CoreAudio', '-lz', '-framework', 'IOKit', '-framework', 'ForceFeedback'])
+    env.Append(LINKFLAGS=["-mmacosx-version-min=10.9"])
+
     if (env["CXX"] == "clang++"):
         env.Append(CPPFLAGS=['-DTYPED_METHOD_BIND'])
         env["CC"] = "clang"
         env["LD"] = "clang++"
 
-    ## Dependencies
+    import methods
 
-    if env['builtin_libtheora']:
-        env["x86_libtheora_opt_gcc"] = True
+    env.Append(BUILDERS={'GLSL120': env.Builder(action=methods.build_legacygl_headers, suffix='glsl.gen.h', src_suffix='.glsl')})
+    env.Append(BUILDERS={'GLSL': env.Builder(action=methods.build_glsl_headers, suffix='glsl.gen.h', src_suffix='.glsl')})
+    env.Append(BUILDERS={'GLSL120GLES': env.Builder(action=methods.build_gles2_headers, suffix='glsl.gen.h', src_suffix='.glsl')})
+    #env.Append( BUILDERS = { 'HLSL9' : env.Builder(action = methods.build_hlsl_dx9_headers, suffix = 'hlsl.gen.h',src_suffix = '.hlsl') } )
 
-    ## Flags
-
-    env.Append(CPPPATH=['#platform/osx'])
-    env.Append(CPPFLAGS=['-DOSX_ENABLED', '-DUNIX_ENABLED', '-DGLES2_ENABLED', '-DAPPLE_STYLE_KEYS', '-DCOREAUDIO_ENABLED'])
-    env.Append(LINKFLAGS=['-framework', 'Cocoa', '-framework', 'Carbon', '-framework', 'OpenGL', '-framework', 'AGL', '-framework', 'AudioUnit', '-framework', 'CoreAudio', '-lz', '-framework', 'IOKit', '-framework', 'ForceFeedback'])
-    env.Append(LIBS=['pthread'])
-
-    env.Append(CPPFLAGS=['-mmacosx-version-min=10.9'])
-    env.Append(LINKFLAGS=['-mmacosx-version-min=10.9'])
+    env["x86_libtheora_opt_gcc"] = True

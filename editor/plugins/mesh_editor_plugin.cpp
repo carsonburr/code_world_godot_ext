@@ -29,13 +29,12 @@
 /*************************************************************************/
 #include "mesh_editor_plugin.h"
 
-void MeshEditor::_gui_input(Ref<InputEvent> p_event) {
+void MeshEditor::_input_event(InputEvent p_event) {
 
-	Ref<InputEventMouseMotion> mm = p_event;
-	if (mm.is_valid() && mm->get_button_mask() & BUTTON_MASK_LEFT) {
+	if (p_event.type == InputEvent::MOUSE_MOTION && p_event.mouse_motion.button_mask & BUTTON_MASK_LEFT) {
 
-		rot_x -= mm->get_relative().y * 0.01;
-		rot_y -= mm->get_relative().x * 0.01;
+		rot_x -= p_event.mouse_motion.relative_y * 0.01;
+		rot_y -= p_event.mouse_motion.relative_x * 0.01;
 		if (rot_x < -Math_PI / 2)
 			rot_x = -Math_PI / 2;
 		else if (rot_x > Math_PI / 2) {
@@ -47,7 +46,7 @@ void MeshEditor::_gui_input(Ref<InputEvent> p_event) {
 
 void MeshEditor::_notification(int p_what) {
 
-	if (p_what == NOTIFICATION_PHYSICS_PROCESS) {
+	if (p_what == NOTIFICATION_FIXED_PROCESS) {
 	}
 
 	if (p_what == NOTIFICATION_READY) {
@@ -55,7 +54,7 @@ void MeshEditor::_notification(int p_what) {
 		//get_scene()->connect("node_removed",this,"_node_removed");
 
 		if (first_enter) {
-			//it's in propertyeditor so. could be moved around
+			//it's in propertyeditor so.. could be moved around
 
 			light_1_switch->set_normal_texture(get_icon("MaterialPreviewLight1", "EditorIcons"));
 			light_1_switch->set_pressed_texture(get_icon("MaterialPreviewLight1Off", "EditorIcons"));
@@ -70,16 +69,16 @@ void MeshEditor::_notification(int p_what) {
 		Ref<Texture> checkerboard = get_icon("Checkerboard", "EditorIcons");
 		Size2 size = get_size();
 
-		//draw_texture_rect(checkerboard, Rect2(Point2(), size), true);
+		draw_texture_rect(checkerboard, Rect2(Point2(), size), true);
 	}
 }
 
 void MeshEditor::_update_rotation() {
 
 	Transform t;
-	t.basis.rotate(Vector3(0, 1, 0), -rot_y);
-	t.basis.rotate(Vector3(1, 0, 0), -rot_x);
-	rotation->set_transform(t);
+	t.basis.rotate(Vector3(0, 1, 0), rot_y);
+	t.basis.rotate(Vector3(1, 0, 0), rot_x);
+	mesh_instance->set_transform(t);
 }
 
 void MeshEditor::edit(Ref<Mesh> p_mesh) {
@@ -95,10 +94,10 @@ void MeshEditor::edit(Ref<Mesh> p_mesh) {
 		rot_y = 0;
 		_update_rotation();
 
-		Rect3 aabb = mesh->get_aabb();
-		print_line("aabb: " + aabb);
-		Vector3 ofs = aabb.position + aabb.size * 0.5;
-		float m = aabb.get_longest_axis_size();
+		AABB aabb = mesh->get_aabb();
+		Vector3 ofs = aabb.pos + aabb.size * 0.5;
+		aabb.pos -= ofs;
+		float m = MAX(aabb.size.x, aabb.size.y) * 0.5;
 		if (m != 0) {
 			m = 1.0 / m;
 			m *= 0.5;
@@ -106,7 +105,7 @@ void MeshEditor::edit(Ref<Mesh> p_mesh) {
 			Transform xform;
 			xform.basis.scale(Vector3(m, m, m));
 			xform.origin = -xform.basis.xform(ofs); //-ofs*m;
-			//xform.origin.z -= aabb.get_longest_axis_size() * 2;
+			xform.origin.z -= aabb.size.z * 2;
 			mesh_instance->set_transform(xform);
 		}
 	}
@@ -115,18 +114,18 @@ void MeshEditor::edit(Ref<Mesh> p_mesh) {
 void MeshEditor::_button_pressed(Node *p_button) {
 
 	if (p_button == light_1_switch) {
-		light1->set_visible(!light_1_switch->is_pressed());
+		light1->set_enabled(!light_1_switch->is_pressed());
 	}
 
 	if (p_button == light_2_switch) {
-		light2->set_visible(!light_2_switch->is_pressed());
+		light2->set_enabled(!light_2_switch->is_pressed());
 	}
 }
 
 void MeshEditor::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("_gui_input"), &MeshEditor::_gui_input);
-	ClassDB::bind_method(D_METHOD("_button_pressed"), &MeshEditor::_button_pressed);
+	ObjectTypeDB::bind_method(_MD("_input_event"), &MeshEditor::_input_event);
+	ObjectTypeDB::bind_method(_MD("_button_pressed"), &MeshEditor::_button_pressed);
 }
 
 MeshEditor::MeshEditor() {
@@ -137,10 +136,9 @@ MeshEditor::MeshEditor() {
 	viewport->set_world(world); //use own world
 	add_child(viewport);
 	viewport->set_disable_input(true);
-	set_stretch(true);
 
 	camera = memnew(Camera);
-	camera->set_transform(Transform(Basis(), Vector3(0, 0, 1.1)));
+	camera->set_transform(Transform(Matrix3(), Vector3(0, 0, 3)));
 	camera->set_perspective(45, 0.1, 10);
 	viewport->add_child(camera);
 
@@ -150,19 +148,18 @@ MeshEditor::MeshEditor() {
 
 	light2 = memnew(DirectionalLight);
 	light2->set_transform(Transform().looking_at(Vector3(0, 1, 0), Vector3(0, 0, 1)));
-	light2->set_color(Color(0.7, 0.7, 0.7));
+	light2->set_color(Light::COLOR_DIFFUSE, Color(0.7, 0.7, 0.7));
+	light2->set_color(Light::COLOR_SPECULAR, Color(0.7, 0.7, 0.7));
 	viewport->add_child(light2);
 
-	rotation = memnew(Spatial);
-	viewport->add_child(rotation);
 	mesh_instance = memnew(MeshInstance);
-	rotation->add_child(mesh_instance);
+	viewport->add_child(mesh_instance);
 
 	set_custom_minimum_size(Size2(1, 150) * EDSCALE);
 
 	HBoxContainer *hb = memnew(HBoxContainer);
 	add_child(hb);
-	hb->set_anchors_and_margins_preset(Control::PRESET_WIDE, Control::PRESET_MODE_MINSIZE, 2);
+	hb->set_area_as_parent_rect(2);
 
 	hb->add_spacer();
 
@@ -187,7 +184,7 @@ MeshEditor::MeshEditor() {
 
 void MeshEditorPlugin::edit(Object *p_object) {
 
-	Mesh *s = Object::cast_to<Mesh>(p_object);
+	Mesh *s = p_object->cast_to<Mesh>();
 	if (!s)
 		return;
 
@@ -196,18 +193,18 @@ void MeshEditorPlugin::edit(Object *p_object) {
 
 bool MeshEditorPlugin::handles(Object *p_object) const {
 
-	return p_object->is_class("Mesh");
+	return p_object->is_type("Mesh");
 }
 
 void MeshEditorPlugin::make_visible(bool p_visible) {
 
 	if (p_visible) {
 		mesh_editor->show();
-		//mesh_editor->set_process(true);
+		//		mesh_editor->set_process(true);
 	} else {
 
 		mesh_editor->hide();
-		//mesh_editor->set_process(false);
+		//		mesh_editor->set_process(false);
 	}
 }
 

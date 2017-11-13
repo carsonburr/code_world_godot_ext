@@ -30,34 +30,19 @@
 #ifndef AUDIO_DRIVER_JAVASCRIPT_H
 #define AUDIO_DRIVER_JAVASCRIPT_H
 
-#include "servers/audio_server.h"
-
 #include "os/mutex.h"
+#include "servers/audio/audio_server_sw.h"
 
-class AudioDriverJavaScript : public AudioDriver {
-
-	enum {
-		INTERNAL_BUFFER_SIZE = 4096,
-		STREAM_SCALE_BITS = 12
-
-	};
-
-	int mix_rate;
-	float *internal_buffer;
-	int internal_buffer_channels;
-	int internal_buffer_size;
-	int32_t *stream_buffer;
-
+class AudioDriverJavaScript : public AudioDriverSW {
 public:
-	void mix_to_js(int p_frames);
-	static AudioDriverJavaScript *singleton_js;
+	void set_singleton();
 
 	virtual const char *get_name() const;
 
 	virtual Error init();
 	virtual void start();
 	virtual int get_mix_rate() const;
-	virtual SpeakerMode get_speaker_mode() const;
+	virtual OutputFormat get_output_format() const;
 	virtual void lock();
 	virtual void unlock();
 	virtual void finish();

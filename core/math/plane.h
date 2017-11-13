@@ -56,8 +56,8 @@ public:
 	/* intersections */
 
 	bool intersect_3(const Plane &p_plane1, const Plane &p_plane2, Vector3 *r_result = 0) const;
-	bool intersects_ray(const Vector3 &p_from, const Vector3 &p_dir, Vector3 *p_intersection) const;
-	bool intersects_segment(const Vector3 &p_begin, const Vector3 &p_end, Vector3 *p_intersection) const;
+	bool intersects_ray(Vector3 p_from, Vector3 p_dir, Vector3 *p_intersection) const;
+	bool intersects_segment(Vector3 p_begin, Vector3 p_end, Vector3 *p_intersection) const;
 
 	_FORCE_INLINE_ Vector3 project(const Vector3 &p_point) const {
 
@@ -75,8 +75,7 @@ public:
 
 	_FORCE_INLINE_ Plane() { d = 0; }
 	_FORCE_INLINE_ Plane(real_t p_a, real_t p_b, real_t p_c, real_t p_d)
-		: normal(p_a, p_b, p_c),
-		  d(p_d){};
+		: normal(p_a, p_b, p_c), d(p_d){};
 
 	_FORCE_INLINE_ Plane(const Vector3 &p_normal, real_t p_d);
 	_FORCE_INLINE_ Plane(const Vector3 &p_point, const Vector3 &p_normal);
@@ -95,19 +94,21 @@ real_t Plane::distance_to(const Vector3 &p_point) const {
 
 bool Plane::has_point(const Vector3 &p_point, real_t _epsilon) const {
 
-	real_t dist = normal.dot(p_point) - d;
+	float dist = normal.dot(p_point) - d;
 	dist = ABS(dist);
 	return (dist <= _epsilon);
 }
 
-Plane::Plane(const Vector3 &p_normal, real_t p_d)
-	: normal(p_normal),
-	  d(p_d) {
+Plane::Plane(const Vector3 &p_normal, real_t p_d) {
+
+	normal = p_normal;
+	d = p_d;
 }
 
-Plane::Plane(const Vector3 &p_point, const Vector3 &p_normal)
-	: normal(p_normal),
-	  d(p_normal.dot(p_point)) {
+Plane::Plane(const Vector3 &p_point, const Vector3 &p_normal) {
+
+	normal = p_normal;
+	d = p_normal.dot(p_point);
 }
 
 Plane::Plane(const Vector3 &p_point1, const Vector3 &p_point2, const Vector3 &p_point3, ClockDirection p_dir) {

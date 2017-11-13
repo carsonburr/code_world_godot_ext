@@ -56,8 +56,8 @@ void AnimationTreePlayer::_set_process(bool p_process, bool p_force) {
 
 	switch (animation_process_mode) {
 
-		case ANIMATION_PROCESS_PHYSICS: set_physics_process_internal(p_process && active); break;
-		case ANIMATION_PROCESS_IDLE: set_process_internal(p_process && active); break;
+		case ANIMATION_PROCESS_FIXED: set_fixed_process(p_process && active); break;
+		case ANIMATION_PROCESS_IDLE: set_process(p_process && active); break;
 	}
 
 	processing = p_process;
@@ -92,7 +92,7 @@ bool AnimationTreePlayer::_set(const StringName &p_name, const Variant &p_value)
 		Dictionary node = nodes[i];
 
 		StringName id = node.get_valid("id");
-		Point2 pos = node.get_valid("position");
+		Point2 pos = node.get_valid("pos");
 
 		NodeType nt = NODE_MAX;
 		String type = node.get_valid("type");
@@ -122,7 +122,7 @@ bool AnimationTreePlayer::_set(const StringName &p_name, const Variant &p_value)
 
 		if (nt != NODE_OUTPUT)
 			add_node(nt, id);
-		node_set_position(id, pos);
+		node_set_pos(id, pos);
 
 		switch (nt) {
 			case NODE_OUTPUT: {
@@ -206,7 +206,7 @@ bool AnimationTreePlayer::_set(const StringName &p_name, const Variant &p_value)
 		StringName src = connections[i * 3 + 0];
 		StringName dst = connections[i * 3 + 1];
 		int dst_in = connections[i * 3 + 2];
-		connect_nodes(src, dst, dst_in);
+		connect(src, dst, dst_in);
 	}
 
 	set_active(data.get_valid("active"));
@@ -245,7 +245,7 @@ bool AnimationTreePlayer::_get(const StringName &p_name, Variant &r_ret) const {
 
 		Dictionary node;
 		node["id"] = E->key();
-		node["position"] = n->pos;
+		node["pos"] = n->pos;
 
 		switch (n->type) {
 			case NODE_OUTPUT: node["type"] = "output"; break;
@@ -405,8 +405,8 @@ void AnimationTreePlayer::_notification(int p_what) {
 			if (!processing) {
 				//make sure that a previous process state was not saved
 				//only process if "processing" is set
-				set_physics_process_internal(false);
-				set_process_internal(false);
+				set_fixed_process(false);
+				set_process(false);
 			}
 		} break;
 		case NOTIFICATION_READY: {
@@ -415,20 +415,20 @@ void AnimationTreePlayer::_notification(int p_what) {
 				_update_sources();
 			}
 		} break;
-		case NOTIFICATION_INTERNAL_PROCESS: {
-			if (animation_process_mode == ANIMATION_PROCESS_PHYSICS)
+		case NOTIFICATION_PROCESS: {
+			if (animation_process_mode == ANIMATION_PROCESS_FIXED)
 				break;
 
 			if (processing)
 				_process_animation(get_process_delta_time());
 		} break;
-		case NOTIFICATION_INTERNAL_PHYSICS_PROCESS: {
+		case NOTIFICATION_FIXED_PROCESS: {
 
 			if (animation_process_mode == ANIMATION_PROCESS_IDLE)
 				break;
 
 			if (processing)
-				_process_animation(get_physics_process_delta_time());
+				_process_animation(get_fixed_process_delta_time());
 		} break;
 	}
 }
@@ -492,10 +492,10 @@ float AnimationTreePlayer::_process_node(const StringName &p_node, AnimationNode
 			float rem = 0;
 			if (!an->animation.is_null()) {
 
-				//float pos = an->time;
-				//float delta = p_time;
+				//		float pos = an->time;
+				//				float delta = p_time;
 
-				//const Animation *a = an->animation.operator->();
+				//			const Animation *a = an->animation.operator->();
 
 				if (p_seek) {
 					an->time = p_time;
@@ -694,7 +694,7 @@ float AnimationTreePlayer::_process_node(const StringName &p_node, AnimationNode
 			else
 				rem = _process_node(tsn->inputs[0].node, r_prev_anim, p_time * tsn->scale, false, p_fallback_weight, p_weights);
 			if (tsn->scale == 0)
-				return Math_INF;
+				return INFINITY;
 			else
 				return rem / tsn->scale;
 
@@ -1156,7 +1156,6 @@ void AnimationTreePlayer::transition_node_set_xfade_time(const StringName &p_nod
 }
 
 void AnimationTreePlayer::TransitionNode::set_current(int p_current) {
-
 	ERR_FAIL_INDEX(p_current, inputs.size());
 
 	if (current == p_current)
@@ -1176,7 +1175,7 @@ void AnimationTreePlayer::transition_node_set_current(const StringName &p_node, 
 	n->set_current(p_current);
 }
 
-void AnimationTreePlayer::node_set_position(const StringName &p_node, const Vector2 &p_pos) {
+void AnimationTreePlayer::node_set_pos(const StringName &p_node, const Vector2 &p_pos) {
 
 	ERR_FAIL_COND(!node_map.has(p_node));
 	node_map[p_node]->pos = p_pos;
@@ -1187,7 +1186,7 @@ AnimationTreePlayer::NodeType AnimationTreePlayer::node_get_type(const StringNam
 	ERR_FAIL_COND_V(!node_map.has(p_node), NODE_OUTPUT);
 	return node_map[p_node]->type;
 }
-Point2 AnimationTreePlayer::node_get_position(const StringName &p_node) const {
+Point2 AnimationTreePlayer::node_get_pos(const StringName &p_node) const {
 
 	ERR_FAIL_COND_V(!node_map.has(p_node), Point2());
 	return node_map[p_node]->pos;
@@ -1387,17 +1386,17 @@ AnimationTreePlayer::ConnectError AnimationTreePlayer::_cycle_test(const StringN
 	return CONNECT_OK;
 }
 
-Error AnimationTreePlayer::connect_nodes(const StringName &p_src_node, const StringName &p_dst_node, int p_dst_input) {
+Error AnimationTreePlayer::connect(const StringName &p_src_node, const StringName &p_dst_node, int p_dst_input) {
 
 	ERR_FAIL_COND_V(!node_map.has(p_src_node), ERR_INVALID_PARAMETER);
 	ERR_FAIL_COND_V(!node_map.has(p_dst_node), ERR_INVALID_PARAMETER);
 	ERR_FAIL_COND_V(p_src_node == p_dst_node, ERR_INVALID_PARAMETER);
 
-	//NodeBase *src = node_map[p_src_node];
+	//	NodeBase *src = node_map[p_src_node];
 	NodeBase *dst = node_map[p_dst_node];
 	ERR_FAIL_INDEX_V(p_dst_input, dst->inputs.size(), ERR_INVALID_PARAMETER);
 
-	//int oldval = dst->inputs[p_dst_input].node;
+	//	int oldval = dst->inputs[p_dst_input].node;
 
 	for (Map<StringName, NodeBase *>::Element *E = node_map.front(); E; E = E->next()) {
 
@@ -1429,7 +1428,7 @@ Error AnimationTreePlayer::connect_nodes(const StringName &p_src_node, const Str
 	return OK;
 }
 
-bool AnimationTreePlayer::are_nodes_connected(const StringName &p_src_node, const StringName &p_dst_node, int p_dst_input) const {
+bool AnimationTreePlayer::is_connected(const StringName &p_src_node, const StringName &p_dst_node, int p_dst_input) const {
 
 	ERR_FAIL_COND_V(!node_map.has(p_src_node), false);
 	ERR_FAIL_COND_V(!node_map.has(p_dst_node), false);
@@ -1440,7 +1439,7 @@ bool AnimationTreePlayer::are_nodes_connected(const StringName &p_src_node, cons
 	return dst->inputs[p_dst_input].node == p_src_node;
 }
 
-void AnimationTreePlayer::disconnect_nodes(const StringName &p_node, int p_input) {
+void AnimationTreePlayer::disconnect(const StringName &p_node, int p_input) {
 
 	ERR_FAIL_COND(!node_map.has(p_node));
 
@@ -1482,14 +1481,14 @@ AnimationTreePlayer::Track *AnimationTreePlayer::_find_track(const NodePath &p_p
 		return NULL;
 	}
 
-	ObjectID id = child->get_instance_id();
+	ObjectID id = child->get_instance_ID();
 	StringName property;
 	int bone_idx = -1;
 
 	if (p_path.get_property()) {
 
-		if (Object::cast_to<Skeleton>(child))
-			bone_idx = Object::cast_to<Skeleton>(child)->find_bone(p_path.get_property());
+		if (child->cast_to<Skeleton>())
+			bone_idx = child->cast_to<Skeleton>()->find_bone(p_path.get_property());
 		if (bone_idx == -1)
 			property = p_path.get_property();
 	}
@@ -1504,8 +1503,8 @@ AnimationTreePlayer::Track *AnimationTreePlayer::_find_track(const NodePath &p_p
 		Track tr;
 		tr.id = id;
 		tr.object = resource.is_valid() ? (Object *)resource.ptr() : (Object *)child;
-		tr.skeleton = Object::cast_to<Skeleton>(child);
-		tr.spatial = Object::cast_to<Spatial>(child);
+		tr.skeleton = child->cast_to<Skeleton>();
+		tr.spatial = child->cast_to<Spatial>();
 		tr.bone_idx = bone_idx;
 		tr.property = property;
 
@@ -1618,11 +1617,11 @@ NodePath AnimationTreePlayer::get_master_player() const {
 	return master;
 }
 
-PoolVector<String> AnimationTreePlayer::_get_node_list() {
+DVector<String> AnimationTreePlayer::_get_node_list() {
 
 	List<StringName> nl;
 	get_node_list(&nl);
-	PoolVector<String> ret;
+	DVector<String> ret;
 	ret.resize(nl.size());
 	int idx = 0;
 	for (List<StringName>::Element *E = nl.front(); E; E = E->next()) {
@@ -1645,7 +1644,7 @@ void AnimationTreePlayer::_update_sources() {
 		ERR_FAIL_COND(!m);
 	}
 
-	AnimationPlayer *ap = Object::cast_to<AnimationPlayer>(m);
+	AnimationPlayer *ap = m->cast_to<AnimationPlayer>();
 
 	if (!ap) {
 
@@ -1701,116 +1700,112 @@ Error AnimationTreePlayer::node_rename(const StringName &p_node, const StringNam
 
 void AnimationTreePlayer::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("add_node", "type", "id"), &AnimationTreePlayer::add_node);
+	ObjectTypeDB::bind_method(_MD("add_node", "type", "id"), &AnimationTreePlayer::add_node);
 
-	ClassDB::bind_method(D_METHOD("node_exists", "node"), &AnimationTreePlayer::node_exists);
-	ClassDB::bind_method(D_METHOD("node_rename", "node", "new_name"), &AnimationTreePlayer::node_rename);
+	ObjectTypeDB::bind_method(_MD("node_exists", "node"), &AnimationTreePlayer::node_exists);
+	ObjectTypeDB::bind_method(_MD("node_rename", "node", "new_name"), &AnimationTreePlayer::node_rename);
 
-	ClassDB::bind_method(D_METHOD("node_get_type", "id"), &AnimationTreePlayer::node_get_type);
-	ClassDB::bind_method(D_METHOD("node_get_input_count", "id"), &AnimationTreePlayer::node_get_input_count);
-	ClassDB::bind_method(D_METHOD("node_get_input_source", "id", "idx"), &AnimationTreePlayer::node_get_input_source);
+	ObjectTypeDB::bind_method(_MD("node_get_type", "id"), &AnimationTreePlayer::node_get_type);
+	ObjectTypeDB::bind_method(_MD("node_get_input_count", "id"), &AnimationTreePlayer::node_get_input_count);
+	ObjectTypeDB::bind_method(_MD("node_get_input_source", "id", "idx"), &AnimationTreePlayer::node_get_input_source);
 
-	ClassDB::bind_method(D_METHOD("animation_node_set_animation", "id", "animation"), &AnimationTreePlayer::animation_node_set_animation);
-	ClassDB::bind_method(D_METHOD("animation_node_get_animation", "id"), &AnimationTreePlayer::animation_node_get_animation);
+	ObjectTypeDB::bind_method(_MD("animation_node_set_animation", "id", "animation:Animation"), &AnimationTreePlayer::animation_node_set_animation);
+	ObjectTypeDB::bind_method(_MD("animation_node_get_animation:Animation", "id"), &AnimationTreePlayer::animation_node_get_animation);
 
-	ClassDB::bind_method(D_METHOD("animation_node_set_master_animation", "id", "source"), &AnimationTreePlayer::animation_node_set_master_animation);
-	ClassDB::bind_method(D_METHOD("animation_node_get_master_animation", "id"), &AnimationTreePlayer::animation_node_get_master_animation);
-	ClassDB::bind_method(D_METHOD("animation_node_set_filter_path", "id", "path", "enable"), &AnimationTreePlayer::animation_node_set_filter_path);
+	ObjectTypeDB::bind_method(_MD("animation_node_set_master_animation", "id", "source"), &AnimationTreePlayer::animation_node_set_master_animation);
+	ObjectTypeDB::bind_method(_MD("animation_node_get_master_animation", "id"), &AnimationTreePlayer::animation_node_get_master_animation);
+	ObjectTypeDB::bind_method(_MD("animation_node_set_filter_path", "id", "path", "enable"), &AnimationTreePlayer::animation_node_set_filter_path);
 
-	ClassDB::bind_method(D_METHOD("oneshot_node_set_fadein_time", "id", "time_sec"), &AnimationTreePlayer::oneshot_node_set_fadein_time);
-	ClassDB::bind_method(D_METHOD("oneshot_node_get_fadein_time", "id"), &AnimationTreePlayer::oneshot_node_get_fadein_time);
+	ObjectTypeDB::bind_method(_MD("oneshot_node_set_fadein_time", "id", "time_sec"), &AnimationTreePlayer::oneshot_node_set_fadein_time);
+	ObjectTypeDB::bind_method(_MD("oneshot_node_get_fadein_time", "id"), &AnimationTreePlayer::oneshot_node_get_fadein_time);
 
-	ClassDB::bind_method(D_METHOD("oneshot_node_set_fadeout_time", "id", "time_sec"), &AnimationTreePlayer::oneshot_node_set_fadeout_time);
-	ClassDB::bind_method(D_METHOD("oneshot_node_get_fadeout_time", "id"), &AnimationTreePlayer::oneshot_node_get_fadeout_time);
+	ObjectTypeDB::bind_method(_MD("oneshot_node_set_fadeout_time", "id", "time_sec"), &AnimationTreePlayer::oneshot_node_set_fadeout_time);
+	ObjectTypeDB::bind_method(_MD("oneshot_node_get_fadeout_time", "id"), &AnimationTreePlayer::oneshot_node_get_fadeout_time);
 
-	ClassDB::bind_method(D_METHOD("oneshot_node_set_autorestart", "id", "enable"), &AnimationTreePlayer::oneshot_node_set_autorestart);
-	ClassDB::bind_method(D_METHOD("oneshot_node_set_autorestart_delay", "id", "delay_sec"), &AnimationTreePlayer::oneshot_node_set_autorestart_delay);
-	ClassDB::bind_method(D_METHOD("oneshot_node_set_autorestart_random_delay", "id", "rand_sec"), &AnimationTreePlayer::oneshot_node_set_autorestart_random_delay);
+	ObjectTypeDB::bind_method(_MD("oneshot_node_set_autorestart", "id", "enable"), &AnimationTreePlayer::oneshot_node_set_autorestart);
+	ObjectTypeDB::bind_method(_MD("oneshot_node_set_autorestart_delay", "id", "delay_sec"), &AnimationTreePlayer::oneshot_node_set_autorestart_delay);
+	ObjectTypeDB::bind_method(_MD("oneshot_node_set_autorestart_random_delay", "id", "rand_sec"), &AnimationTreePlayer::oneshot_node_set_autorestart_random_delay);
 
-	ClassDB::bind_method(D_METHOD("oneshot_node_has_autorestart", "id"), &AnimationTreePlayer::oneshot_node_has_autorestart);
-	ClassDB::bind_method(D_METHOD("oneshot_node_get_autorestart_delay", "id"), &AnimationTreePlayer::oneshot_node_get_autorestart_delay);
-	ClassDB::bind_method(D_METHOD("oneshot_node_get_autorestart_random_delay", "id"), &AnimationTreePlayer::oneshot_node_get_autorestart_random_delay);
+	ObjectTypeDB::bind_method(_MD("oneshot_node_has_autorestart", "id"), &AnimationTreePlayer::oneshot_node_has_autorestart);
+	ObjectTypeDB::bind_method(_MD("oneshot_node_get_autorestart_delay", "id"), &AnimationTreePlayer::oneshot_node_get_autorestart_delay);
+	ObjectTypeDB::bind_method(_MD("oneshot_node_get_autorestart_random_delay", "id"), &AnimationTreePlayer::oneshot_node_get_autorestart_random_delay);
 
-	ClassDB::bind_method(D_METHOD("oneshot_node_start", "id"), &AnimationTreePlayer::oneshot_node_start);
-	ClassDB::bind_method(D_METHOD("oneshot_node_stop", "id"), &AnimationTreePlayer::oneshot_node_stop);
-	ClassDB::bind_method(D_METHOD("oneshot_node_is_active", "id"), &AnimationTreePlayer::oneshot_node_is_active);
-	ClassDB::bind_method(D_METHOD("oneshot_node_set_filter_path", "id", "path", "enable"), &AnimationTreePlayer::oneshot_node_set_filter_path);
+	ObjectTypeDB::bind_method(_MD("oneshot_node_start", "id"), &AnimationTreePlayer::oneshot_node_start);
+	ObjectTypeDB::bind_method(_MD("oneshot_node_stop", "id"), &AnimationTreePlayer::oneshot_node_stop);
+	ObjectTypeDB::bind_method(_MD("oneshot_node_is_active", "id"), &AnimationTreePlayer::oneshot_node_is_active);
+	ObjectTypeDB::bind_method(_MD("oneshot_node_set_filter_path", "id", "path", "enable"), &AnimationTreePlayer::oneshot_node_set_filter_path);
 
-	ClassDB::bind_method(D_METHOD("mix_node_set_amount", "id", "ratio"), &AnimationTreePlayer::mix_node_set_amount);
-	ClassDB::bind_method(D_METHOD("mix_node_get_amount", "id"), &AnimationTreePlayer::mix_node_get_amount);
+	ObjectTypeDB::bind_method(_MD("mix_node_set_amount", "id", "ratio"), &AnimationTreePlayer::mix_node_set_amount);
+	ObjectTypeDB::bind_method(_MD("mix_node_get_amount", "id"), &AnimationTreePlayer::mix_node_get_amount);
 
-	ClassDB::bind_method(D_METHOD("blend2_node_set_amount", "id", "blend"), &AnimationTreePlayer::blend2_node_set_amount);
-	ClassDB::bind_method(D_METHOD("blend2_node_get_amount", "id"), &AnimationTreePlayer::blend2_node_get_amount);
-	ClassDB::bind_method(D_METHOD("blend2_node_set_filter_path", "id", "path", "enable"), &AnimationTreePlayer::blend2_node_set_filter_path);
+	ObjectTypeDB::bind_method(_MD("blend2_node_set_amount", "id", "blend"), &AnimationTreePlayer::blend2_node_set_amount);
+	ObjectTypeDB::bind_method(_MD("blend2_node_get_amount", "id"), &AnimationTreePlayer::blend2_node_get_amount);
+	ObjectTypeDB::bind_method(_MD("blend2_node_set_filter_path", "id", "path", "enable"), &AnimationTreePlayer::blend2_node_set_filter_path);
 
-	ClassDB::bind_method(D_METHOD("blend3_node_set_amount", "id", "blend"), &AnimationTreePlayer::blend3_node_set_amount);
-	ClassDB::bind_method(D_METHOD("blend3_node_get_amount", "id"), &AnimationTreePlayer::blend3_node_get_amount);
+	ObjectTypeDB::bind_method(_MD("blend3_node_set_amount", "id", "blend"), &AnimationTreePlayer::blend3_node_set_amount);
+	ObjectTypeDB::bind_method(_MD("blend3_node_get_amount", "id"), &AnimationTreePlayer::blend3_node_get_amount);
 
-	ClassDB::bind_method(D_METHOD("blend4_node_set_amount", "id", "blend"), &AnimationTreePlayer::blend4_node_set_amount);
-	ClassDB::bind_method(D_METHOD("blend4_node_get_amount", "id"), &AnimationTreePlayer::blend4_node_get_amount);
+	ObjectTypeDB::bind_method(_MD("blend4_node_set_amount", "id", "blend"), &AnimationTreePlayer::blend4_node_set_amount);
+	ObjectTypeDB::bind_method(_MD("blend4_node_get_amount", "id"), &AnimationTreePlayer::blend4_node_get_amount);
 
-	ClassDB::bind_method(D_METHOD("timescale_node_set_scale", "id", "scale"), &AnimationTreePlayer::timescale_node_set_scale);
-	ClassDB::bind_method(D_METHOD("timescale_node_get_scale", "id"), &AnimationTreePlayer::timescale_node_get_scale);
+	ObjectTypeDB::bind_method(_MD("timescale_node_set_scale", "id", "scale"), &AnimationTreePlayer::timescale_node_set_scale);
+	ObjectTypeDB::bind_method(_MD("timescale_node_get_scale", "id"), &AnimationTreePlayer::timescale_node_get_scale);
 
-	ClassDB::bind_method(D_METHOD("timeseek_node_seek", "id", "seconds"), &AnimationTreePlayer::timeseek_node_seek);
+	ObjectTypeDB::bind_method(_MD("timeseek_node_seek", "id", "pos_sec"), &AnimationTreePlayer::timeseek_node_seek);
 
-	ClassDB::bind_method(D_METHOD("transition_node_set_input_count", "id", "count"), &AnimationTreePlayer::transition_node_set_input_count);
-	ClassDB::bind_method(D_METHOD("transition_node_get_input_count", "id"), &AnimationTreePlayer::transition_node_get_input_count);
-	ClassDB::bind_method(D_METHOD("transition_node_delete_input", "id", "input_idx"), &AnimationTreePlayer::transition_node_delete_input);
+	ObjectTypeDB::bind_method(_MD("transition_node_set_input_count", "id", "count"), &AnimationTreePlayer::transition_node_set_input_count);
+	ObjectTypeDB::bind_method(_MD("transition_node_get_input_count", "id"), &AnimationTreePlayer::transition_node_get_input_count);
+	ObjectTypeDB::bind_method(_MD("transition_node_delete_input", "id", "input_idx"), &AnimationTreePlayer::transition_node_delete_input);
 
-	ClassDB::bind_method(D_METHOD("transition_node_set_input_auto_advance", "id", "input_idx", "enable"), &AnimationTreePlayer::transition_node_set_input_auto_advance);
-	ClassDB::bind_method(D_METHOD("transition_node_has_input_auto_advance", "id", "input_idx"), &AnimationTreePlayer::transition_node_has_input_auto_advance);
+	ObjectTypeDB::bind_method(_MD("transition_node_set_input_auto_advance", "id", "input_idx", "enable"), &AnimationTreePlayer::transition_node_set_input_auto_advance);
+	ObjectTypeDB::bind_method(_MD("transition_node_has_input_auto_advance", "id", "input_idx"), &AnimationTreePlayer::transition_node_has_input_auto_advance);
 
-	ClassDB::bind_method(D_METHOD("transition_node_set_xfade_time", "id", "time_sec"), &AnimationTreePlayer::transition_node_set_xfade_time);
-	ClassDB::bind_method(D_METHOD("transition_node_get_xfade_time", "id"), &AnimationTreePlayer::transition_node_get_xfade_time);
+	ObjectTypeDB::bind_method(_MD("transition_node_set_xfade_time", "id", "time_sec"), &AnimationTreePlayer::transition_node_set_xfade_time);
+	ObjectTypeDB::bind_method(_MD("transition_node_get_xfade_time", "id"), &AnimationTreePlayer::transition_node_get_xfade_time);
 
-	ClassDB::bind_method(D_METHOD("transition_node_set_current", "id", "input_idx"), &AnimationTreePlayer::transition_node_set_current);
-	ClassDB::bind_method(D_METHOD("transition_node_get_current", "id"), &AnimationTreePlayer::transition_node_get_current);
+	ObjectTypeDB::bind_method(_MD("transition_node_set_current", "id", "input_idx"), &AnimationTreePlayer::transition_node_set_current);
+	ObjectTypeDB::bind_method(_MD("transition_node_get_current", "id"), &AnimationTreePlayer::transition_node_get_current);
 
-	ClassDB::bind_method(D_METHOD("node_set_position", "id", "screen_position"), &AnimationTreePlayer::node_set_position);
-	ClassDB::bind_method(D_METHOD("node_get_position", "id"), &AnimationTreePlayer::node_get_position);
+	ObjectTypeDB::bind_method(_MD("node_set_pos", "id", "screen_pos"), &AnimationTreePlayer::node_set_pos);
+	ObjectTypeDB::bind_method(_MD("node_get_pos", "id"), &AnimationTreePlayer::node_get_pos);
 
-	ClassDB::bind_method(D_METHOD("remove_node", "id"), &AnimationTreePlayer::remove_node);
-	ClassDB::bind_method(D_METHOD("connect_nodes", "id", "dst_id", "dst_input_idx"), &AnimationTreePlayer::connect_nodes);
-	ClassDB::bind_method(D_METHOD("are_nodes_connected", "id", "dst_id", "dst_input_idx"), &AnimationTreePlayer::are_nodes_connected);
-	ClassDB::bind_method(D_METHOD("disconnect_nodes", "id", "dst_input_idx"), &AnimationTreePlayer::disconnect_nodes);
+	ObjectTypeDB::bind_method(_MD("remove_node", "id"), &AnimationTreePlayer::remove_node);
+	ObjectTypeDB::bind_method(_MD("connect", "id", "dst_id", "dst_input_idx"), &AnimationTreePlayer::connect);
+	ObjectTypeDB::bind_method(_MD("is_connected", "id", "dst_id", "dst_input_idx"), &AnimationTreePlayer::is_connected);
+	ObjectTypeDB::bind_method(_MD("disconnect", "id", "dst_input_idx"), &AnimationTreePlayer::disconnect);
 
-	ClassDB::bind_method(D_METHOD("set_active", "enabled"), &AnimationTreePlayer::set_active);
-	ClassDB::bind_method(D_METHOD("is_active"), &AnimationTreePlayer::is_active);
+	ObjectTypeDB::bind_method(_MD("set_active", "enabled"), &AnimationTreePlayer::set_active);
+	ObjectTypeDB::bind_method(_MD("is_active"), &AnimationTreePlayer::is_active);
 
-	ClassDB::bind_method(D_METHOD("set_base_path", "path"), &AnimationTreePlayer::set_base_path);
-	ClassDB::bind_method(D_METHOD("get_base_path"), &AnimationTreePlayer::get_base_path);
+	ObjectTypeDB::bind_method(_MD("set_base_path", "path"), &AnimationTreePlayer::set_base_path);
+	ObjectTypeDB::bind_method(_MD("get_base_path"), &AnimationTreePlayer::get_base_path);
 
-	ClassDB::bind_method(D_METHOD("set_master_player", "nodepath"), &AnimationTreePlayer::set_master_player);
-	ClassDB::bind_method(D_METHOD("get_master_player"), &AnimationTreePlayer::get_master_player);
+	ObjectTypeDB::bind_method(_MD("set_master_player", "nodepath"), &AnimationTreePlayer::set_master_player);
+	ObjectTypeDB::bind_method(_MD("get_master_player"), &AnimationTreePlayer::get_master_player);
 
-	ClassDB::bind_method(D_METHOD("get_node_list"), &AnimationTreePlayer::_get_node_list);
+	ObjectTypeDB::bind_method(_MD("get_node_list"), &AnimationTreePlayer::_get_node_list);
 
-	ClassDB::bind_method(D_METHOD("set_animation_process_mode", "mode"), &AnimationTreePlayer::set_animation_process_mode);
-	ClassDB::bind_method(D_METHOD("get_animation_process_mode"), &AnimationTreePlayer::get_animation_process_mode);
+	ObjectTypeDB::bind_method(_MD("set_animation_process_mode", "mode"), &AnimationTreePlayer::set_animation_process_mode);
+	ObjectTypeDB::bind_method(_MD("get_animation_process_mode"), &AnimationTreePlayer::get_animation_process_mode);
 
-	ClassDB::bind_method(D_METHOD("advance", "delta"), &AnimationTreePlayer::advance);
+	ObjectTypeDB::bind_method(_MD("advance", "delta"), &AnimationTreePlayer::advance);
 
-	ClassDB::bind_method(D_METHOD("reset"), &AnimationTreePlayer::reset);
+	ObjectTypeDB::bind_method(_MD("reset"), &AnimationTreePlayer::reset);
 
-	ClassDB::bind_method(D_METHOD("recompute_caches"), &AnimationTreePlayer::recompute_caches);
+	ObjectTypeDB::bind_method(_MD("recompute_caches"), &AnimationTreePlayer::recompute_caches);
 
-	ADD_GROUP("Playback", "playback_");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "playback_process_mode", PROPERTY_HINT_ENUM, "Physics,Idle"), "set_animation_process_mode", "get_animation_process_mode");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "playback/process_mode", PROPERTY_HINT_ENUM, "Fixed,Idle"), _SCS("set_animation_process_mode"), _SCS("get_animation_process_mode"));
 
-	BIND_ENUM_CONSTANT(NODE_OUTPUT);
-	BIND_ENUM_CONSTANT(NODE_ANIMATION);
-	BIND_ENUM_CONSTANT(NODE_ONESHOT);
-	BIND_ENUM_CONSTANT(NODE_MIX);
-	BIND_ENUM_CONSTANT(NODE_BLEND2);
-	BIND_ENUM_CONSTANT(NODE_BLEND3);
-	BIND_ENUM_CONSTANT(NODE_BLEND4);
-	BIND_ENUM_CONSTANT(NODE_TIMESCALE);
-	BIND_ENUM_CONSTANT(NODE_TIMESEEK);
-	BIND_ENUM_CONSTANT(NODE_TRANSITION);
-
-	BIND_ENUM_CONSTANT(ANIMATION_PROCESS_PHYSICS);
-	BIND_ENUM_CONSTANT(ANIMATION_PROCESS_IDLE);
+	BIND_CONSTANT(NODE_OUTPUT);
+	BIND_CONSTANT(NODE_ANIMATION);
+	BIND_CONSTANT(NODE_ONESHOT);
+	BIND_CONSTANT(NODE_MIX);
+	BIND_CONSTANT(NODE_BLEND2);
+	BIND_CONSTANT(NODE_BLEND3);
+	BIND_CONSTANT(NODE_BLEND4);
+	BIND_CONSTANT(NODE_TIMESCALE);
+	BIND_CONSTANT(NODE_TIMESEEK);
+	BIND_CONSTANT(NODE_TRANSITION);
 }
 
 AnimationTreePlayer::AnimationTreePlayer() {

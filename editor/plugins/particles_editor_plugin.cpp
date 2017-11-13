@@ -27,10 +27,10 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
-
 #include "particles_editor_plugin.h"
 #include "editor/plugins/spatial_editor_plugin.h"
 #include "io/resource_loader.h"
+#include "servers/visual/particle_system_sw.h"
 
 void ParticlesEditor::_node_removed(Node *p_node) {
 
@@ -51,7 +51,7 @@ void ParticlesEditor::_node_selected(const NodePath &p_path) {
 	if (!sel)
 		return;
 
-	VisualInstance *vi = Object::cast_to<VisualInstance>(sel);
+	VisualInstance *vi = sel->cast_to<VisualInstance>();
 	if (!vi) {
 
 		err_dialog->set_text(TTR("Node does not contain geometry."));
@@ -71,7 +71,7 @@ void ParticlesEditor::_node_selected(const NodePath &p_path) {
 	Transform geom_xform = node->get_global_transform().affine_inverse() * vi->get_global_transform();
 
 	int gc = geometry.size();
-	PoolVector<Face3>::Write w = geometry.write();
+	DVector<Face3>::Write w = geometry.write();
 
 	for (int i = 0; i < gc; i++) {
 		for (int j = 0; j < 3; j++) {
@@ -79,7 +79,7 @@ void ParticlesEditor::_node_selected(const NodePath &p_path) {
 		}
 	}
 
-	w = PoolVector<Face3>::Write();
+	w = DVector<Face3>::Write();
 
 	emission_dialog->popup_centered(Size2(300, 130));
 }
@@ -113,29 +113,60 @@ void ParticlesEditor::_menu_option(int p_option) {
 	switch (p_option) {
 
 		case MENU_OPTION_GENERATE_AABB: {
-			generate_aabb->popup_centered_minsize();
+
+			Transform globalizer = node->get_global_transform();
+			ParticleSystemSW pssw;
+			for (int i = 0; i < VS::PARTICLE_VAR_MAX; i++) {
+
+				pssw.particle_vars[i] = node->get_variable((Particles::Variable)i);
+				pssw.particle_randomness[i] = node->get_randomness((Particles::Variable)i);
+			}
+
+			pssw.emission_half_extents = node->get_emission_half_extents();
+			pssw.emission_points = node->get_emission_points();
+			pssw.emission_base_velocity = node->get_emission_base_velocity();
+			pssw.amount = node->get_amount();
+			pssw.gravity_normal = node->get_gravity_normal();
+			pssw.emitting = true;
+			pssw.height_from_velocity = node->has_height_from_velocity();
+			pssw.color_phase_count = 1;
+
+			ParticleSystemProcessSW pp;
+			float delta = 0.01;
+			float lifetime = pssw.particle_vars[VS::PARTICLE_LIFETIME];
+
+			Transform localizer = globalizer.affine_inverse();
+			AABB aabb;
+			for (float t = 0; t < lifetime; t += delta) {
+
+				pp.process(&pssw, globalizer, delta);
+				for (int i = 0; i < pp.particle_data.size(); i++) {
+
+					Vector3 p = localizer.xform(pp.particle_data[i].pos);
+
+					if (t == 0 && i == 0)
+						aabb.pos = p;
+					else
+						aabb.expand_to(p);
+				}
+			}
+
+			aabb.grow_by(aabb.get_longest_axis_size() * 0.2);
+
+			node->set_visibility_aabb(aabb);
+
 		} break;
 		case MENU_OPTION_CREATE_EMISSION_VOLUME_FROM_MESH: {
 
-			Ref<ParticlesMaterial> material = node->get_process_material();
-			if (material.is_null()) {
-				EditorNode::get_singleton()->show_warning(TTR("A processor material of type 'ParticlesMaterial' is required."));
-				return;
-			}
 			emission_file_dialog->popup_centered_ratio();
 
 		} break;
 
 		case MENU_OPTION_CREATE_EMISSION_VOLUME_FROM_NODE: {
-			Ref<ParticlesMaterial> material = node->get_process_material();
-			if (material.is_null()) {
-				EditorNode::get_singleton()->show_warning(TTR("A processor material of type 'ParticlesMaterial' is required."));
-				return;
-			}
 			/*
 			Node *root = get_scene()->get_root_node();
 			ERR_FAIL_COND(!root);
-			EditorNode *en = Object::cast_to<EditorNode>(root);
+			EditorNode *en = root->cast_to<EditorNode>();
 			ERR_FAIL_COND(!en);
 			Node * node = en->get_edited_scene();
 */
@@ -143,33 +174,6 @@ void ParticlesEditor::_menu_option(int p_option) {
 
 		} break;
 	}
-}
-
-void ParticlesEditor::_generate_aabb() {
-
-	float time = generate_seconds->get_value();
-
-	float running = 0.0;
-
-	EditorProgress ep("gen_aabb", TTR("Generating AABB"), int(time));
-
-	Rect3 rect;
-	while (running < time) {
-
-		uint64_t ticks = OS::get_singleton()->get_ticks_usec();
-		ep.step("Generating..", int(running), true);
-		OS::get_singleton()->delay_usec(1000);
-
-		Rect3 capture = node->capture_aabb();
-		if (rect == Rect3())
-			rect = capture;
-		else
-			rect.merge_with(capture);
-
-		running += (OS::get_singleton()->get_ticks_usec() - ticks) / 1000000.0;
-	}
-
-	node->set_visibility_aabb(rect);
 }
 
 void ParticlesEditor::edit(Particles *p_particles) {
@@ -180,11 +184,9 @@ void ParticlesEditor::edit(Particles *p_particles) {
 void ParticlesEditor::_generate_emission_points() {
 
 	/// hacer codigo aca
-	PoolVector<float> points;
-	bool use_normals = emission_fill->get_selected() == 1;
-	PoolVector<float> normals;
+	DVector<Vector3> points;
 
-	if (emission_fill->get_selected() < 2) {
+	if (emission_fill->get_selected() == 0) {
 
 		float area_accum = 0;
 		Map<float, int> triangle_area_map;
@@ -206,11 +208,11 @@ void ParticlesEditor::_generate_emission_points() {
 			return;
 		}
 
-		int emissor_count = emission_amount->get_value();
+		int emissor_count = emission_amount->get_val();
 
 		for (int i = 0; i < emissor_count; i++) {
 
-			float areapos = Math::random(0.0f, area_accum);
+			float areapos = Math::random(0, area_accum);
 
 			Map<float, int>::Element *E = triangle_area_map.find_closest(areapos);
 			ERR_FAIL_COND(!E)
@@ -223,16 +225,7 @@ void ParticlesEditor::_generate_emission_points() {
 
 			Vector3 pos = face.get_random_point_inside();
 
-			points.push_back(pos.x);
-			points.push_back(pos.y);
-			points.push_back(pos.z);
-
-			if (use_normals) {
-				Vector3 normal = face.get_plane().normal;
-				normals.push_back(normal.x);
-				normals.push_back(normal.y);
-				normals.push_back(normal.z);
-			}
+			points.push_back(pos);
 		}
 	} else {
 
@@ -245,22 +238,22 @@ void ParticlesEditor::_generate_emission_points() {
 			return;
 		}
 
-		PoolVector<Face3>::Read r = geometry.read();
+		DVector<Face3>::Read r = geometry.read();
 
-		Rect3 aabb;
+		AABB aabb;
 
 		for (int i = 0; i < gcount; i++) {
 
 			for (int j = 0; j < 3; j++) {
 
 				if (i == 0 && j == 0)
-					aabb.position = r[i].vertex[j];
+					aabb.pos = r[i].vertex[j];
 				else
 					aabb.expand_to(r[i].vertex[j]);
 			}
 		}
 
-		int emissor_count = emission_amount->get_value();
+		int emissor_count = emission_amount->get_val();
 
 		for (int i = 0; i < emissor_count; i++) {
 
@@ -270,7 +263,9 @@ void ParticlesEditor::_generate_emission_points() {
 
 				Vector3 dir;
 				dir[Math::rand() % 3] = 1.0;
-				Vector3 ofs = (Vector3(1, 1, 1) - dir) * Vector3(Math::randf(), Math::randf(), Math::randf()) * aabb.size + aabb.position;
+				Vector3 ofs = Vector3(1, 1, 1) - dir;
+				ofs = (Vector3(1, 1, 1) - dir) * Vector3(Math::randf(), Math::randf(), Math::randf()) * aabb.size;
+				ofs += aabb.pos;
 
 				Vector3 ofsv = ofs + aabb.size * dir;
 
@@ -304,81 +299,24 @@ void ParticlesEditor::_generate_emission_points() {
 
 				Vector3 point = ofs + dir * val;
 
-				points.push_back(point.x);
-				points.push_back(point.y);
-				points.push_back(point.z);
+				points.push_back(point);
 				break;
 			}
 		}
 	}
 
-	int point_count = points.size() / 3;
-
-	int w = 2048;
-	int h = (point_count / 2048) + 1;
-
-	PoolVector<uint8_t> point_img;
-	point_img.resize(w * h * 3 * sizeof(float));
-
-	{
-		PoolVector<uint8_t>::Write iw = point_img.write();
-		zeromem(iw.ptr(), w * h * 3 * sizeof(float));
-		PoolVector<float>::Read r = points.read();
-		copymem(iw.ptr(), r.ptr(), point_count * sizeof(float) * 3);
-	}
-
-	Ref<Image> image = memnew(Image(w, h, false, Image::FORMAT_RGBF, point_img));
-
-	Ref<ImageTexture> tex;
-	tex.instance();
-	tex->create_from_image(image, Texture::FLAG_FILTER);
-
-	Ref<ParticlesMaterial> material = node->get_process_material();
-	ERR_FAIL_COND(material.is_null());
-
-	if (use_normals) {
-
-		material->set_emission_shape(ParticlesMaterial::EMISSION_SHAPE_DIRECTED_POINTS);
-		material->set_emission_point_count(point_count);
-		material->set_emission_point_texture(tex);
-
-		PoolVector<uint8_t> point_img2;
-		point_img2.resize(w * h * 3 * sizeof(float));
-
-		{
-			PoolVector<uint8_t>::Write iw = point_img2.write();
-			zeromem(iw.ptr(), w * h * 3 * sizeof(float));
-			PoolVector<float>::Read r = normals.read();
-			copymem(iw.ptr(), r.ptr(), point_count * sizeof(float) * 3);
-		}
-
-		Ref<Image> image2 = memnew(Image(w, h, false, Image::FORMAT_RGBF, point_img2));
-
-		Ref<ImageTexture> tex2;
-		tex2.instance();
-		tex2->create_from_image(image2, Texture::FLAG_FILTER);
-
-		material->set_emission_normal_texture(tex2);
-	} else {
-
-		material->set_emission_shape(ParticlesMaterial::EMISSION_SHAPE_POINTS);
-		material->set_emission_point_count(point_count);
-		material->set_emission_point_texture(tex);
-	}
-
 	//print_line("point count: "+itos(points.size()));
-	//node->set_emission_points(points);
+	node->set_emission_points(points);
 }
 
 void ParticlesEditor::_bind_methods() {
 
-	ClassDB::bind_method("_menu_option", &ParticlesEditor::_menu_option);
-	ClassDB::bind_method("_resource_seleted", &ParticlesEditor::_resource_seleted);
-	ClassDB::bind_method("_node_selected", &ParticlesEditor::_node_selected);
-	ClassDB::bind_method("_generate_emission_points", &ParticlesEditor::_generate_emission_points);
-	ClassDB::bind_method("_generate_aabb", &ParticlesEditor::_generate_aabb);
+	ObjectTypeDB::bind_method("_menu_option", &ParticlesEditor::_menu_option);
+	ObjectTypeDB::bind_method("_resource_seleted", &ParticlesEditor::_resource_seleted);
+	ObjectTypeDB::bind_method("_node_selected", &ParticlesEditor::_node_selected);
+	ObjectTypeDB::bind_method("_generate_emission_points", &ParticlesEditor::_generate_emission_points);
 
-	//ClassDB::bind_method("_populate",&ParticlesEditor::_populate);
+	//ObjectTypeDB::bind_method("_populate",&ParticlesEditor::_populate);
 }
 
 ParticlesEditor::ParticlesEditor() {
@@ -389,35 +327,46 @@ ParticlesEditor::ParticlesEditor() {
 	particles_editor_hb->add_child(options);
 	particles_editor_hb->hide();
 
-	options->set_text(TTR("Particles"));
+	options->set_text("Particles");
 	options->get_popup()->add_item(TTR("Generate AABB"), MENU_OPTION_GENERATE_AABB);
 	options->get_popup()->add_separator();
-	options->get_popup()->add_item(TTR("Create Emission Points From Mesh"), MENU_OPTION_CREATE_EMISSION_VOLUME_FROM_MESH);
-	options->get_popup()->add_item(TTR("Create Emission Points From Node"), MENU_OPTION_CREATE_EMISSION_VOLUME_FROM_NODE);
-	//	options->get_popup()->add_item(TTR("Clear Emitter"), MENU_OPTION_CLEAR_EMISSION_VOLUME);
+	options->get_popup()->add_item(TTR("Create Emitter From Mesh"), MENU_OPTION_CREATE_EMISSION_VOLUME_FROM_MESH);
+	options->get_popup()->add_item(TTR("Create Emitter From Node"), MENU_OPTION_CREATE_EMISSION_VOLUME_FROM_NODE);
+	options->get_popup()->add_item(TTR("Clear Emitter"), MENU_OPTION_CLEAR_EMISSION_VOLUME);
 
-	options->get_popup()->connect("id_pressed", this, "_menu_option");
+	options->get_popup()->connect("item_pressed", this, "_menu_option");
 
 	emission_dialog = memnew(ConfirmationDialog);
 	emission_dialog->set_title(TTR("Create Emitter"));
 	add_child(emission_dialog);
-	VBoxContainer *emd_vb = memnew(VBoxContainer);
-	emission_dialog->add_child(emd_vb);
+	Label *l = memnew(Label);
+	l->set_pos(Point2(5, 5));
+	l->set_text(TTR("Emission Positions:"));
+	emission_dialog->add_child(l);
 
 	emission_amount = memnew(SpinBox);
+	emission_amount->set_anchor(MARGIN_RIGHT, ANCHOR_END);
+	emission_amount->set_begin(Point2(20, 23));
+	emission_amount->set_end(Point2(5, 25));
 	emission_amount->set_min(1);
-	emission_amount->set_max(100000);
-	emission_amount->set_value(512);
-	emd_vb->add_margin_child(TTR("Emission Points:"), emission_amount);
-
-	emission_fill = memnew(OptionButton);
-	emission_fill->add_item(TTR("Surface Points"));
-	emission_fill->add_item(TTR("Surface Points+Normal (Directed)"));
-	emission_fill->add_item(TTR("Volume"));
-	emd_vb->add_margin_child(TTR("Emission Source: "), emission_fill);
-
+	emission_amount->set_max(65536);
+	emission_amount->set_val(512);
+	emission_dialog->add_child(emission_amount);
 	emission_dialog->get_ok()->set_text(TTR("Create"));
 	emission_dialog->connect("confirmed", this, "_generate_emission_points");
+
+	l = memnew(Label);
+	l->set_pos(Point2(5, 50));
+	l->set_text(TTR("Emission Fill:"));
+	emission_dialog->add_child(l);
+
+	emission_fill = memnew(OptionButton);
+	emission_fill->set_anchor(MARGIN_RIGHT, ANCHOR_END);
+	emission_fill->set_begin(Point2(20, 70));
+	emission_fill->set_end(Point2(5, 75));
+	emission_fill->add_item(TTR("Surface"));
+	emission_fill->add_item(TTR("Volume"));
+	emission_dialog->add_child(emission_fill);
 
 	err_dialog = memnew(ConfirmationDialog);
 	//err_dialog->get_cancel()->hide();
@@ -441,32 +390,18 @@ ParticlesEditor::ParticlesEditor() {
 
 	emission_file_dialog->set_mode(EditorFileDialog::MODE_OPEN_FILE);
 
-	generate_aabb = memnew(ConfirmationDialog);
-	generate_aabb->set_title(TTR("Generate Visibility AABB"));
-	VBoxContainer *genvb = memnew(VBoxContainer);
-	generate_aabb->add_child(genvb);
-	generate_seconds = memnew(SpinBox);
-	genvb->add_margin_child(TTR("Generation Time (sec):"), generate_seconds);
-	generate_seconds->set_min(0.1);
-	generate_seconds->set_max(25);
-	generate_seconds->set_value(2);
-
-	add_child(generate_aabb);
-
-	generate_aabb->connect("confirmed", this, "_generate_aabb");
-
 	//options->set_anchor(MARGIN_LEFT,Control::ANCHOR_END);
 	//options->set_anchor(MARGIN_RIGHT,Control::ANCHOR_END);
 }
 
 void ParticlesEditorPlugin::edit(Object *p_object) {
 
-	particles_editor->edit(Object::cast_to<Particles>(p_object));
+	particles_editor->edit(p_object->cast_to<Particles>());
 }
 
 bool ParticlesEditorPlugin::handles(Object *p_object) const {
 
-	return p_object->is_class("Particles");
+	return p_object->is_type("Particles");
 }
 
 void ParticlesEditorPlugin::make_visible(bool p_visible) {

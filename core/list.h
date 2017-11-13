@@ -180,7 +180,7 @@ private:
 
 public:
 	/**
-	* return a const iterator to the beginning of the list.
+ 	* return an const iterator to the begining of the list.
 	*/
 	_FORCE_INLINE_ const Element *front() const {
 
@@ -188,14 +188,14 @@ public:
 	};
 
 	/**
-	* return an iterator to the beginning of the list.
+ 	* return an iterator to the begining of the list.
 	*/
 	_FORCE_INLINE_ Element *front() {
 		return _data ? _data->first : 0;
 	};
 
 	/**
- 	* return a const iterator to the last member of the list.
+ 	* return an const iterator to the last member of the list.
 	*/
 	_FORCE_INLINE_ const Element *back() const {
 
@@ -252,7 +252,7 @@ public:
 	}
 
 	/**
-	 * store a new element at the beginning of the list
+	 * store a new element at the begining of the list
 	 */
 	Element *push_front(const T &value) {
 
@@ -289,54 +289,6 @@ public:
 
 		if (_data && _data->first)
 			erase(_data->first);
-	}
-
-	Element *insert_after(Element *p_element, const T &p_value) {
-		CRASH_COND(p_element && (!_data || p_element->data != _data));
-
-		if (!p_element) {
-			return push_back(p_value);
-		}
-
-		Element *n = memnew_allocator(Element, A);
-		n->value = (T &)p_value;
-		n->prev_ptr = p_element;
-		n->next_ptr = p_element->next_ptr;
-		n->data = _data;
-
-		if (!p_element->next_ptr) {
-			_data->last = n;
-		}
-
-		p_element->next_ptr = n;
-
-		_data->size_cache++;
-
-		return n;
-	}
-
-	Element *insert_before(Element *p_element, const T &p_value) {
-		CRASH_COND(p_element && (!_data || p_element->data != _data));
-
-		if (!p_element) {
-			return push_back(p_value);
-		}
-
-		Element *n = memnew_allocator(Element, A);
-		n->value = (T &)p_value;
-		n->prev_ptr = p_element->prev_ptr;
-		n->next_ptr = p_element;
-		n->data = _data;
-
-		if (!p_element->prev_ptr) {
-			_data->first = n;
-		}
-
-		p_element->prev_ptr = n;
-
-		_data->size_cache++;
-
-		return n;
 	}
 
 	/**
@@ -446,7 +398,7 @@ public:
 
 	T &operator[](int p_index) {
 
-		CRASH_BAD_INDEX(p_index, size());
+		PRAY_BAD_INDEX(p_index, size(), T);
 
 		Element *I = front();
 		int c = 0;
@@ -460,12 +412,12 @@ public:
 			c++;
 		}
 
-		CRASH_NOW(); // bug!!
+		PRAY(T); // bug!!
 	}
 
 	const T &operator[](int p_index) const {
 
-		CRASH_BAD_INDEX(p_index, size());
+		PRAY_BAD_INDEX(p_index, size(), T);
 
 		const Element *I = front();
 		int c = 0;
@@ -479,7 +431,7 @@ public:
 			c++;
 		}
 
-		CRASH_NOW(); // bug!!
+		PRAY(T); // bug!!
 	}
 
 	void move_to_back(Element *p_I) {

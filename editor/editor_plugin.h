@@ -30,13 +30,11 @@
 #ifndef EDITOR_PLUGIN_H
 #define EDITOR_PLUGIN_H
 
-#include "editor/import/editor_import_plugin.h"
 #include "io/config_file.h"
 #include "scene/gui/tool_button.h"
 #include "scene/main/node.h"
 #include "scene/resources/texture.h"
 #include "undo_redo.h"
-
 /**
 	@author Juan Linietsky <reduzio@gmail.com>
 */
@@ -45,65 +43,19 @@ class EditorNode;
 class Spatial;
 class Camera;
 class EditorSelection;
-class EditorExport;
+class EditorImportExport;
 class EditorSettings;
 class SpatialEditorGizmo;
 class EditorImportPlugin;
 class EditorExportPlugin;
-class EditorResourcePreview;
-class EditorFileSystem;
-class EditorToolAddons;
-class ScriptEditor;
-
-class EditorInterface : public Node {
-	GDCLASS(EditorInterface, Node)
-protected:
-	static void _bind_methods();
-	static EditorInterface *singleton;
-
-	Array _make_mesh_previews(const Array &p_meshes, int p_preview_size);
-
-public:
-	static EditorInterface *get_singleton() { return singleton; }
-
-	Control *get_editor_viewport();
-	void edit_resource(const Ref<Resource> &p_resource);
-	void open_scene_from_path(const String &scene_path);
-	void reload_scene_from_path(const String &scene_path);
-
-	Node *get_edited_scene_root();
-	Array get_open_scenes() const;
-	ScriptEditor *get_script_editor();
-
-	void inspect_object(Object *p_obj, const String &p_for_property = String());
-
-	EditorSelection *get_selection();
-	//EditorImportExport *get_import_export();
-	EditorSettings *get_editor_settings();
-	EditorResourcePreview *get_resource_previewer();
-	EditorFileSystem *get_resource_file_system();
-
-	Control *get_base_control();
-
-	Error save_scene();
-	void save_scene_as(const String &p_scene, bool p_with_preview = true);
-
-	Vector<Ref<Texture> > make_mesh_previews(const Vector<Ref<Mesh> > &p_meshes, int p_preview_size);
-
-	EditorInterface();
-};
 
 class EditorPlugin : public Node {
 
-	GDCLASS(EditorPlugin, Node);
+	OBJ_TYPE(EditorPlugin, Node);
 	friend class EditorData;
 	UndoRedo *undo_redo;
 
 	UndoRedo *_get_undo_redo() { return undo_redo; }
-
-	bool input_event_forwarding_always_enabled;
-
-	String last_main_screen_name;
 
 protected:
 	static void _bind_methods();
@@ -143,28 +95,18 @@ public:
 	void add_control_to_dock(DockSlot p_slot, Control *p_control);
 	void remove_control_from_docks(Control *p_control);
 	void remove_control_from_bottom_panel(Control *p_control);
-
-	void add_tool_menu_item(const String &p_name, Object *p_handler, const String &p_callback, const Variant &p_ud = Variant());
-	void add_tool_submenu_item(const String &p_name, Object *p_submenu);
-	void remove_tool_menu_item(const String &p_name);
-
-	void set_input_event_forwarding_always_enabled();
-	bool is_input_event_forwarding_always_enabled() { return input_event_forwarding_always_enabled; }
-
-	void notify_main_screen_changed(const String &screen_name);
-	void notify_scene_changed(const Node *scn_root);
-	void notify_scene_closed(const String &scene_filepath);
+	Control *get_editor_viewport();
+	void edit_resource(const Ref<Resource> &p_resource);
 
 	virtual Ref<SpatialEditorGizmo> create_spatial_gizmo(Spatial *p_spatial);
-	virtual bool forward_canvas_gui_input(const Ref<InputEvent> &p_event);
-	virtual void forward_draw_over_canvas(Control *p_canvas);
-	virtual bool forward_spatial_gui_input(Camera *p_camera, const Ref<InputEvent> &p_event);
+	virtual bool forward_input_event(const InputEvent &p_event);
+	virtual bool forward_spatial_input_event(Camera *p_camera, const InputEvent &p_event);
 	virtual String get_name() const;
 	virtual bool has_main_screen() const;
 	virtual void make_visible(bool p_visible);
 	virtual void selected_notify() {} //notify that it was raised by the user, not the editor
 	virtual void edit(Object *p_object);
-	virtual bool handles(Object *p_object) const;
+	virtual bool handles(Object *p_node) const;
 	virtual Dictionary get_state() const; //save editor state so it can't be reloaded when reloading scene
 	virtual void set_state(const Dictionary &p_state); //restore editor state (likely was saved with the scene)
 	virtual void clear(); // clear any temporary data in te editor, reset it (likely new scene or load another scene)
@@ -174,25 +116,24 @@ public:
 	virtual bool get_remove_list(List<Node *> *p_list);
 	virtual void set_window_layout(Ref<ConfigFile> p_layout);
 	virtual void get_window_layout(Ref<ConfigFile> p_layout);
-	virtual void edited_scene_changed() {} // if changes are pending in editor, apply them
-
-	EditorInterface *get_editor_interface();
-
-	void update_canvas();
+	virtual void edited_scene_changed(){}; // if changes are pending in editor, apply them
 
 	void queue_save_layout() const;
 
-	void make_bottom_panel_item_visible(Control *p_item);
-	void hide_bottom_panel();
+	Control *get_base_control();
+
+	void add_import_plugin(const Ref<EditorImportPlugin> &p_editor_import);
+	void remove_import_plugin(const Ref<EditorImportPlugin> &p_editor_import);
+
+	void add_export_plugin(const Ref<EditorExportPlugin> &p_editor_export);
+	void remove_export_plugin(const Ref<EditorExportPlugin> &p_editor_export);
+
+	EditorSelection *get_selection();
+	//EditorImportExport *get_import_export();
+	EditorSettings *get_editor_settings();
 
 	virtual void restore_global_state();
 	virtual void save_global_state();
-
-	void add_import_plugin(const Ref<EditorImportPlugin> &p_importer);
-	void remove_import_plugin(const Ref<EditorImportPlugin> &p_importer);
-
-	void add_export_plugin(const Ref<EditorExportPlugin> &p_exporter);
-	void remove_export_plugin(const Ref<EditorExportPlugin> &p_exporter);
 
 	EditorPlugin();
 	virtual ~EditorPlugin();

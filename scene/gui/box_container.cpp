@@ -54,8 +54,8 @@ void BoxContainer::_resort() {
 	Map<Control *, _MinSizeCache> min_size_cache;
 
 	for (int i = 0; i < get_child_count(); i++) {
-		Control *c = Object::cast_to<Control>(get_child(i));
-		if (!c || !c->is_visible_in_tree())
+		Control *c = get_child(i)->cast_to<Control>();
+		if (!c || !c->is_visible())
 			continue;
 		if (c->is_set_as_toplevel())
 			continue;
@@ -99,15 +99,15 @@ void BoxContainer::_resort() {
 		elements exist */
 
 	bool has_stretched = false;
-	while (stretch_ratio_total > 0) { // first of all, don't even be here if no stretchable objects exist
+	while (stretch_ratio_total > 0) { // first of all, dont even be here if no stretchable objects exist
 
 		has_stretched = true;
 		bool refit_successful = true; //assume refit-test will go well
 
 		for (int i = 0; i < get_child_count(); i++) {
 
-			Control *c = Object::cast_to<Control>(get_child(i));
-			if (!c || !c->is_visible_in_tree())
+			Control *c = get_child(i)->cast_to<Control>();
+			if (!c || !c->is_visible())
 				continue;
 			if (c->is_set_as_toplevel())
 				continue;
@@ -159,8 +159,8 @@ void BoxContainer::_resort() {
 
 	for (int i = 0; i < get_child_count(); i++) {
 
-		Control *c = Object::cast_to<Control>(get_child(i));
-		if (!c || !c->is_visible_in_tree())
+		Control *c = get_child(i)->cast_to<Control>();
+		if (!c || !c->is_visible())
 			continue;
 		if (c->is_set_as_toplevel())
 			continue;
@@ -211,13 +211,13 @@ Size2 BoxContainer::get_minimum_size() const {
 	bool first = true;
 
 	for (int i = 0; i < get_child_count(); i++) {
-		Control *c = Object::cast_to<Control>(get_child(i));
+		Control *c = get_child(i)->cast_to<Control>();
 		if (!c)
 			continue;
 		if (c->is_set_as_toplevel())
 			continue;
 
-		if (!c->is_visible()) {
+		if (c->is_hidden()) {
 			continue;
 		}
 
@@ -269,8 +269,7 @@ BoxContainer::AlignMode BoxContainer::get_alignment() const {
 void BoxContainer::add_spacer(bool p_begin) {
 
 	Control *c = memnew(Control);
-	c->set_mouse_filter(MOUSE_FILTER_PASS); //allow spacer to pass mouse events
-
+	c->set_stop_mouse(false);
 	if (vertical)
 		c->set_v_size_flags(SIZE_EXPAND_FILL);
 	else
@@ -285,21 +284,21 @@ BoxContainer::BoxContainer(bool p_vertical) {
 
 	vertical = p_vertical;
 	align = ALIGN_BEGIN;
-	//set_ignore_mouse(true);
-	set_mouse_filter(MOUSE_FILTER_PASS);
+	//	set_ignore_mouse(true);
+	set_stop_mouse(false);
 }
 
 void BoxContainer::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("add_spacer", "begin"), &BoxContainer::add_spacer);
-	ClassDB::bind_method(D_METHOD("get_alignment"), &BoxContainer::get_alignment);
-	ClassDB::bind_method(D_METHOD("set_alignment", "alignment"), &BoxContainer::set_alignment);
+	ObjectTypeDB::bind_method(_MD("add_spacer", "begin"), &BoxContainer::add_spacer);
+	ObjectTypeDB::bind_method(_MD("get_alignment"), &BoxContainer::get_alignment);
+	ObjectTypeDB::bind_method(_MD("set_alignment", "alignment"), &BoxContainer::set_alignment);
 
-	BIND_ENUM_CONSTANT(ALIGN_BEGIN);
-	BIND_ENUM_CONSTANT(ALIGN_CENTER);
-	BIND_ENUM_CONSTANT(ALIGN_END);
+	BIND_CONSTANT(ALIGN_BEGIN);
+	BIND_CONSTANT(ALIGN_CENTER);
+	BIND_CONSTANT(ALIGN_END);
 
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "alignment", PROPERTY_HINT_ENUM, "Begin,Center,End"), "set_alignment", "get_alignment");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "alignment", PROPERTY_HINT_ENUM, "Begin,Center,End"), _SCS("set_alignment"), _SCS("get_alignment"));
 }
 
 MarginContainer *VBoxContainer::add_margin_child(const String &p_label, Control *p_control, bool p_expand) {
@@ -308,7 +307,6 @@ MarginContainer *VBoxContainer::add_margin_child(const String &p_label, Control 
 	l->set_text(p_label);
 	add_child(l);
 	MarginContainer *mc = memnew(MarginContainer);
-	mc->add_constant_override("margin_left", 0);
 	mc->add_child(p_control);
 	add_child(mc);
 	if (p_expand)

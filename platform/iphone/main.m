@@ -28,7 +28,6 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 #import "app_delegate.h"
-
 #import <UIKit/UIKit.h>
 #include <stdio.h>
 

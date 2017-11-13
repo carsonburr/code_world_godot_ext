@@ -37,7 +37,7 @@
 */
 class Popup : public Control {
 
-	GDCLASS(Popup, Control);
+	OBJ_TYPE(Popup, Control);
 
 	bool exclusive;
 	bool popped_up;
@@ -45,9 +45,9 @@ class Popup : public Control {
 protected:
 	virtual void _post_popup() {}
 
-	void _gui_input(Ref<InputEvent> p_event);
+	void _input_event(InputEvent p_event);
 	void _notification(int p_what);
-	virtual void _fix_size();
+	void _fix_size();
 	static void _bind_methods();
 
 public:
@@ -63,7 +63,7 @@ public:
 	void popup_centered(const Size2 &p_size = Size2());
 	void popup_centered_minsize(const Size2 &p_minsize = Size2());
 	void set_as_minsize();
-	virtual void popup(const Rect2 &p_bounds = Rect2());
+	virtual void popup();
 
 	virtual String get_configuration_warning() const;
 
@@ -73,7 +73,7 @@ public:
 
 class PopupPanel : public Popup {
 
-	GDCLASS(PopupPanel, Popup);
+	OBJ_TYPE(PopupPanel, Popup);
 
 protected:
 	void _notification(int p_what);

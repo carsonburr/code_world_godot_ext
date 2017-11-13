@@ -44,8 +44,8 @@ Control *SplitContainer::_getch(int p_idx) const {
 	int idx = 0;
 
 	for (int i = 0; i < get_child_count(); i++) {
-		Control *c = Object::cast_to<Control>(get_child(i));
-		if (!c || !c->is_visible_in_tree())
+		Control *c = get_child(i)->cast_to<Control>();
+		if (!c || !c->is_visible())
 			continue;
 		if (c->is_set_as_toplevel())
 			continue;
@@ -131,12 +131,7 @@ void SplitContainer::_resort() {
 
 		if (ratiomode) {
 
-			int first_ratio = first->get_stretch_ratio();
-			int second_ratio = second->get_stretch_ratio();
-
-			float ratio = float(first_ratio) / (first_ratio + second_ratio);
-
-			middle_sep = ms_first[axis] + available * ratio;
+			middle_sep = ms_first[axis] + available / 2;
 
 		} else if (expand_first_mode) {
 
@@ -149,17 +144,12 @@ void SplitContainer::_resort() {
 
 	} else if (ratiomode) {
 
-		int first_ratio = first->get_stretch_ratio();
-		int second_ratio = second->get_stretch_ratio();
+		if (expand_ofs < -(available / 2))
+			expand_ofs = -(available / 2);
+		else if (expand_ofs > (available / 2))
+			expand_ofs = (available / 2);
 
-		float ratio = float(first_ratio) / (first_ratio + second_ratio);
-
-		if (expand_ofs < -(available * ratio))
-			expand_ofs = -(available * ratio);
-		else if (expand_ofs > (available * (1.0 - ratio)))
-			expand_ofs = (available * (1.0 - ratio));
-
-		middle_sep = ms_first[axis] + available * ratio + expand_ofs;
+		middle_sep = ms_first[axis] + available / 2 + expand_ofs;
 
 	} else if (expand_first_mode) {
 
@@ -196,7 +186,7 @@ void SplitContainer::_resort() {
 	}
 
 	update();
-	_change_notify("split_offset");
+	_change_notify("split/offset");
 }
 
 Size2 SplitContainer::get_minimum_size() const {
@@ -280,32 +270,32 @@ void SplitContainer::_notification(int p_what) {
 	}
 }
 
-void SplitContainer::_gui_input(const Ref<InputEvent> &p_event) {
+void SplitContainer::_input_event(const InputEvent &p_event) {
 
 	if (collapsed || !_getch(0) || !_getch(1) || dragger_visibility != DRAGGER_VISIBLE)
 		return;
 
-	Ref<InputEventMouseButton> mb = p_event;
+	if (p_event.type == InputEvent::MOUSE_BUTTON) {
 
-	if (mb.is_valid()) {
+		const InputEventMouseButton &mb = p_event.mouse_button;
 
-		if (mb->get_button_index() == BUTTON_LEFT) {
+		if (mb.button_index == BUTTON_LEFT) {
 
-			if (mb->is_pressed()) {
+			if (mb.pressed) {
 				int sep = get_constant("separation");
 
 				if (vertical) {
 
-					if (mb->get_position().y > middle_sep && mb->get_position().y < middle_sep + sep) {
+					if (mb.y > middle_sep && mb.y < middle_sep + sep) {
 						dragging = true;
-						drag_from = mb->get_position().y;
+						drag_from = mb.y;
 						drag_ofs = expand_ofs;
 					}
 				} else {
 
-					if (mb->get_position().x > middle_sep && mb->get_position().x < middle_sep + sep) {
+					if (mb.x > middle_sep && mb.x < middle_sep + sep) {
 						dragging = true;
-						drag_from = mb->get_position().x;
+						drag_from = mb.x;
 						drag_ofs = expand_ofs;
 					}
 				}
@@ -316,13 +306,13 @@ void SplitContainer::_gui_input(const Ref<InputEvent> &p_event) {
 		}
 	}
 
-	Ref<InputEventMouseMotion> mm = p_event;
+	if (p_event.type == InputEvent::MOUSE_MOTION) {
 
-	if (mm.is_valid()) {
+		const InputEventMouseMotion &mm = p_event.mouse_motion;
 
 		if (dragging) {
 
-			expand_ofs = drag_ofs + ((vertical ? mm->get_position().y : mm->get_position().x) - drag_from);
+			expand_ofs = drag_ofs + ((vertical ? mm.y : mm.x) - drag_from);
 			queue_sort();
 			emit_signal("dragged", get_split_offset());
 		}
@@ -394,25 +384,25 @@ bool SplitContainer::is_collapsed() const {
 
 void SplitContainer::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("_gui_input"), &SplitContainer::_gui_input);
-	ClassDB::bind_method(D_METHOD("set_split_offset", "offset"), &SplitContainer::set_split_offset);
-	ClassDB::bind_method(D_METHOD("get_split_offset"), &SplitContainer::get_split_offset);
+	ObjectTypeDB::bind_method(_MD("_input_event"), &SplitContainer::_input_event);
+	ObjectTypeDB::bind_method(_MD("set_split_offset", "offset"), &SplitContainer::set_split_offset);
+	ObjectTypeDB::bind_method(_MD("get_split_offset"), &SplitContainer::get_split_offset);
 
-	ClassDB::bind_method(D_METHOD("set_collapsed", "collapsed"), &SplitContainer::set_collapsed);
-	ClassDB::bind_method(D_METHOD("is_collapsed"), &SplitContainer::is_collapsed);
+	ObjectTypeDB::bind_method(_MD("set_collapsed", "collapsed"), &SplitContainer::set_collapsed);
+	ObjectTypeDB::bind_method(_MD("is_collapsed"), &SplitContainer::is_collapsed);
 
-	ClassDB::bind_method(D_METHOD("set_dragger_visibility", "mode"), &SplitContainer::set_dragger_visibility);
-	ClassDB::bind_method(D_METHOD("get_dragger_visibility"), &SplitContainer::get_dragger_visibility);
+	ObjectTypeDB::bind_method(_MD("set_dragger_visibility", "mode"), &SplitContainer::set_dragger_visibility);
+	ObjectTypeDB::bind_method(_MD("get_dragger_visibility"), &SplitContainer::get_dragger_visibility);
 
 	ADD_SIGNAL(MethodInfo("dragged", PropertyInfo(Variant::INT, "offset")));
 
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "split_offset"), "set_split_offset", "get_split_offset");
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "collapsed"), "set_collapsed", "is_collapsed");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "dragger_visibility", PROPERTY_HINT_ENUM, "Visible,Hidden,Hidden & Collapsed"), "set_dragger_visibility", "get_dragger_visibility");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "split/offset"), _SCS("set_split_offset"), _SCS("get_split_offset"));
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "split/collapsed"), _SCS("set_collapsed"), _SCS("is_collapsed"));
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "split/dragger_visibility", PROPERTY_HINT_ENUM, "Visible,Hidden,Hidden & Collapsed"), _SCS("set_dragger_visibility"), _SCS("get_dragger_visibility"));
 
-	BIND_ENUM_CONSTANT(DRAGGER_VISIBLE);
-	BIND_ENUM_CONSTANT(DRAGGER_HIDDEN);
-	BIND_ENUM_CONSTANT(DRAGGER_HIDDEN_COLLAPSED);
+	BIND_CONSTANT(DRAGGER_VISIBLE);
+	BIND_CONSTANT(DRAGGER_HIDDEN);
+	BIND_CONSTANT(DRAGGER_HIDDEN_COLLAPSED);
 }
 
 SplitContainer::SplitContainer(bool p_vertical) {

@@ -42,8 +42,8 @@
 */
 class Theme : public Resource {
 
-	GDCLASS(Theme, Resource);
-	RES_BASE_EXTENSION("theme");
+	OBJ_TYPE(Theme, Resource);
+	RES_BASE_EXTENSION("thm");
 
 	static Ref<Theme> default_theme;
 
@@ -72,8 +72,8 @@ protected:
 
 	Ref<Font> default_theme_font;
 
-	PoolVector<String> _get_icon_list(const String &p_type) const {
-		PoolVector<String> ilret;
+	DVector<String> _get_icon_list(const String &p_type) const {
+		DVector<String> ilret;
 		List<StringName> il;
 		get_icon_list(p_type, &il);
 		for (List<StringName>::Element *E = il.front(); E; E = E->next()) {
@@ -81,8 +81,8 @@ protected:
 		}
 		return ilret;
 	}
-	PoolVector<String> _get_stylebox_list(const String &p_type) const {
-		PoolVector<String> ilret;
+	DVector<String> _get_stylebox_list(const String &p_type) const {
+		DVector<String> ilret;
 		List<StringName> il;
 		get_stylebox_list(p_type, &il);
 		for (List<StringName>::Element *E = il.front(); E; E = E->next()) {
@@ -90,8 +90,8 @@ protected:
 		}
 		return ilret;
 	}
-	PoolVector<String> _get_stylebox_types(void) const {
-		PoolVector<String> ilret;
+	DVector<String> _get_stylebox_types(void) const {
+		DVector<String> ilret;
 		List<StringName> il;
 		get_stylebox_types(&il);
 		for (List<StringName>::Element *E = il.front(); E; E = E->next()) {
@@ -99,8 +99,8 @@ protected:
 		}
 		return ilret;
 	}
-	PoolVector<String> _get_font_list(const String &p_type) const {
-		PoolVector<String> ilret;
+	DVector<String> _get_font_list(const String &p_type) const {
+		DVector<String> ilret;
 		List<StringName> il;
 		get_font_list(p_type, &il);
 		for (List<StringName>::Element *E = il.front(); E; E = E->next()) {
@@ -108,8 +108,8 @@ protected:
 		}
 		return ilret;
 	}
-	PoolVector<String> _get_color_list(const String &p_type) const {
-		PoolVector<String> ilret;
+	DVector<String> _get_color_list(const String &p_type) const {
+		DVector<String> ilret;
 		List<StringName> il;
 		get_color_list(p_type, &il);
 		for (List<StringName>::Element *E = il.front(); E; E = E->next()) {
@@ -117,8 +117,8 @@ protected:
 		}
 		return ilret;
 	}
-	PoolVector<String> _get_constant_list(const String &p_type) const {
-		PoolVector<String> ilret;
+	DVector<String> _get_constant_list(const String &p_type) const {
+		DVector<String> ilret;
 		List<StringName> il;
 		get_constant_list(p_type, &il);
 		for (List<StringName>::Element *E = il.front(); E; E = E->next()) {
@@ -126,8 +126,8 @@ protected:
 		}
 		return ilret;
 	}
-	PoolVector<String> _get_type_list(const String &p_type) const {
-		PoolVector<String> ilret;
+	DVector<String> _get_type_list(const String &p_type) const {
+		DVector<String> ilret;
 		List<StringName> il;
 		get_type_list(&il);
 		for (List<StringName>::Element *E = il.front(); E; E = E->next()) {
@@ -143,8 +143,8 @@ public:
 	static void set_default(const Ref<Theme> &p_default);
 
 	static void set_default_icon(const Ref<Texture> &p_icon);
-	static void set_default_style(const Ref<StyleBox> &p_style);
-	static void set_default_font(const Ref<Font> &p_font);
+	static void set_default_style(const Ref<StyleBox> &p_default_style);
+	static void set_default_font(const Ref<Font> &p_default_font);
 
 	void set_default_theme_font(const Ref<Font> &p_default_font);
 	Ref<Font> get_default_theme_font() const;
@@ -159,7 +159,7 @@ public:
 	Ref<Shader> get_shader(const StringName &p_name, const StringName &p_type) const;
 	bool has_shader(const StringName &p_name, const StringName &p_type) const;
 	void clear_shader(const StringName &p_name, const StringName &p_type);
-	void get_shader_list(const StringName &p_type, List<StringName> *p_list) const;
+	void get_shader_list(const StringName &p_name, List<StringName> *p_list) const;
 
 	void set_stylebox(const StringName &p_name, const StringName &p_type, const Ref<StyleBox> &p_style);
 	Ref<StyleBox> get_stylebox(const StringName &p_name, const StringName &p_type) const;

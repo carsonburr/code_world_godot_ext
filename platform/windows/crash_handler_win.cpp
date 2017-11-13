@@ -116,7 +116,7 @@ DWORD CrashHandlerException(EXCEPTION_POINTERS *ep) {
 	DWORD cbNeeded;
 	std::vector<HMODULE> module_handles(1);
 
-	if (OS::get_singleton() == NULL || OS::get_singleton()->is_disable_crash_handler() || IsDebuggerPresent()) {
+	if (OS::get_singleton() == NULL || OS::get_singleton()->is_disable_crash_handler() || Globals::get_singleton() == NULL || IsDebuggerPresent()) {
 		return EXCEPTION_CONTINUE_SEARCH;
 	}
 
@@ -159,7 +159,7 @@ DWORD CrashHandlerException(EXCEPTION_POINTERS *ep) {
 	IMAGE_NT_HEADERS *h = ImageNtHeader(base);
 	DWORD image_type = h->FileHeader.Machine;
 	int n = 0;
-	String msg = GLOBAL_GET("debug/settings/crash_handler/message");
+	String msg = Globals::get_singleton()->get("application/crash_handler_message");
 
 	fprintf(stderr, "Dumping the backtrace. %ls\n", msg.c_str());
 

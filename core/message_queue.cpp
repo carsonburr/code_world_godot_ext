@@ -28,10 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 #include "message_queue.h"
-
-#include "project_settings.h"
+#include "globals.h"
 #include "script_language.h"
-
 MessageQueue *MessageQueue::singleton = NULL;
 
 MessageQueue *MessageQueue::get_singleton() {
@@ -48,7 +46,7 @@ Error MessageQueue::push_call(ObjectID p_id, const StringName &p_method, const V
 	if ((buffer_end + room_needed) >= buffer_size) {
 		String type;
 		if (ObjectDB::get_instance(p_id))
-			type = ObjectDB::get_instance(p_id)->get_class();
+			type = ObjectDB::get_instance(p_id)->get_type();
 		print_line("failed method: " + type + ":" + p_method + " target ID: " + itos(p_id));
 		statistics();
 		ERR_EXPLAIN("Message queue out of memory. Try increasing 'message_queue_size_kb' in project settings");
@@ -99,7 +97,7 @@ Error MessageQueue::push_set(ObjectID p_id, const StringName &p_prop, const Vari
 	if ((buffer_end + room_needed) >= buffer_size) {
 		String type;
 		if (ObjectDB::get_instance(p_id))
-			type = ObjectDB::get_instance(p_id)->get_class();
+			type = ObjectDB::get_instance(p_id)->get_type();
 		print_line("failed set: " + type + ":" + p_prop + " target ID: " + itos(p_id));
 		statistics();
 		ERR_EXPLAIN("Message queue out of memory. Try increasing 'message_queue_size_kb' in project settings");
@@ -132,7 +130,7 @@ Error MessageQueue::push_notification(ObjectID p_id, int p_notification) {
 	if ((buffer_end + room_needed) >= buffer_size) {
 		String type;
 		if (ObjectDB::get_instance(p_id))
-			type = ObjectDB::get_instance(p_id)->get_class();
+			type = ObjectDB::get_instance(p_id)->get_type();
 		print_line("failed notification: " + itos(p_notification) + " target ID: " + itos(p_id));
 		statistics();
 		ERR_EXPLAIN("Message queue out of memory. Try increasing 'message_queue_size_kb' in project settings");
@@ -153,16 +151,16 @@ Error MessageQueue::push_notification(ObjectID p_id, int p_notification) {
 
 Error MessageQueue::push_call(Object *p_object, const StringName &p_method, VARIANT_ARG_DECLARE) {
 
-	return push_call(p_object->get_instance_id(), p_method, VARIANT_ARG_PASS);
+	return push_call(p_object->get_instance_ID(), p_method, VARIANT_ARG_PASS);
 }
 
 Error MessageQueue::push_notification(Object *p_object, int p_notification) {
 
-	return push_notification(p_object->get_instance_id(), p_notification);
+	return push_notification(p_object->get_instance_ID(), p_notification);
 }
 Error MessageQueue::push_set(Object *p_object, const StringName &p_prop, const Variant &p_value) {
 
-	return push_set(p_object->get_instance_id(), p_prop, p_value);
+	return push_set(p_object->get_instance_ID(), p_prop, p_value);
 }
 
 void MessageQueue::statistics() {
@@ -238,6 +236,47 @@ void MessageQueue::statistics() {
 
 		print_line("NOTIFY " + itos(E->key()) + ": " + itos(E->get()));
 	}
+}
+
+bool MessageQueue::print() {
+#if 0
+	uint32_t read_pos=0;
+	while (read_pos < buffer_end ) {
+		Message *message = (Message*)&buffer[ read_pos ];
+
+		Object *target = ObjectDB::get_instance(message->instance_ID);
+		String cname;
+		String cfunc;
+
+		if (target==NULL) {
+			//object was deleted
+			//WARN_PRINT("Object was deleted while awaiting a callback")
+			//should it print a warning?
+		} else if (message->notification>=0) {
+
+			// messages don't expect a return value
+			cfunc="notification # "+itos(message->notification);
+			cname=target->get_type();
+
+		} else if (!message->target.empty()) {
+
+			cfunc="property:  "+message->target;
+			cname=target->get_type();
+
+
+		} else if (message->target) {
+
+			cfunc=String(message->target)+"()";
+			cname=target->get_type();
+		}
+
+
+		read_pos+=sizeof(Message);
+		if (message->type!=TYPE_NOTIFICATION)
+			read_pos+=sizeof(Variant)*message->args;
+	}
+#endif
+	return false;
 }
 
 int MessageQueue::get_max_buffer_usage() const {
@@ -341,7 +380,7 @@ MessageQueue::MessageQueue() {
 
 	buffer_end = 0;
 	buffer_max_used = 0;
-	buffer_size = GLOBAL_DEF("memory/limits/message_queue/max_size_kb", DEFAULT_QUEUE_SIZE_KB);
+	buffer_size = GLOBAL_DEF("core/message_queue_size_kb", DEFAULT_QUEUE_SIZE_KB);
 	buffer_size *= 1024;
 	buffer = memnew_arr(uint8_t, buffer_size);
 }

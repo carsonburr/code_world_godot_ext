@@ -34,7 +34,7 @@
 
 class BoxShape : public Shape {
 
-	GDCLASS(BoxShape, Shape);
+	OBJ_TYPE(BoxShape, Shape);
 	Vector3 extents;
 
 protected:

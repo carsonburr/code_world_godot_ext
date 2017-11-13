@@ -27,19 +27,20 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
-#include "os_haiku.h"
+#include <Screen.h>
 
-#include "drivers/gles3/rasterizer_gles3.h"
-#include "main/main.h"
+#include "drivers/gles2/rasterizer_gles2.h"
 #include "servers/physics/physics_server_sw.h"
 #include "servers/visual/visual_server_raster.h"
 #include "servers/visual/visual_server_wrap_mt.h"
+//#include "servers/physics_2d/physics_2d_server_wrap_mt.h"
+#include "main/main.h"
 
-#include <Screen.h>
+#include "os_haiku.h"
 
 OS_Haiku::OS_Haiku() {
 #ifdef MEDIA_KIT_ENABLED
-	AudioDriverManager::add_driver(&driver_media_kit);
+	AudioDriverManagerSW::add_driver(&driver_media_kit);
 #endif
 };
 
@@ -105,7 +106,7 @@ void OS_Haiku::initialize(const VideoMode &p_desired, int p_video_driver, int p_
 		window->SetFlags(flags);
 	}
 
-#if defined(OPENGL_ENABLED)
+#if defined(OPENGL_ENABLED) || defined(LEGACYGL_ENABLED)
 	context_gl = memnew(ContextGL_Haiku(window));
 	context_gl->initialize();
 	context_gl->make_current();
@@ -118,11 +119,9 @@ void OS_Haiku::initialize(const VideoMode &p_desired, int p_video_driver, int p_
 	ERR_FAIL_COND(!visual_server);
 
 	// TODO: enable multithreaded VS
-	/*
-	if (get_render_thread_mode() != RENDER_THREAD_UNSAFE) {
-		visual_server = memnew(VisualServerWrapMT(visual_server, get_render_thread_mode() == RENDER_SEPARATE_THREAD));
-	}
-	*/
+	//if (get_render_thread_mode() != RENDER_THREAD_UNSAFE) {
+	//	visual_server = memnew(VisualServerWrapMT(visual_server, get_render_thread_mode() == RENDER_SEPARATE_THREAD));
+	//}
 
 	input = memnew(InputDefault);
 	window->SetInput(input);
@@ -137,9 +136,20 @@ void OS_Haiku::initialize(const VideoMode &p_desired, int p_video_driver, int p_
 	//physics_2d_server = Physics2DServerWrapMT::init_server<Physics2DServerSW>();
 	physics_2d_server->init();
 
-	AudioDriverManager::initialize(p_audio_driver);
+	AudioDriverManagerSW::get_driver(p_audio_driver)->set_singleton();
 
-	power_manager = memnew(PowerHaiku);
+	if (AudioDriverManagerSW::get_driver(p_audio_driver)->init() != OK) {
+		ERR_PRINT("Initializing audio failed.");
+	}
+
+	sample_manager = memnew(SampleManagerMallocSW);
+	audio_server = memnew(AudioServerSW(sample_manager));
+	audio_server->init();
+
+	spatial_sound_server = memnew(SpatialSoundServerSW);
+	spatial_sound_server->init();
+	spatial_sound_2d_server = memnew(SpatialSound2DServerSW);
+	spatial_sound_2d_server->init();
 }
 
 void OS_Haiku::finalize() {
@@ -148,6 +158,17 @@ void OS_Haiku::finalize() {
 	}
 
 	main_loop = NULL;
+
+	spatial_sound_server->finish();
+	memdelete(spatial_sound_server);
+
+	spatial_sound_2d_server->finish();
+	memdelete(spatial_sound_2d_server);
+
+	memdelete(sample_manager);
+
+	audio_server->finish();
+	memdelete(audio_server);
 
 	visual_server->finish();
 	memdelete(visual_server);
@@ -161,7 +182,7 @@ void OS_Haiku::finalize() {
 
 	memdelete(input);
 
-#if defined(OPENGL_ENABLED)
+#if defined(OPENGL_ENABLED) || defined(LEGACYGL_ENABLED)
 	memdelete(context_gl);
 #endif
 }
@@ -202,7 +223,7 @@ void OS_Haiku::swap_buffers() {
 	context_gl->swap_buffers();
 }
 
-Point2 OS_Haiku::get_mouse_position() const {
+Point2 OS_Haiku::get_mouse_pos() const {
 	return window->GetLastMousePosition();
 }
 
@@ -325,9 +346,4 @@ void OS_Haiku::get_fullscreen_mode_list(List<VideoMode> *p_list, int p_screen) c
 
 String OS_Haiku::get_executable_path() const {
 	return OS::get_executable_path();
-}
-
-bool OS_Haiku::_check_internal_feature_support(const String &p_feature) {
-
-	return p_feature == "pc" || p_feature == "s3tc";
 }

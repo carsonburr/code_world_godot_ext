@@ -89,14 +89,12 @@ Size2 PopupMenu::get_minimum_size() const {
 			size.height = font_h;
 		}
 
-		size.width += items[i].h_ofs;
-
 		if (items[i].checkable) {
 
 			size.width += check_w + hseparation;
 		}
 
-		String text = items[i].shortcut.is_valid() ? String(tr(items[i].shortcut->get_name())) : items[i].xl_text;
+		String text = items[i].shortcut.is_valid() ? String(tr(items[i].shortcut->get_name())) : items[i].text;
 		size.width += font->get_string_size(text).width;
 		if (i > 0)
 			size.height += vseparation;
@@ -136,7 +134,7 @@ int PopupMenu::_get_mouse_over(const Point2 &p_over) const {
 
 	Ref<Font> font = get_font("font");
 	int vseparation = get_constant("vseparation");
-	//int hseparation = get_constant("hseparation");
+	//	int hseparation = get_constant("hseparation");
 	float font_h = font->get_height();
 
 	for (int i = 0; i < items.size(); i++) {
@@ -168,13 +166,13 @@ void PopupMenu::_activate_submenu(int over) {
 	Node *n = get_node(items[over].submenu);
 	ERR_EXPLAIN("item subnode does not exist: " + items[over].submenu);
 	ERR_FAIL_COND(!n);
-	Popup *pm = Object::cast_to<Popup>(n);
+	Popup *pm = n->cast_to<Popup>();
 	ERR_EXPLAIN("item subnode is not a Popup: " + items[over].submenu);
 	ERR_FAIL_COND(!pm);
-	if (pm->is_visible_in_tree())
+	if (pm->is_visible())
 		return; //already visible!
 
-	Point2 p = get_global_position();
+	Point2 p = get_global_pos();
 	Rect2 pr(p, get_size());
 	Ref<StyleBox> style = get_stylebox("panel");
 
@@ -184,18 +182,18 @@ void PopupMenu::_activate_submenu(int over) {
 	if (pos.x + size.width > get_viewport_rect().size.width)
 		pos.x = p.x - size.width;
 
-	pm->set_position(pos);
+	pm->set_pos(pos);
 	pm->popup();
 
-	PopupMenu *pum = Object::cast_to<PopupMenu>(pm);
+	PopupMenu *pum = pm->cast_to<PopupMenu>();
 	if (pum) {
 
-		pr.position -= pum->get_global_position();
+		pr.pos -= pum->get_global_pos();
 		pum->clear_autohide_areas();
-		pum->add_autohide_area(Rect2(pr.position.x, pr.position.y, pr.size.x, items[over]._ofs_cache));
+		pum->add_autohide_area(Rect2(pr.pos.x, pr.pos.y, pr.size.x, items[over]._ofs_cache));
 		if (over < items.size() - 1) {
 			int from = items[over + 1]._ofs_cache;
-			pum->add_autohide_area(Rect2(pr.position.x, pr.position.y + from, pr.size.x, pr.size.y - from));
+			pum->add_autohide_area(Rect2(pr.pos.x, pr.pos.y + from, pr.size.x, pr.size.y - from));
 		}
 	}
 }
@@ -208,170 +206,171 @@ void PopupMenu::_submenu_timeout() {
 	}
 }
 
-void PopupMenu::_gui_input(const Ref<InputEvent> &p_event) {
+void PopupMenu::_input_event(const InputEvent &p_event) {
 
-	Ref<InputEventKey> k = p_event;
+	switch (p_event.type) {
 
-	if (k.is_valid()) {
+		case InputEvent::KEY: {
 
-		if (!k->is_pressed())
-			return;
+			if (!p_event.key.pressed)
+				break;
 
-		switch (k->get_scancode()) {
+			switch (p_event.key.scancode) {
 
-			case KEY_DOWN: {
+				case KEY_DOWN: {
 
-				for (int i = mouse_over + 1; i < items.size(); i++) {
+					for (int i = mouse_over + 1; i < items.size(); i++) {
 
-					if (i < 0 || i >= items.size())
-						continue;
+						if (i < 0 || i >= items.size())
+							continue;
 
-					if (!items[i].separator && !items[i].disabled) {
+						if (!items[i].separator && !items[i].disabled) {
 
-						mouse_over = i;
-						update();
+							mouse_over = i;
+							update();
+							break;
+						}
+					}
+				} break;
+				case KEY_UP: {
+
+					for (int i = mouse_over - 1; i >= 0; i--) {
+
+						if (i < 0 || i >= items.size())
+							continue;
+
+						if (!items[i].separator && !items[i].disabled) {
+
+							mouse_over = i;
+							update();
+							break;
+						}
+					}
+				} break;
+				case KEY_RETURN:
+				case KEY_ENTER: {
+
+					if (mouse_over >= 0 && mouse_over < items.size() && !items[mouse_over].separator) {
+
+						activate_item(mouse_over);
+					}
+				} break;
+			}
+
+		} break;
+
+		case InputEvent::MOUSE_BUTTON: {
+
+			const InputEventMouseButton &b = p_event.mouse_button;
+			if (b.pressed)
+				break;
+
+			switch (b.button_index) {
+
+				case BUTTON_WHEEL_DOWN: {
+
+					if (get_global_pos().y + get_size().y > get_viewport_rect().size.y) {
+
+						int vseparation = get_constant("vseparation");
+						Ref<Font> font = get_font("font");
+
+						Point2 pos = get_pos();
+						int s = (vseparation + font->get_height()) * 3;
+						pos.y -= (s * b.factor);
+						set_pos(pos);
+
+						//update hover
+						InputEvent ie;
+						ie.type = InputEvent::MOUSE_MOTION;
+						ie.mouse_motion.x = b.x;
+						ie.mouse_motion.y = b.y + s;
+						_input_event(ie);
+					}
+				} break;
+				case BUTTON_WHEEL_UP: {
+
+					if (get_global_pos().y < 0) {
+
+						int vseparation = get_constant("vseparation");
+						Ref<Font> font = get_font("font");
+
+						Point2 pos = get_pos();
+						int s = (vseparation + font->get_height()) * 3;
+						pos.y += (s * b.factor);
+						set_pos(pos);
+
+						//update hover
+						InputEvent ie;
+						ie.type = InputEvent::MOUSE_MOTION;
+						ie.mouse_motion.x = b.x;
+						ie.mouse_motion.y = b.y - s;
+						_input_event(ie);
+					}
+				} break;
+				case BUTTON_LEFT: {
+
+					int over = _get_mouse_over(Point2(b.x, b.y));
+
+					if (invalidated_click) {
+						invalidated_click = false;
 						break;
 					}
-				}
-			} break;
-			case KEY_UP: {
-
-				for (int i = mouse_over - 1; i >= 0; i--) {
-
-					if (i < 0 || i >= items.size())
-						continue;
-
-					if (!items[i].separator && !items[i].disabled) {
-
-						mouse_over = i;
-						update();
-						break;
+					if (over < 0) {
+						hide();
+						break; //non-activable
 					}
-				}
-			} break;
-			case KEY_ENTER:
-			case KEY_KP_ENTER: {
 
-				if (mouse_over >= 0 && mouse_over < items.size() && !items[mouse_over].separator) {
+					if (items[over].separator || items[over].disabled)
+						break;
 
-					activate_item(mouse_over);
-				}
-			} break;
-		}
-	}
+					if (items[over].submenu != "") {
 
-	Ref<InputEventMouseButton> b = p_event;
+						_activate_submenu(over);
+						return;
+					}
+					activate_item(over);
 
-	if (b.is_valid()) {
+				} break;
+			}
 
-		if (b->is_pressed())
-			return;
+			//update();
+		} break;
+		case InputEvent::MOUSE_MOTION: {
 
-		switch (b->get_button_index()) {
-
-			case BUTTON_WHEEL_DOWN: {
-
-				if (get_global_position().y + get_size().y > get_viewport_rect().size.y) {
-
-					int vseparation = get_constant("vseparation");
-					Ref<Font> font = get_font("font");
-
-					Point2 pos = get_position();
-					int s = (vseparation + font->get_height()) * 3;
-					pos.y -= (s * b->get_factor());
-					set_position(pos);
-
-					//update hover
-					Ref<InputEventMouseMotion> ie;
-					ie.instance();
-					ie->set_position(b->get_position() + Vector2(0, s));
-					_gui_input(ie);
-				}
-			} break;
-			case BUTTON_WHEEL_UP: {
-
-				if (get_global_position().y < 0) {
-
-					int vseparation = get_constant("vseparation");
-					Ref<Font> font = get_font("font");
-
-					Point2 pos = get_position();
-					int s = (vseparation + font->get_height()) * 3;
-					pos.y += (s * b->get_factor());
-					set_position(pos);
-
-					//update hover
-					Ref<InputEventMouseMotion> ie;
-					ie.instance();
-					ie->set_position(b->get_position() - Vector2(0, s));
-					_gui_input(ie);
-				}
-			} break;
-			case BUTTON_LEFT: {
-
-				int over = _get_mouse_over(b->get_position());
-
-				if (invalidated_click) {
+			if (invalidated_click) {
+				moved += Vector2(p_event.mouse_motion.relative_x, p_event.mouse_motion.relative_y);
+				if (moved.length() > 4)
 					invalidated_click = false;
-					break;
-				}
-				if (over < 0) {
-					hide();
-					break; //non-activable
-				}
+			}
 
-				if (items[over].separator || items[over].disabled)
-					break;
+			const InputEventMouseMotion &m = p_event.mouse_motion;
+			for (List<Rect2>::Element *E = autohide_areas.front(); E; E = E->next()) {
 
-				if (items[over].submenu != "") {
-
-					_activate_submenu(over);
+				if (!Rect2(Point2(), get_size()).has_point(Point2(m.x, m.y)) && E->get().has_point(Point2(m.x, m.y))) {
+					call_deferred("hide");
 					return;
 				}
-				activate_item(over);
-
-			} break;
-		}
-
-		//update();
-	}
-
-	Ref<InputEventMouseMotion> m = p_event;
-
-	if (m.is_valid()) {
-
-		if (invalidated_click) {
-			moved += m->get_relative();
-			if (moved.length() > 4)
-				invalidated_click = false;
-		}
-
-		for (List<Rect2>::Element *E = autohide_areas.front(); E; E = E->next()) {
-
-			if (!Rect2(Point2(), get_size()).has_point(m->get_position()) && E->get().has_point(m->get_position())) {
-				call_deferred("hide");
-				return;
 			}
-		}
 
-		int over = _get_mouse_over(m->get_position());
-		int id = (over < 0 || items[over].separator || items[over].disabled) ? -1 : (items[over].ID >= 0 ? items[over].ID : over);
+			int over = _get_mouse_over(Point2(m.x, m.y));
+			int id = (over < 0 || items[over].separator || items[over].disabled) ? -1 : (items[over].ID >= 0 ? items[over].ID : over);
 
-		if (id < 0) {
-			mouse_over = -1;
-			update();
-			return;
-		}
+			if (id < 0) {
+				mouse_over = -1;
+				update();
+				break;
+			}
 
-		if (items[over].submenu != "" && submenu_over != over) {
-			submenu_over = over;
-			submenu_timer->start();
-		}
+			if (items[over].submenu != "" && submenu_over != over) {
+				submenu_over = over;
+				submenu_timer->start();
+			}
 
-		if (over != mouse_over) {
-			mouse_over = over;
-			update();
-		}
+			if (over != mouse_over) {
+				mouse_over = over;
+				update();
+			}
+		} break;
 	}
 }
 
@@ -392,16 +391,6 @@ void PopupMenu::_notification(int p_what) {
 
 	switch (p_what) {
 
-		case NOTIFICATION_TRANSLATION_CHANGED: {
-
-			for (int i = 0; i < items.size(); i++) {
-				items[i].xl_text = tr(items[i].text);
-			}
-
-			minimum_size_changed();
-			update();
-
-		} break;
 		case NOTIFICATION_DRAW: {
 
 			RID ci = get_canvas_item();
@@ -433,7 +422,6 @@ void PopupMenu::_notification(int p_what) {
 				float h;
 				Size2 icon_size;
 
-				item_ofs.x += items[i].h_ofs;
 				if (!items[i].icon.is_null()) {
 
 					icon_size = items[i].icon->get_size();
@@ -445,13 +433,13 @@ void PopupMenu::_notification(int p_what) {
 
 				if (i == mouse_over) {
 
-					hover->draw(ci, Rect2(item_ofs + Point2(-hseparation, -vseparation), Size2(get_size().width - style->get_minimum_size().width + hseparation * 2, h + vseparation * 2)));
+					hover->draw(ci, Rect2(ofs + Point2(-hseparation, -vseparation), Size2(get_size().width - style->get_minimum_size().width + hseparation * 2, h + vseparation * 2)));
 				}
 
 				if (items[i].separator) {
 
 					int sep_h = separator->get_center_size().height + separator->get_minimum_size().height;
-					separator->draw(ci, Rect2(item_ofs + Point2(0, Math::floor((h - sep_h) / 2.0)), Size2(get_size().width - style->get_minimum_size().width, sep_h)));
+					separator->draw(ci, Rect2(ofs + Point2(0, Math::floor((h - sep_h) / 2.0)), Size2(get_size().width - style->get_minimum_size().width, sep_h)));
 				}
 
 				if (items[i].checkable) {
@@ -475,7 +463,7 @@ void PopupMenu::_notification(int p_what) {
 				}
 
 				item_ofs.y += font->get_ascent();
-				String text = items[i].shortcut.is_valid() ? String(tr(items[i].shortcut->get_name())) : items[i].xl_text;
+				String text = items[i].shortcut.is_valid() ? String(tr(items[i].shortcut->get_name())) : items[i].text;
 				if (!items[i].separator) {
 
 					font->draw(ci, item_ofs + Point2(0, Math::floor((h - font_h) / 2.0)), text, items[i].disabled ? font_color_disabled : (i == mouse_over ? font_color_hover : font_color));
@@ -513,7 +501,6 @@ void PopupMenu::add_icon_item(const Ref<Texture> &p_icon, const String &p_label,
 	Item item;
 	item.icon = p_icon;
 	item.text = p_label;
-	item.xl_text = tr(p_label);
 	item.accel = p_accel;
 	item.ID = p_ID;
 	items.push_back(item);
@@ -522,8 +509,7 @@ void PopupMenu::add_icon_item(const Ref<Texture> &p_icon, const String &p_label,
 void PopupMenu::add_item(const String &p_label, int p_ID, uint32_t p_accel) {
 
 	Item item;
-	item.text = p_label;
-	item.xl_text = tr(p_label);
+	item.text = XL_MESSAGE(p_label);
 	item.accel = p_accel;
 	item.ID = p_ID;
 	items.push_back(item);
@@ -533,8 +519,7 @@ void PopupMenu::add_item(const String &p_label, int p_ID, uint32_t p_accel) {
 void PopupMenu::add_submenu_item(const String &p_label, const String &p_submenu, int p_ID) {
 
 	Item item;
-	item.text = p_label;
-	item.xl_text = tr(p_label);
+	item.text = XL_MESSAGE(p_label);
 	item.ID = p_ID;
 	item.submenu = p_submenu;
 	items.push_back(item);
@@ -545,8 +530,7 @@ void PopupMenu::add_icon_check_item(const Ref<Texture> &p_icon, const String &p_
 
 	Item item;
 	item.icon = p_icon;
-	item.text = p_label;
-	item.xl_text = tr(p_label);
+	item.text = XL_MESSAGE(p_label);
 	item.accel = p_accel;
 	item.ID = p_ID;
 	item.checkable = true;
@@ -556,8 +540,7 @@ void PopupMenu::add_icon_check_item(const Ref<Texture> &p_icon, const String &p_
 void PopupMenu::add_check_item(const String &p_label, int p_ID, uint32_t p_accel) {
 
 	Item item;
-	item.text = p_label;
-	item.xl_text = tr(p_label);
+	item.text = XL_MESSAGE(p_label);
 	item.accel = p_accel;
 	item.ID = p_ID;
 	item.checkable = true;
@@ -565,7 +548,7 @@ void PopupMenu::add_check_item(const String &p_label, int p_ID, uint32_t p_accel
 	update();
 }
 
-void PopupMenu::add_icon_shortcut(const Ref<Texture> &p_icon, const Ref<ShortCut> &p_shortcut, int p_ID, bool p_global) {
+void PopupMenu::add_icon_shortcut(const Ref<Texture> &p_icon, const Ref<ShortCut> &p_shortcut, int p_ID) {
 
 	ERR_FAIL_COND(p_shortcut.is_null());
 
@@ -575,12 +558,11 @@ void PopupMenu::add_icon_shortcut(const Ref<Texture> &p_icon, const Ref<ShortCut
 	item.ID = p_ID;
 	item.icon = p_icon;
 	item.shortcut = p_shortcut;
-	item.shortcut_is_global = p_global;
 	items.push_back(item);
 	update();
 }
 
-void PopupMenu::add_shortcut(const Ref<ShortCut> &p_shortcut, int p_ID, bool p_global) {
+void PopupMenu::add_shortcut(const Ref<ShortCut> &p_shortcut, int p_ID) {
 
 	ERR_FAIL_COND(p_shortcut.is_null());
 
@@ -589,11 +571,10 @@ void PopupMenu::add_shortcut(const Ref<ShortCut> &p_shortcut, int p_ID, bool p_g
 	Item item;
 	item.ID = p_ID;
 	item.shortcut = p_shortcut;
-	item.shortcut_is_global = p_global;
 	items.push_back(item);
 	update();
 }
-void PopupMenu::add_icon_check_shortcut(const Ref<Texture> &p_icon, const Ref<ShortCut> &p_shortcut, int p_ID, bool p_global) {
+void PopupMenu::add_icon_check_shortcut(const Ref<Texture> &p_icon, const Ref<ShortCut> &p_shortcut, int p_ID) {
 
 	ERR_FAIL_COND(p_shortcut.is_null());
 
@@ -604,12 +585,11 @@ void PopupMenu::add_icon_check_shortcut(const Ref<Texture> &p_icon, const Ref<Sh
 	item.shortcut = p_shortcut;
 	item.checkable = true;
 	item.icon = p_icon;
-	item.shortcut_is_global = p_global;
 	items.push_back(item);
 	update();
 }
 
-void PopupMenu::add_check_shortcut(const Ref<ShortCut> &p_shortcut, int p_ID, bool p_global) {
+void PopupMenu::add_check_shortcut(const Ref<ShortCut> &p_shortcut, int p_ID) {
 
 	ERR_FAIL_COND(p_shortcut.is_null());
 
@@ -618,7 +598,6 @@ void PopupMenu::add_check_shortcut(const Ref<ShortCut> &p_shortcut, int p_ID, bo
 	Item item;
 	item.ID = p_ID;
 	item.shortcut = p_shortcut;
-	item.shortcut_is_global = p_global;
 	item.checkable = true;
 	items.push_back(item);
 	update();
@@ -627,8 +606,7 @@ void PopupMenu::add_check_shortcut(const Ref<ShortCut> &p_shortcut, int p_ID, bo
 void PopupMenu::set_item_text(int p_idx, const String &p_text) {
 
 	ERR_FAIL_INDEX(p_idx, items.size());
-	items[p_idx].text = p_text;
-	items[p_idx].xl_text = tr(p_text);
+	items[p_idx].text = XL_MESSAGE(p_text);
 
 	update();
 }
@@ -647,7 +625,7 @@ void PopupMenu::set_item_checked(int p_idx, bool p_checked) {
 
 	update();
 }
-void PopupMenu::set_item_id(int p_idx, int p_ID) {
+void PopupMenu::set_item_ID(int p_idx, int p_ID) {
 
 	ERR_FAIL_INDEX(p_idx, items.size());
 	items[p_idx].ID = p_ID;
@@ -696,17 +674,6 @@ String PopupMenu::get_item_text(int p_idx) const {
 	ERR_FAIL_INDEX_V(p_idx, items.size(), "");
 	return items[p_idx].text;
 }
-
-int PopupMenu::get_item_idx_from_text(const String &text) const {
-
-	for (int idx = 0; idx < items.size(); idx++) {
-		if (items[idx].text == text)
-			return idx;
-	}
-
-	return -1;
-}
-
 Ref<Texture> PopupMenu::get_item_icon(int p_idx) const {
 
 	ERR_FAIL_INDEX_V(p_idx, items.size(), Ref<Texture>());
@@ -737,7 +704,7 @@ bool PopupMenu::is_item_checked(int p_idx) const {
 	return items[p_idx].checked;
 }
 
-int PopupMenu::get_item_id(int p_idx) const {
+int PopupMenu::get_item_ID(int p_idx) const {
 
 	ERR_FAIL_INDEX_V(p_idx, items.size(), 0);
 	return items[p_idx].ID;
@@ -798,25 +765,17 @@ void PopupMenu::set_item_tooltip(int p_idx, const String &p_tooltip) {
 	update();
 }
 
-void PopupMenu::set_item_shortcut(int p_idx, const Ref<ShortCut> &p_shortcut, bool p_global) {
+void PopupMenu::set_item_shortcut(int p_idx, const Ref<ShortCut> &p_shortcut) {
 	ERR_FAIL_INDEX(p_idx, items.size());
 	if (items[p_idx].shortcut.is_valid()) {
 		_unref_shortcut(items[p_idx].shortcut);
 	}
 	items[p_idx].shortcut = p_shortcut;
-	items[p_idx].shortcut_is_global = p_global;
 
 	if (items[p_idx].shortcut.is_valid()) {
 		_ref_shortcut(items[p_idx].shortcut);
 	}
 
-	update();
-}
-
-void PopupMenu::set_item_h_offset(int p_idx, int p_offset) {
-
-	ERR_FAIL_INDEX(p_idx, items.size());
-	items[p_idx].h_ofs = p_offset;
 	update();
 }
 
@@ -830,22 +789,20 @@ int PopupMenu::get_item_count() const {
 	return items.size();
 }
 
-bool PopupMenu::activate_item_by_event(const Ref<InputEvent> &p_event, bool p_for_global_only) {
+bool PopupMenu::activate_item_by_event(const InputEvent &p_event) {
 
 	uint32_t code = 0;
-	Ref<InputEventKey> k = p_event;
-
-	if (k.is_valid()) {
-		code = k->get_scancode();
+	if (p_event.type == InputEvent::KEY) {
+		code = p_event.key.scancode;
 		if (code == 0)
-			code = k->get_unicode();
-		if (k->get_control())
+			code = p_event.key.unicode;
+		if (p_event.key.mod.control)
 			code |= KEY_MASK_CTRL;
-		if (k->get_alt())
+		if (p_event.key.mod.alt)
 			code |= KEY_MASK_ALT;
-		if (k->get_metakey())
+		if (p_event.key.mod.meta)
 			code |= KEY_MASK_META;
-		if (k->get_shift())
+		if (p_event.key.mod.shift)
 			code |= KEY_MASK_SHIFT;
 	}
 
@@ -854,7 +811,7 @@ bool PopupMenu::activate_item_by_event(const Ref<InputEvent> &p_event, bool p_fo
 		if (is_item_disabled(i))
 			continue;
 
-		if (items[i].shortcut.is_valid() && items[i].shortcut->is_shortcut(p_event) && (items[i].shortcut_is_global || !p_for_global_only)) {
+		if (items[i].shortcut.is_valid() && items[i].shortcut->is_shortcut(p_event)) {
 			activate_item(i);
 			return true;
 		}
@@ -869,11 +826,11 @@ bool PopupMenu::activate_item_by_event(const Ref<InputEvent> &p_event, bool p_fo
 			if (!n)
 				continue;
 
-			PopupMenu *pm = Object::cast_to<PopupMenu>(n);
+			PopupMenu *pm = n->cast_to<PopupMenu>();
 			if (!pm)
 				continue;
 
-			if (pm->activate_item_by_event(p_event, p_for_global_only)) {
+			if (pm->activate_item_by_event(p_event)) {
 				return true;
 			}
 		}
@@ -886,19 +843,18 @@ void PopupMenu::activate_item(int p_item) {
 	ERR_FAIL_INDEX(p_item, items.size());
 	ERR_FAIL_COND(items[p_item].separator);
 	int id = items[p_item].ID >= 0 ? items[p_item].ID : p_item;
-	emit_signal("id_pressed", id);
-	emit_signal("index_pressed", p_item);
+	emit_signal("item_pressed", id);
 
 	//hide all parent PopupMenue's
 	Node *next = get_parent();
-	PopupMenu *pop = Object::cast_to<PopupMenu>(next);
+	PopupMenu *pop = next->cast_to<PopupMenu>();
 	while (pop) {
 		// We close all parents that are chained together,
 		// with hide_on_item_selection enabled
-		if ((items[p_item].checkable && hide_on_checkable_item_selection && pop->is_hide_on_checkable_item_selection()) || (!items[p_item].checkable && hide_on_item_selection && pop->is_hide_on_item_selection())) {
+		if (hide_on_item_selection && pop->is_hide_on_item_selection()) {
 			pop->hide();
 			next = next->get_parent();
-			pop = Object::cast_to<PopupMenu>(next);
+			pop = next->cast_to<PopupMenu>();
 		} else {
 			// Break out of loop when the next parent has
 			// hide_on_item_selection disabled
@@ -906,8 +862,8 @@ void PopupMenu::activate_item(int p_item) {
 		}
 	}
 	// Hides popup by default; unless otherwise specified
-	// by using set_hide_on_item_selection and set_hide_on_checkable_item_selection
-	if ((items[p_item].checkable && hide_on_checkable_item_selection) || (!items[p_item].checkable && hide_on_item_selection)) {
+	// by using set_hide_on_item_selection
+	if (hide_on_item_selection) {
 		hide();
 	}
 }
@@ -956,7 +912,7 @@ Array PopupMenu::_get_items() const {
 		items.push_back(is_item_checked(i));
 		items.push_back(is_item_disabled(i));
 
-		items.push_back(get_item_id(i));
+		items.push_back(get_item_ID(i));
 		items.push_back(get_item_accelerator(i));
 		items.push_back(get_item_metadata(i));
 		items.push_back(get_item_submenu(i));
@@ -1011,7 +967,7 @@ void PopupMenu::_set_items(const Array &p_items) {
 		set_item_as_checkable(idx, checkable);
 		set_item_checked(idx, checked);
 		set_item_disabled(idx, disabled);
-		set_item_id(idx, id);
+		set_item_ID(idx, id);
 		set_item_metadata(idx, meta);
 		set_item_as_separator(idx, sep);
 		set_item_accelerator(idx, accel);
@@ -1028,16 +984,6 @@ void PopupMenu::set_hide_on_item_selection(bool p_enabled) {
 bool PopupMenu::is_hide_on_item_selection() {
 
 	return hide_on_item_selection;
-}
-
-void PopupMenu::set_hide_on_checkable_item_selection(bool p_enabled) {
-
-	hide_on_checkable_item_selection = p_enabled;
-}
-
-bool PopupMenu::is_hide_on_checkable_item_selection() {
-
-	return hide_on_checkable_item_selection;
 }
 
 String PopupMenu::get_tooltip(const Point2 &p_pos) const {
@@ -1057,8 +1003,8 @@ void PopupMenu::get_translatable_strings(List<String> *p_strings) const {
 
 	for (int i = 0; i < items.size(); i++) {
 
-		if (items[i].xl_text != "")
-			p_strings->push_back(items[i].xl_text);
+		if (items[i].text != "")
+			p_strings->push_back(items[i].text);
 	}
 }
 
@@ -1074,71 +1020,66 @@ void PopupMenu::clear_autohide_areas() {
 
 void PopupMenu::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("_gui_input"), &PopupMenu::_gui_input);
-	ClassDB::bind_method(D_METHOD("add_icon_item", "texture", "label", "id", "accel"), &PopupMenu::add_icon_item, DEFVAL(-1), DEFVAL(0));
-	ClassDB::bind_method(D_METHOD("add_item", "label", "id", "accel"), &PopupMenu::add_item, DEFVAL(-1), DEFVAL(0));
-	ClassDB::bind_method(D_METHOD("add_icon_check_item", "texture", "label", "id", "accel"), &PopupMenu::add_icon_check_item, DEFVAL(-1), DEFVAL(0));
-	ClassDB::bind_method(D_METHOD("add_check_item", "label", "id", "accel"), &PopupMenu::add_check_item, DEFVAL(-1), DEFVAL(0));
-	ClassDB::bind_method(D_METHOD("add_submenu_item", "label", "submenu", "id"), &PopupMenu::add_submenu_item, DEFVAL(-1));
+	ObjectTypeDB::bind_method(_MD("_input_event"), &PopupMenu::_input_event);
+	ObjectTypeDB::bind_method(_MD("add_icon_item", "texture", "label", "id", "accel"), &PopupMenu::add_icon_item, DEFVAL(-1), DEFVAL(0));
+	ObjectTypeDB::bind_method(_MD("add_item", "label", "id", "accel"), &PopupMenu::add_item, DEFVAL(-1), DEFVAL(0));
+	ObjectTypeDB::bind_method(_MD("add_icon_check_item", "texture", "label", "id", "accel"), &PopupMenu::add_icon_check_item, DEFVAL(-1), DEFVAL(0));
+	ObjectTypeDB::bind_method(_MD("add_check_item", "label", "id", "accel"), &PopupMenu::add_check_item, DEFVAL(-1), DEFVAL(0));
+	ObjectTypeDB::bind_method(_MD("add_submenu_item", "label", "submenu", "id"), &PopupMenu::add_submenu_item, DEFVAL(-1));
 
-	ClassDB::bind_method(D_METHOD("add_icon_shortcut", "texture", "shortcut", "id", "global"), &PopupMenu::add_icon_shortcut, DEFVAL(-1), DEFVAL(false));
-	ClassDB::bind_method(D_METHOD("add_shortcut", "shortcut", "id", "global"), &PopupMenu::add_shortcut, DEFVAL(-1), DEFVAL(false));
-	ClassDB::bind_method(D_METHOD("add_icon_check_shortcut", "texture", "shortcut", "id", "global"), &PopupMenu::add_icon_check_shortcut, DEFVAL(-1), DEFVAL(false));
-	ClassDB::bind_method(D_METHOD("add_check_shortcut", "shortcut", "id", "global"), &PopupMenu::add_check_shortcut, DEFVAL(-1), DEFVAL(false));
+	ObjectTypeDB::bind_method(_MD("add_icon_shortcut", "texture", "shortcut:ShortCut", "id"), &PopupMenu::add_icon_shortcut, DEFVAL(-1));
+	ObjectTypeDB::bind_method(_MD("add_shortcut", "shortcut:ShortCut", "id"), &PopupMenu::add_shortcut, DEFVAL(-1));
+	ObjectTypeDB::bind_method(_MD("add_icon_check_shortcut", "texture", "shortcut:ShortCut", "id"), &PopupMenu::add_icon_check_shortcut, DEFVAL(-1));
+	ObjectTypeDB::bind_method(_MD("add_check_shortcut", "shortcut:ShortCut", "id"), &PopupMenu::add_check_shortcut, DEFVAL(-1));
 
-	ClassDB::bind_method(D_METHOD("set_item_text", "idx", "text"), &PopupMenu::set_item_text);
-	ClassDB::bind_method(D_METHOD("set_item_icon", "idx", "icon"), &PopupMenu::set_item_icon);
-	ClassDB::bind_method(D_METHOD("set_item_checked", "idx", "checked"), &PopupMenu::set_item_checked);
-	ClassDB::bind_method(D_METHOD("set_item_id", "idx", "id"), &PopupMenu::set_item_id);
-	ClassDB::bind_method(D_METHOD("set_item_accelerator", "idx", "accel"), &PopupMenu::set_item_accelerator);
-	ClassDB::bind_method(D_METHOD("set_item_metadata", "idx", "metadata"), &PopupMenu::set_item_metadata);
-	ClassDB::bind_method(D_METHOD("set_item_disabled", "idx", "disabled"), &PopupMenu::set_item_disabled);
-	ClassDB::bind_method(D_METHOD("set_item_submenu", "idx", "submenu"), &PopupMenu::set_item_submenu);
-	ClassDB::bind_method(D_METHOD("set_item_as_separator", "idx", "enable"), &PopupMenu::set_item_as_separator);
-	ClassDB::bind_method(D_METHOD("set_item_as_checkable", "idx", "enable"), &PopupMenu::set_item_as_checkable);
-	ClassDB::bind_method(D_METHOD("set_item_tooltip", "idx", "tooltip"), &PopupMenu::set_item_tooltip);
-	ClassDB::bind_method(D_METHOD("set_item_shortcut", "idx", "shortcut", "global"), &PopupMenu::set_item_shortcut, DEFVAL(false));
+	ObjectTypeDB::bind_method(_MD("set_item_text", "idx", "text"), &PopupMenu::set_item_text);
+	ObjectTypeDB::bind_method(_MD("set_item_icon", "idx", "icon"), &PopupMenu::set_item_icon);
+	ObjectTypeDB::bind_method(_MD("set_item_checked", "idx", "checked"), &PopupMenu::set_item_checked);
+	ObjectTypeDB::bind_method(_MD("set_item_ID", "idx", "id"), &PopupMenu::set_item_ID);
+	ObjectTypeDB::bind_method(_MD("set_item_accelerator", "idx", "accel"), &PopupMenu::set_item_accelerator);
+	ObjectTypeDB::bind_method(_MD("set_item_metadata", "idx", "metadata"), &PopupMenu::set_item_metadata);
+	ObjectTypeDB::bind_method(_MD("set_item_disabled", "idx", "disabled"), &PopupMenu::set_item_disabled);
+	ObjectTypeDB::bind_method(_MD("set_item_submenu", "idx", "submenu"), &PopupMenu::set_item_submenu);
+	ObjectTypeDB::bind_method(_MD("set_item_as_separator", "idx", "enable"), &PopupMenu::set_item_as_separator);
+	ObjectTypeDB::bind_method(_MD("set_item_as_checkable", "idx", "enable"), &PopupMenu::set_item_as_checkable);
+	ObjectTypeDB::bind_method(_MD("set_item_tooltip", "idx", "tooltip"), &PopupMenu::set_item_tooltip);
+	ObjectTypeDB::bind_method(_MD("set_item_shortcut", "idx", "shortcut:ShortCut"), &PopupMenu::set_item_shortcut);
 
-	ClassDB::bind_method(D_METHOD("toggle_item_checked", "idx"), &PopupMenu::toggle_item_checked);
+	ObjectTypeDB::bind_method(_MD("toggle_item_checked", "idx"), &PopupMenu::toggle_item_checked);
 
-	ClassDB::bind_method(D_METHOD("get_item_text", "idx"), &PopupMenu::get_item_text);
-	ClassDB::bind_method(D_METHOD("get_item_icon", "idx"), &PopupMenu::get_item_icon);
-	ClassDB::bind_method(D_METHOD("is_item_checked", "idx"), &PopupMenu::is_item_checked);
-	ClassDB::bind_method(D_METHOD("get_item_id", "idx"), &PopupMenu::get_item_id);
-	ClassDB::bind_method(D_METHOD("get_item_index", "id"), &PopupMenu::get_item_index);
-	ClassDB::bind_method(D_METHOD("get_item_accelerator", "idx"), &PopupMenu::get_item_accelerator);
-	ClassDB::bind_method(D_METHOD("get_item_metadata", "idx"), &PopupMenu::get_item_metadata);
-	ClassDB::bind_method(D_METHOD("is_item_disabled", "idx"), &PopupMenu::is_item_disabled);
-	ClassDB::bind_method(D_METHOD("get_item_submenu", "idx"), &PopupMenu::get_item_submenu);
-	ClassDB::bind_method(D_METHOD("is_item_separator", "idx"), &PopupMenu::is_item_separator);
-	ClassDB::bind_method(D_METHOD("is_item_checkable", "idx"), &PopupMenu::is_item_checkable);
-	ClassDB::bind_method(D_METHOD("get_item_tooltip", "idx"), &PopupMenu::get_item_tooltip);
-	ClassDB::bind_method(D_METHOD("get_item_shortcut", "idx"), &PopupMenu::get_item_shortcut);
+	ObjectTypeDB::bind_method(_MD("get_item_text", "idx"), &PopupMenu::get_item_text);
+	ObjectTypeDB::bind_method(_MD("get_item_icon", "idx"), &PopupMenu::get_item_icon);
+	ObjectTypeDB::bind_method(_MD("is_item_checked", "idx"), &PopupMenu::is_item_checked);
+	ObjectTypeDB::bind_method(_MD("get_item_ID", "idx"), &PopupMenu::get_item_ID);
+	ObjectTypeDB::bind_method(_MD("get_item_index", "id"), &PopupMenu::get_item_index);
+	ObjectTypeDB::bind_method(_MD("get_item_accelerator", "idx"), &PopupMenu::get_item_accelerator);
+	ObjectTypeDB::bind_method(_MD("get_item_metadata", "idx"), &PopupMenu::get_item_metadata);
+	ObjectTypeDB::bind_method(_MD("is_item_disabled", "idx"), &PopupMenu::is_item_disabled);
+	ObjectTypeDB::bind_method(_MD("get_item_submenu", "idx"), &PopupMenu::get_item_submenu);
+	ObjectTypeDB::bind_method(_MD("is_item_separator", "idx"), &PopupMenu::is_item_separator);
+	ObjectTypeDB::bind_method(_MD("is_item_checkable", "idx"), &PopupMenu::is_item_checkable);
+	ObjectTypeDB::bind_method(_MD("get_item_tooltip", "idx"), &PopupMenu::get_item_tooltip);
+	ObjectTypeDB::bind_method(_MD("get_item_shortcut:ShortCut", "idx"), &PopupMenu::get_item_shortcut);
 
-	ClassDB::bind_method(D_METHOD("get_item_count"), &PopupMenu::get_item_count);
+	ObjectTypeDB::bind_method(_MD("get_item_count"), &PopupMenu::get_item_count);
 
-	ClassDB::bind_method(D_METHOD("remove_item", "idx"), &PopupMenu::remove_item);
+	ObjectTypeDB::bind_method(_MD("remove_item", "idx"), &PopupMenu::remove_item);
 
-	ClassDB::bind_method(D_METHOD("add_separator"), &PopupMenu::add_separator);
-	ClassDB::bind_method(D_METHOD("clear"), &PopupMenu::clear);
+	ObjectTypeDB::bind_method(_MD("add_separator"), &PopupMenu::add_separator);
+	ObjectTypeDB::bind_method(_MD("clear"), &PopupMenu::clear);
 
-	ClassDB::bind_method(D_METHOD("_set_items"), &PopupMenu::_set_items);
-	ClassDB::bind_method(D_METHOD("_get_items"), &PopupMenu::_get_items);
+	ObjectTypeDB::bind_method(_MD("_set_items"), &PopupMenu::_set_items);
+	ObjectTypeDB::bind_method(_MD("_get_items"), &PopupMenu::_get_items);
 
-	ClassDB::bind_method(D_METHOD("set_hide_on_item_selection", "enable"), &PopupMenu::set_hide_on_item_selection);
-	ClassDB::bind_method(D_METHOD("is_hide_on_item_selection"), &PopupMenu::is_hide_on_item_selection);
+	ObjectTypeDB::bind_method(_MD("set_hide_on_item_selection", "enable"), &PopupMenu::set_hide_on_item_selection);
+	ObjectTypeDB::bind_method(_MD("is_hide_on_item_selection"), &PopupMenu::is_hide_on_item_selection);
 
-	ClassDB::bind_method(D_METHOD("set_hide_on_checkable_item_selection", "enable"), &PopupMenu::set_hide_on_checkable_item_selection);
-	ClassDB::bind_method(D_METHOD("is_hide_on_checkable_item_selection"), &PopupMenu::is_hide_on_checkable_item_selection);
+	ObjectTypeDB::bind_method(_MD("_submenu_timeout"), &PopupMenu::_submenu_timeout);
 
-	ClassDB::bind_method(D_METHOD("_submenu_timeout"), &PopupMenu::_submenu_timeout);
+	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "items", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR), _SCS("_set_items"), _SCS("_get_items"));
+	ADD_PROPERTYNO(PropertyInfo(Variant::BOOL, "hide_on_item_selection"), _SCS("set_hide_on_item_selection"), _SCS("is_hide_on_item_selection"));
 
-	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "items", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR), "_set_items", "_get_items");
-	ADD_PROPERTYNO(PropertyInfo(Variant::BOOL, "hide_on_item_selection"), "set_hide_on_item_selection", "is_hide_on_item_selection");
-	ADD_PROPERTYNO(PropertyInfo(Variant::BOOL, "hide_on_checkable_item_selection"), "set_hide_on_checkable_item_selection", "is_hide_on_checkable_item_selection");
-
-	ADD_SIGNAL(MethodInfo("id_pressed", PropertyInfo(Variant::INT, "ID")));
-	ADD_SIGNAL(MethodInfo("index_pressed", PropertyInfo(Variant::INT, "index")));
+	ADD_SIGNAL(MethodInfo("item_pressed", PropertyInfo(Variant::INT, "ID")));
 }
 
 void PopupMenu::set_invalidate_click_until_motion() {
@@ -1153,7 +1094,6 @@ PopupMenu::PopupMenu() {
 	set_focus_mode(FOCUS_ALL);
 	set_as_toplevel(true);
 	set_hide_on_item_selection(true);
-	set_hide_on_checkable_item_selection(true);
 
 	submenu_timer = memnew(Timer);
 	submenu_timer->set_wait_time(0.3);

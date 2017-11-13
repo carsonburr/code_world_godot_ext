@@ -47,33 +47,33 @@ void StyleBoxEditor::_sb_changed() {
 
 void StyleBoxEditor::_bind_methods() {
 
-	ClassDB::bind_method("_sb_changed", &StyleBoxEditor::_sb_changed);
-	//ClassDB::bind_method("_import",&StyleBoxEditor::_import);
-	//ClassDB::bind_method("_import_accept",&StyleBoxEditor::_import_accept);
-	//ClassDB::bind_method("_preview_text_changed",&StyleBoxEditor::_preview_text_changed);
+	ObjectTypeDB::bind_method("_sb_changed", &StyleBoxEditor::_sb_changed);
+	//	ObjectTypeDB::bind_method("_import",&StyleBoxEditor::_import);
+	//	ObjectTypeDB::bind_method("_import_accept",&StyleBoxEditor::_import_accept);
+	//	ObjectTypeDB::bind_method("_preview_text_changed",&StyleBoxEditor::_preview_text_changed);
 }
 
 StyleBoxEditor::StyleBoxEditor() {
 
 	panel = memnew(Panel);
 	add_child(panel);
-	panel->set_anchors_and_margins_preset(Control::PRESET_WIDE);
+	panel->set_area_as_parent_rect();
 
 	Label *l = memnew(Label);
 	l->set_text(TTR("StyleBox Preview:"));
-	l->set_position(Point2(5, 5));
+	l->set_pos(Point2(5, 5));
 	panel->add_child(l);
 
 	preview = memnew(Panel);
 	panel->add_child(preview);
-	preview->set_position(Point2(50, 50));
+	preview->set_pos(Point2(50, 50));
 	preview->set_size(Size2(200, 100));
 }
 
 void StyleBoxEditorPlugin::edit(Object *p_node) {
 
-	if (Object::cast_to<StyleBox>(p_node)) {
-		stylebox_editor->edit(Object::cast_to<StyleBox>(p_node));
+	if (p_node && p_node->cast_to<StyleBox>()) {
+		stylebox_editor->edit(p_node->cast_to<StyleBox>());
 		stylebox_editor->show();
 	} else
 		stylebox_editor->hide();
@@ -81,7 +81,7 @@ void StyleBoxEditorPlugin::edit(Object *p_node) {
 
 bool StyleBoxEditorPlugin::handles(Object *p_node) const {
 
-	return p_node->is_class("StyleBox");
+	return p_node->is_type("StyleBox");
 }
 
 void StyleBoxEditorPlugin::make_visible(bool p_visible) {
@@ -91,7 +91,7 @@ void StyleBoxEditorPlugin::make_visible(bool p_visible) {
 		EditorNode::get_singleton()->make_bottom_panel_item_visible(stylebox_editor);
 
 	} else {
-		if (stylebox_editor->is_visible_in_tree())
+		if (stylebox_editor->is_visible())
 			EditorNode::get_singleton()->hide_bottom_panel();
 		button->hide();
 	}

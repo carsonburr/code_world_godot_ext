@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  pck_packer.cpp                                                       */
+/*  pkc_packer.cpp                                                       */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -53,9 +53,9 @@ static void _pad(FileAccess *p_file, int p_bytes) {
 
 void PCKPacker::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("pck_start", "pck_name", "alignment"), &PCKPacker::pck_start);
-	ClassDB::bind_method(D_METHOD("add_file", "pck_path", "source_path"), &PCKPacker::add_file);
-	ClassDB::bind_method(D_METHOD("flush", "verbose"), &PCKPacker::flush);
+	ObjectTypeDB::bind_method(_MD("pck_start", "pck_name", "alignment"), &PCKPacker::pck_start);
+	ObjectTypeDB::bind_method(_MD("add_file", "pck_path", "source_path"), &PCKPacker::add_file);
+	ObjectTypeDB::bind_method(_MD("flush", "verbose"), &PCKPacker::flush);
 };
 
 Error PCKPacker::pck_start(const String &p_file, int p_alignment) {
@@ -119,7 +119,7 @@ Error PCKPacker::flush(bool p_verbose) {
 	for (int i = 0; i < files.size(); i++) {
 
 		file->store_pascal_string(files[i].path);
-		files[i].offset_offset = file->get_position();
+		files[i].offset_offset = file->get_pos();
 		file->store_64(0); // offset
 		file->store_64(files[i].size); // size
 
@@ -130,10 +130,10 @@ Error PCKPacker::flush(bool p_verbose) {
 		file->store_32(0);
 	};
 
-	uint64_t ofs = file->get_position();
+	uint64_t ofs = file->get_pos();
 	ofs = _align(ofs, alignment);
 
-	_pad(file, ofs - file->get_position());
+	_pad(file, ofs - file->get_pos());
 
 	const uint32_t buf_max = 65536;
 	uint8_t *buf = memnew_arr(uint8_t, buf_max);
@@ -150,7 +150,7 @@ Error PCKPacker::flush(bool p_verbose) {
 			to_write -= read;
 		};
 
-		uint64_t pos = file->get_position();
+		uint64_t pos = file->get_pos();
 		file->seek(files[i].offset_offset); // go back to store the file's offset
 		file->store_64(ofs);
 		file->seek(pos);

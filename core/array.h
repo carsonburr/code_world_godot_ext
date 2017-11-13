@@ -53,6 +53,8 @@ public:
 	bool empty() const;
 	void clear();
 
+	bool is_shared() const;
+
 	bool operator==(const Array &p_array) const;
 
 	uint32_t hash() const;
@@ -68,9 +70,9 @@ public:
 	Variant front() const;
 	Variant back() const;
 
-	Array &sort();
-	Array &sort_custom(Object *p_obj, const StringName &p_function);
-	Array &invert();
+	void sort();
+	void sort_custom(Object *p_obj, const StringName &p_function);
+	void invert();
 
 	int find(const Variant &p_value, int p_from = 0) const;
 	int rfind(const Variant &p_value, int p_from = -1) const;
@@ -81,13 +83,11 @@ public:
 	void erase(const Variant &p_value);
 
 	void push_front(const Variant &p_value);
-	Variant pop_back();
-	Variant pop_front();
-
-	Array duplicate() const;
+	void pop_back();
+	void pop_front();
 
 	Array(const Array &p_from);
-	Array();
+	Array(bool p_shared = false);
 	~Array();
 };
 

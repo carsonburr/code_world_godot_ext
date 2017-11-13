@@ -32,12 +32,12 @@
 
 #include "editor/editor_node.h"
 #include "scene/gui/option_button.h"
-#include "scene/gui/texture_rect.h"
+#include "scene/gui/texture_frame.h"
 #include "scene/resources/style_box.h"
 
 class StyleBoxEditor : public Control {
 
-	GDCLASS(StyleBoxEditor, Control);
+	OBJ_TYPE(StyleBoxEditor, Control);
 
 	Panel *panel;
 	Panel *preview;
@@ -57,7 +57,7 @@ public:
 
 class StyleBoxEditorPlugin : public EditorPlugin {
 
-	GDCLASS(StyleBoxEditorPlugin, EditorPlugin);
+	OBJ_TYPE(StyleBoxEditorPlugin, EditorPlugin);
 
 	StyleBoxEditor *stylebox_editor;
 	EditorNode *editor;

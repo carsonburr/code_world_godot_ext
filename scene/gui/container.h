@@ -34,7 +34,7 @@
 
 class Container : public Control {
 
-	GDCLASS(Container, Control);
+	OBJ_TYPE(Container, Control);
 
 	bool pending_sort;
 	void _sort_children();

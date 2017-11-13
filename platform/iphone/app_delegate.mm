@@ -29,8 +29,8 @@
 /*************************************************************************/
 #import "app_delegate.h"
 
-#include "core/project_settings.h"
-#include "drivers/coreaudio/audio_driver_coreaudio.h"
+#include "audio_driver_iphone.h"
+#include "core/globals.h"
 #import "gl_view.h"
 #include "main/main.h"
 #include "os_iphone.h"
@@ -81,7 +81,7 @@ void _set_keep_screen_on(bool p_enabled) {
 
 extern int gargc;
 extern char **gargv;
-extern int iphone_main(int, int, int, char **, String);
+extern int iphone_main(int, int, int, char **);
 extern void iphone_finish();
 
 CMMotionManager *motionManager;
@@ -247,14 +247,14 @@ NSMutableDictionary *ios_joysticks = nil;
 			jx.min = -1;
 			if (element == gamepad.leftThumbstick) {
 				jx.value = gamepad.leftThumbstick.xAxis.value;
-				OSIPhone::get_singleton()->joy_axis(joy_id, JOY_ANALOG_LX, jx);
+				OSIPhone::get_singleton()->joy_axis(joy_id, JOY_ANALOG_0_X, jx);
 				jx.value = -gamepad.leftThumbstick.yAxis.value;
-				OSIPhone::get_singleton()->joy_axis(joy_id, JOY_ANALOG_LY, jx);
+				OSIPhone::get_singleton()->joy_axis(joy_id, JOY_ANALOG_0_Y, jx);
 			} else if (element == gamepad.rightThumbstick) {
 				jx.value = gamepad.rightThumbstick.xAxis.value;
-				OSIPhone::get_singleton()->joy_axis(joy_id, JOY_ANALOG_RX, jx);
+				OSIPhone::get_singleton()->joy_axis(joy_id, JOY_ANALOG_1_X, jx);
 				jx.value = -gamepad.rightThumbstick.yAxis.value;
-				OSIPhone::get_singleton()->joy_axis(joy_id, JOY_ANALOG_RY, jx);
+				OSIPhone::get_singleton()->joy_axis(joy_id, JOY_ANALOG_1_Y, jx);
 			} else if (element == gamepad.leftTrigger) {
 				jx.value = gamepad.leftTrigger.value;
 				OSIPhone::get_singleton()->joy_axis(joy_id, JOY_ANALOG_L2, jx);
@@ -299,32 +299,29 @@ NSMutableDictionary *ios_joysticks = nil;
 						gamepad.dpad.right.isPressed);
 			};
 		};
-#ifdef ADD_MICRO_GAMEPAD // disabling this for now, only available on iOS 9+,
-		// while we are setting that as the minimum, seems our
-		// build environment doesn't like it
+#ifdef ADD_MICRO_GAMEPAD // disabling this for now, only available on iOS 9+ and we're still compiling for iOS 7+
 	} else if (controller.microGamepad != nil) {
 		// micro gamepads were added in OS 9 and feature just 2 buttons and a d-pad
-		controller.microGamepad.valueChangedHandler =
-				^(GCMicroGamepad *gamepad, GCControllerElement *element) {
-					int joy_id = [self getJoyIdForController:controller];
+		controller.microGamepad.valueChangedHandler = ^(GCMicroGamepad *gamepad, GCControllerElement *element) {
+			int joy_id = [self getJoyIdForController:controller];
 
-					if (element == gamepad.buttonA) {
-						OSIPhone::get_singleton()->joy_button(joy_id, JOY_BUTTON_0,
-								gamepad.buttonA.isPressed);
-					} else if (element == gamepad.buttonX) {
-						OSIPhone::get_singleton()->joy_button(joy_id, JOY_BUTTON_2,
-								gamepad.buttonX.isPressed);
-					} else if (element == gamepad.dpad) {
-						OSIPhone::get_singleton()->joy_button(joy_id, JOY_DPAD_UP,
-								gamepad.dpad.up.isPressed);
-						OSIPhone::get_singleton()->joy_button(joy_id, JOY_DPAD_DOWN,
-								gamepad.dpad.down.isPressed);
-						OSIPhone::get_singleton()->joy_button(joy_id, JOY_DPAD_LEFT,
-								gamepad.dpad.left.isPressed);
-						OSIPhone::get_singleton()->joy_button(joy_id, JOY_DPAD_RIGHT,
-								gamepad.dpad.right.isPressed);
-					};
-				};
+			if (element == gamepad.buttonA) {
+				OSIPhone::get_singleton()->joy_button(joy_id, JOY_BUTTON_0,
+						gamepad.buttonA.isPressed);
+			} else if (element == gamepad.buttonX) {
+				OSIPhone::get_singleton()->joy_button(joy_id, JOY_BUTTON_2,
+						gamepad.buttonX.isPressed);
+			} else if (element == gamepad.dpad) {
+				OSIPhone::get_singleton()->joy_button(joy_id, JOY_DPAD_UP,
+						gamepad.dpad.up.isPressed);
+				OSIPhone::get_singleton()->joy_button(joy_id, JOY_DPAD_DOWN,
+						gamepad.dpad.down.isPressed);
+				OSIPhone::get_singleton()->joy_button(joy_id, JOY_DPAD_LEFT,
+						gamepad.dpad.left.isPressed);
+				OSIPhone::get_singleton()->joy_button(joy_id, JOY_DPAD_RIGHT,
+						gamepad.dpad.right.isPressed);
+			};
+		};
 #endif
 	};
 
@@ -393,6 +390,15 @@ static int frame_count = 0;
 			};
 			++frame_count;
 
+			NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory,
+					NSUserDomainMask, YES);
+			NSString *documentsDirectory = [paths objectAtIndex:0];
+			// NSString *documentsDirectory = [[[NSFileManager defaultManager]
+			// URLsForDirectory:NSDocumentDirectory inDomains:NSUserDomainMask]
+			// lastObject];
+			OSIPhone::get_singleton()->set_data_dir(
+					String::utf8([documentsDirectory UTF8String]));
+
 			NSString *locale_code = [[NSLocale currentLocale] localeIdentifier];
 			OSIPhone::get_singleton()->set_locale(
 					String::utf8([locale_code UTF8String]));
@@ -402,6 +408,7 @@ static int frame_count = 0;
 						respondsToSelector:@selector(identifierForVendor)]) {
 				uuid = [UIDevice currentDevice].identifierForVendor.UUIDString;
 			} else {
+
 				// before iOS 6, so just generate an identifier and store it
 				uuid = [[NSUserDefaults standardUserDefaults]
 						objectForKey:@"identiferForVendor"];
@@ -415,7 +422,7 @@ static int frame_count = 0;
 				}
 			}
 
-			OSIPhone::get_singleton()->set_unique_id(String::utf8([uuid UTF8String]));
+			OSIPhone::get_singleton()->set_unique_ID(String::utf8([uuid UTF8String]));
 
 		}; break;
 		/*
@@ -440,14 +447,14 @@ static int frame_count = 0;
 					NSString *str = (NSString *)value;
 					String uval = String::utf8([str UTF8String]);
 
-					ProjectSettings::get_singleton()->set("Info.plist/" + ukey, uval);
+					Globals::get_singleton()->set("Info.plist/" + ukey, uval);
 
 				} else if ([value isKindOfClass:[NSNumber class]]) {
 
 					NSNumber *n = (NSNumber *)value;
 					double dval = [n doubleValue];
 
-					ProjectSettings::get_singleton()->set("Info.plist/" + ukey, dval);
+					Globals::get_singleton()->set("Info.plist/" + ukey, dval);
 				};
 				// do stuff
 			}
@@ -456,7 +463,7 @@ static int frame_count = 0;
 		/*
 	case 3: {
 																	++frame_count;
-	}; break;
+	} break;
 */
 		case 2: {
 
@@ -467,8 +474,6 @@ static int frame_count = 0;
 
 		default: {
 			if (OSIPhone::get_singleton()) {
-				// OSIPhone::get_singleton()->update_accelerometer(accel[0], accel[1],
-				// accel[2]);
 				if (motionInitialised) {
 					// Just using polling approach for now, we can set this up so it sends
 					// data to us in intervals, might be better. See Apple reference pages
@@ -552,8 +557,7 @@ static int frame_count = 0;
 
 				bool quit_request = OSIPhone::get_singleton()->iterate();
 			};
-
-		}; break;
+		};
 	};
 };
 
@@ -595,22 +599,13 @@ static int frame_count = 0;
 	glGetRenderbufferParameterivOES(GL_RENDERBUFFER_OES,
 			GL_RENDERBUFFER_HEIGHT_OES, &backingHeight);
 
-	NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory,
-			NSUserDomainMask, YES);
-	NSString *documentsDirectory = [paths objectAtIndex:0];
-
-	int err = iphone_main(backingWidth, backingHeight, gargc, gargv, String::utf8([documentsDirectory UTF8String]));
-	if (err != 0) {
-		// bail, things did not go very well for us, should probably output a message on screen with our error code...
-		exit(0);
-		return;
-	};
+	iphone_main(backingWidth, backingHeight, gargc, gargv);
 
 	view_controller = [[ViewController alloc] init];
 	view_controller.view = glView;
 	window.rootViewController = view_controller;
 
-	_set_keep_screen_on(bool(GLOBAL_DEF("display/window/keep_screen_on", true)) ? YES : NO);
+	_set_keep_screen_on(bool(GLOBAL_DEF("display/keep_screen_on", true)) ? YES : NO);
 	glView.useCADisplayLink =
 			bool(GLOBAL_DEF("display.iOS/use_cadisplaylink", true)) ? YES : NO;
 	printf("cadisaplylink: %d", glView.useCADisplayLink);
@@ -620,7 +615,6 @@ static int frame_count = 0;
 	// Show the window
 	[window makeKeyAndVisible];
 
-	// Configure and start accelerometer
 	if (!motionInitialised) {
 		motionManager = [[CMMotionManager alloc] init];
 		if (motionManager.deviceMotionAvailable) {
@@ -638,12 +632,15 @@ static int frame_count = 0;
 
 	mainViewController = view_controller;
 
+	// prevent to stop music in another background app
+	[[AVAudioSession sharedInstance] setCategory:AVAudioSessionCategoryAmbient error:nil];
+
 #ifdef MODULE_GAME_ANALYTICS_ENABLED
 	printf("********************* didFinishLaunchingWithOptions\n");
-	if (!ProjectSettings::get_singleton()->has("mobileapptracker/advertiser_id")) {
+	if (!Globals::get_singleton()->has("mobileapptracker/advertiser_id")) {
 		return;
 	}
-	if (!ProjectSettings::get_singleton()->has("mobileapptracker/conversion_key")) {
+	if (!Globals::get_singleton()->has("mobileapptracker/conversion_key")) {
 		return;
 	}
 
@@ -696,6 +693,7 @@ static int frame_count = 0;
 				MainLoop::NOTIFICATION_WM_FOCUS_OUT);
 
 	[view_controller.view stopAnimation];
+
 	if (OS::get_singleton()->native_video_is_playing()) {
 		OSIPhone::get_singleton()->native_video_focus_out();
 	};
@@ -726,13 +724,14 @@ static int frame_count = 0;
 
 	[view_controller.view
 					startAnimation]; // FIXME: resume seems to be recommended elsewhere
+
 	if (OSIPhone::get_singleton()->native_video_is_playing()) {
 		OSIPhone::get_singleton()->native_video_unpause();
 	};
 
 	// Fixed audio can not resume if it is interrupted cause by an incoming phone call
-	if (AudioDriverCoreAudio::get_singleton() != NULL)
-		AudioDriverCoreAudio::get_singleton()->start();
+	if (AudioDriverIphone::get_singleton() != NULL)
+		AudioDriverIphone::get_singleton()->start();
 }
 
 - (BOOL)application:(UIApplication *)application handleOpenURL:(NSURL *)url {

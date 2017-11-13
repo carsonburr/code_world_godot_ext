@@ -1,35 +1,6 @@
-/*************************************************************************/
-/*  mesh_instance_editor_plugin.cpp                                      */
-/*************************************************************************/
-/*                       This file is part of:                           */
-/*                           GODOT ENGINE                                */
-/*                      https://godotengine.org                          */
-/*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
-/*                                                                       */
-/* Permission is hereby granted, free of charge, to any person obtaining */
-/* a copy of this software and associated documentation files (the       */
-/* "Software"), to deal in the Software without restriction, including   */
-/* without limitation the rights to use, copy, modify, merge, publish,   */
-/* distribute, sublicense, and/or sell copies of the Software, and to    */
-/* permit persons to whom the Software is furnished to do so, subject to */
-/* the following conditions:                                             */
-/*                                                                       */
-/* The above copyright notice and this permission notice shall be        */
-/* included in all copies or substantial portions of the Software.       */
-/*                                                                       */
-/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,       */
-/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF    */
-/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.*/
-/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY  */
-/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,  */
-/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
-/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
-/*************************************************************************/
 #include "mesh_instance_editor_plugin.h"
 
-#include "scene/3d/collision_shape.h"
+#include "scene/3d/body_shape.h"
 #include "scene/3d/navigation_mesh.h"
 #include "scene/3d/physics_body.h"
 #include "scene/gui/box_container.h"
@@ -101,7 +72,7 @@ void MeshInstanceEditor::_menu_option(int p_option) {
 
 			for (List<Node *>::Element *E = selection.front(); E; E = E->next()) {
 
-				MeshInstance *instance = Object::cast_to<MeshInstance>(E->get());
+				MeshInstance *instance = E->get()->cast_to<MeshInstance>();
 				if (!instance)
 					continue;
 
@@ -213,7 +184,7 @@ void MeshInstanceEditor::_create_outline_mesh() {
 		return;
 	}
 
-	Ref<Mesh> mesho = mesh->create_outline(outline_size->get_value());
+	Ref<Mesh> mesho = mesh->create_outline(outline_size->get_val());
 
 	if (mesho.is_null()) {
 		err_dialog->set_text(TTR("Could not create outline!"));
@@ -242,8 +213,8 @@ void MeshInstanceEditor::_create_outline_mesh() {
 
 void MeshInstanceEditor::_bind_methods() {
 
-	ClassDB::bind_method("_menu_option", &MeshInstanceEditor::_menu_option);
-	ClassDB::bind_method("_create_outline_mesh", &MeshInstanceEditor::_create_outline_mesh);
+	ObjectTypeDB::bind_method("_menu_option", &MeshInstanceEditor::_menu_option);
+	ObjectTypeDB::bind_method("_create_outline_mesh", &MeshInstanceEditor::_create_outline_mesh);
 }
 
 MeshInstanceEditor::MeshInstanceEditor() {
@@ -264,7 +235,7 @@ MeshInstanceEditor::MeshInstanceEditor() {
 	options->get_popup()->add_separator();
 	options->get_popup()->add_item(TTR("Create Outline Mesh.."), MENU_OPTION_CREATE_OUTLINE_MESH);
 
-	options->get_popup()->connect("id_pressed", this, "_menu_option");
+	options->get_popup()->connect("item_pressed", this, "_menu_option");
 
 	outline_dialog = memnew(ConfirmationDialog);
 	outline_dialog->set_title(TTR("Create Outline Mesh"));
@@ -272,13 +243,13 @@ MeshInstanceEditor::MeshInstanceEditor() {
 
 	VBoxContainer *outline_dialog_vbc = memnew(VBoxContainer);
 	outline_dialog->add_child(outline_dialog_vbc);
-	//outline_dialog->set_child_rect(outline_dialog_vbc);
+	outline_dialog->set_child_rect(outline_dialog_vbc);
 
 	outline_size = memnew(SpinBox);
 	outline_size->set_min(0.001);
 	outline_size->set_max(1024);
 	outline_size->set_step(0.001);
-	outline_size->set_value(0.05);
+	outline_size->set_val(0.05);
 	outline_dialog_vbc->add_margin_child(TTR("Outline Size:"), outline_size);
 
 	add_child(outline_dialog);
@@ -290,12 +261,12 @@ MeshInstanceEditor::MeshInstanceEditor() {
 
 void MeshInstanceEditorPlugin::edit(Object *p_object) {
 
-	mesh_editor->edit(Object::cast_to<MeshInstance>(p_object));
+	mesh_editor->edit(p_object->cast_to<MeshInstance>());
 }
 
 bool MeshInstanceEditorPlugin::handles(Object *p_object) const {
 
-	return p_object->is_class("MeshInstance");
+	return p_object->is_type("MeshInstance");
 }
 
 void MeshInstanceEditorPlugin::make_visible(bool p_visible) {

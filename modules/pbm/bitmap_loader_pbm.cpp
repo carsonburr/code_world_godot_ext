@@ -31,10 +31,10 @@
 #include "os/file_access.h"
 #include "scene/resources/bit_mask.h"
 
-static bool _get_token(FileAccessRef &f, uint8_t &saved, PoolVector<uint8_t> &r_token, bool p_binary = false, bool p_single_chunk = false) {
+static bool _get_token(FileAccessRef &f, uint8_t &saved, DVector<uint8_t> &r_token, bool p_binary = false, bool p_single_chunk = false) {
 
 	int token_max = r_token.size();
-	PoolVector<uint8_t>::Write w;
+	DVector<uint8_t>::Write w;
 	if (token_max)
 		w = r_token.write();
 	int ofs = 0;
@@ -51,7 +51,7 @@ static bool _get_token(FileAccessRef &f, uint8_t &saved, PoolVector<uint8_t> &r_
 		}
 		if (f->eof_reached()) {
 			if (ofs) {
-				w = PoolVector<uint8_t>::Write();
+				w = DVector<uint8_t>::Write();
 				r_token.resize(ofs);
 				return true;
 			} else {
@@ -78,7 +78,7 @@ static bool _get_token(FileAccessRef &f, uint8_t &saved, PoolVector<uint8_t> &r_
 			}
 
 			if (ofs && !p_single_chunk) {
-				w = PoolVector<uint8_t>::Write();
+				w = DVector<uint8_t>::Write();
 				r_token.resize(ofs);
 				saved = b;
 
@@ -95,10 +95,7 @@ static bool _get_token(FileAccessRef &f, uint8_t &saved, PoolVector<uint8_t> &r_
 				resized = true;
 			}
 			if (resized) {
-				// Note: Certain C++ static analyzers might point out that the following assigment is unnecessary.
-				// This is wrong since PoolVector<class T>::Write has an operator= method where the lhs gets updated under certain conditions.
-				// See core/dvector.h.
-				w = PoolVector<uint8_t>::Write();
+				w = DVector<uint8_t>::Write();
 				r_token.resize(token_max);
 				w = r_token.write();
 			}
@@ -109,10 +106,10 @@ static bool _get_token(FileAccessRef &f, uint8_t &saved, PoolVector<uint8_t> &r_
 	return false;
 }
 
-static int _get_number_from_token(PoolVector<uint8_t> &r_token) {
+static int _get_number_from_token(DVector<uint8_t> &r_token) {
 
 	int len = r_token.size();
-	PoolVector<uint8_t>::Read r = r_token.read();
+	DVector<uint8_t>::Read r = r_token.read();
 	return String::to_int((const char *)r.ptr(), len);
 }
 
@@ -130,7 +127,7 @@ RES ResourceFormatPBM::load(const String &p_path, const String &p_original_path,
 	if (!f)
 		_RETURN(ERR_CANT_OPEN);
 
-	PoolVector<uint8_t> token;
+	DVector<uint8_t> token;
 
 	if (!_get_token(f, saved, token)) {
 		_RETURN(ERR_PARSE_ERROR);
@@ -181,7 +178,7 @@ RES ResourceFormatPBM::load(const String &p_path, const String &p_original_path,
 			_RETURN(ERR_FILE_CORRUPT);
 		}
 
-		PoolVector<uint8_t>::Read r = token.read();
+		DVector<uint8_t>::Read r = token.read();
 
 		for (int i = 0; i < height; i++) {
 			for (int j = 0; j < width; j++) {
@@ -201,7 +198,7 @@ RES ResourceFormatPBM::load(const String &p_path, const String &p_original_path,
 			_RETURN(ERR_FILE_CORRUPT);
 		}
 
-		PoolVector<uint8_t>::Read r = token.read();
+		DVector<uint8_t>::Read r = token.read();
 		int bitwidth = width;
 		if (bitwidth % 8)
 			bitwidth += 8 - (bitwidth % 8);
@@ -230,7 +227,7 @@ bool ResourceFormatPBM::handles_type(const String &p_type) const {
 }
 String ResourceFormatPBM::get_resource_type(const String &p_path) const {
 
-	if (p_path.get_extension().to_lower() == "pbm")
+	if (p_path.extension().to_lower() == "pbm")
 		return "BitMap";
 	return "";
 }

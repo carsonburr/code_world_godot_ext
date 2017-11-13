@@ -55,7 +55,7 @@ void AnimationCache::_clear_cache() {
 
 	while (connected_nodes.size()) {
 
-		connected_nodes.front()->get()->disconnect("tree_exited", this, "_node_exit_tree");
+		connected_nodes.front()->get()->disconnect("exit_tree", this, "_node_exit_tree");
 		connected_nodes.erase(connected_nodes.front());
 	}
 	path_cache.clear();
@@ -120,7 +120,7 @@ void AnimationCache::_update_cache() {
 				StringName property = np.get_property();
 				String ps = property;
 
-				Spatial *sp = Object::cast_to<Spatial>(node);
+				Spatial *sp = node->cast_to<Spatial>();
 
 				if (!sp) {
 
@@ -131,7 +131,7 @@ void AnimationCache::_update_cache() {
 
 				if (ps != "") {
 
-					Skeleton *sk = Object::cast_to<Skeleton>(node);
+					Skeleton *sk = node->cast_to<Skeleton>();
 					if (!sk) {
 
 						path_cache.push_back(Path());
@@ -185,7 +185,7 @@ void AnimationCache::_update_cache() {
 
 		if (!connected_nodes.has(path.node)) {
 			connected_nodes.insert(path.node);
-			path.node->connect("tree_exited", this, "_node_exit_tree", Node::make_binds(path.node), CONNECT_ONESHOT);
+			path.node->connect("exit_tree", this, "_node_exit_tree", Node::make_binds(path.node), CONNECT_ONESHOT);
 		}
 	}
 
@@ -261,7 +261,7 @@ void AnimationCache::set_all(float p_time, float p_delta) {
 				Vector3 loc, scale;
 				Quat rot;
 				animation->transform_track_interpolate(i, p_time, &loc, &rot, &scale);
-				Transform tr(Basis(rot), loc);
+				Transform tr(Matrix3(rot), loc);
 				tr.basis.scale(scale);
 
 				set_track_transform(i, tr);
@@ -333,8 +333,8 @@ void AnimationCache::set_animation(const Ref<Animation> &p_animation) {
 
 void AnimationCache::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("_node_exit_tree"), &AnimationCache::_node_exit_tree);
-	ClassDB::bind_method(D_METHOD("_animation_changed"), &AnimationCache::_animation_changed);
+	ObjectTypeDB::bind_method(_MD("_node_exit_tree"), &AnimationCache::_node_exit_tree);
+	ObjectTypeDB::bind_method(_MD("_animation_changed"), &AnimationCache::_animation_changed);
 }
 
 void AnimationCache::set_root(Node *p_root) {

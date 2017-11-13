@@ -41,29 +41,26 @@
 
 class ShaderTextEditor : public CodeTextEditor {
 
-	GDCLASS(ShaderTextEditor, CodeTextEditor);
+	OBJ_TYPE(ShaderTextEditor, CodeTextEditor);
 
 	Ref<Shader> shader;
-
-	void _check_shader_mode();
+	ShaderLanguage::ShaderType type;
 
 protected:
 	static void _bind_methods();
 	virtual void _load_theme_settings();
 
-	virtual void _code_complete_script(const String &p_code, List<String> *r_options);
-
 public:
 	virtual void _validate_script();
 
 	Ref<Shader> get_edited_shader() const;
-	void set_edited_shader(const Ref<Shader> &p_shader);
+	void set_edited_shader(const Ref<Shader> &p_shader, ShaderLanguage::ShaderType p_type);
 	ShaderTextEditor();
 };
 
-class ShaderEditor : public VBoxContainer {
+class ShaderEditor : public Control {
 
-	GDCLASS(ShaderEditor, VBoxContainer);
+	OBJ_TYPE(ShaderEditor, Control);
 
 	enum {
 
@@ -77,6 +74,7 @@ class ShaderEditor : public VBoxContainer {
 		SEARCH_FIND_NEXT,
 		SEARCH_FIND_PREV,
 		SEARCH_REPLACE,
+		//SEARCH_LOCATE_SYMBOL,
 		SEARCH_GOTO_LINE,
 
 	};
@@ -86,14 +84,22 @@ class ShaderEditor : public VBoxContainer {
 	MenuButton *settings_menu;
 	uint64_t idle;
 
+	TabContainer *tab_container;
 	GotoLineDialog *goto_line_dialog;
 	ConfirmationDialog *erase_tab_confirm;
 
-	ShaderTextEditor *shader_editor;
+	TextureButton *close;
 
-	void _menu_option(int p_option);
+	ShaderTextEditor *vertex_editor;
+	ShaderTextEditor *fragment_editor;
+	ShaderTextEditor *light_editor;
+
+	void _tab_changed(int p_which);
+	void _menu_option(int p_optin);
 	void _params_changed();
 	mutable Ref<Shader> shader;
+
+	void _close_callback();
 
 	void _editor_settings_changed();
 
@@ -107,6 +113,10 @@ public:
 	void ensure_select_current();
 	void edit(const Ref<Shader> &p_shader);
 
+	Dictionary get_state() const;
+	void set_state(const Dictionary &p_state);
+	void clear();
+
 	virtual Size2 get_minimum_size() const { return Size2(0, 200); }
 	void save_external_data();
 
@@ -115,26 +125,28 @@ public:
 
 class ShaderEditorPlugin : public EditorPlugin {
 
-	GDCLASS(ShaderEditorPlugin, EditorPlugin);
+	OBJ_TYPE(ShaderEditorPlugin, EditorPlugin);
 
 	bool _2d;
 	ShaderEditor *shader_editor;
 	EditorNode *editor;
-	Button *button;
 
 public:
 	virtual String get_name() const { return "Shader"; }
 	bool has_main_screen() const { return false; }
-	virtual void edit(Object *p_object);
-	virtual bool handles(Object *p_object) const;
+	virtual void edit(Object *p_node);
+	virtual bool handles(Object *p_node) const;
 	virtual void make_visible(bool p_visible);
 	virtual void selected_notify();
+
+	Dictionary get_state() const;
+	virtual void set_state(const Dictionary &p_state);
+	virtual void clear();
 
 	virtual void save_external_data();
 	virtual void apply_changes();
 
-	ShaderEditorPlugin(EditorNode *p_node);
+	ShaderEditorPlugin(EditorNode *p_node, bool p_2d);
 	~ShaderEditorPlugin();
 };
-
 #endif

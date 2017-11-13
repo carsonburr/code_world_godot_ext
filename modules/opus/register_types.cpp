@@ -37,7 +37,7 @@ void register_opus_types() {
 
 	opus_stream_loader = memnew(ResourceFormatLoaderAudioStreamOpus);
 	ResourceLoader::add_resource_format_loader(opus_stream_loader);
-	ClassDB::register_class<AudioStreamOpus>();
+	ObjectTypeDB::register_type<AudioStreamOpus>();
 }
 
 void unregister_opus_types() {

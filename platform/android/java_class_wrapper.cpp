@@ -112,7 +112,7 @@ bool JavaClass::_call_method(JavaObject *p_instance, const StringName &p_method,
 
 						Ref<Reference> ref = *p_args[i];
 						if (!ref.is_null()) {
-							if (Object::cast_to<JavaObject>(ref.ptr())) {
+							if (ref->cast_to<JavaObject>()) {
 
 								Ref<JavaObject> jo = ref;
 								//could be faster
@@ -190,7 +190,7 @@ bool JavaClass::_call_method(JavaObject *p_instance, const StringName &p_method,
 				argv[i].i = *p_args[i];
 			} break;
 			case ARG_TYPE_LONG: {
-				argv[i].j = (int64_t)*p_args[i];
+				argv[i].j = *p_args[i];
 			} break;
 			case ARG_TYPE_FLOAT: {
 				argv[i].f = *p_args[i];
@@ -350,7 +350,7 @@ bool JavaClass::_call_method(JavaObject *p_instance, const StringName &p_method,
 				Array arr = *p_args[i];
 				jlongArray a = env->NewLongArray(arr.size());
 				for (int j = 0; j < arr.size(); j++) {
-					jlong val = (int64_t)arr[j];
+					jlong val = arr[j];
 					env->SetLongArrayRegion(a, j, 1, &val);
 				}
 				argv[i].l = a;
@@ -460,9 +460,9 @@ bool JavaClass::_call_method(JavaObject *p_instance, const StringName &p_method,
 		case ARG_TYPE_LONG: {
 
 			if (method->_static) {
-				ret = (int64_t)env->CallStaticLongMethodA(_class, method->method, argv);
+				ret = env->CallStaticLongMethodA(_class, method->method, argv);
 			} else {
-				ret = (int64_t)env->CallLongMethodA(p_instance->instance, method->method, argv);
+				ret = env->CallLongMethodA(p_instance->instance, method->method, argv);
 			}
 
 		} break;
@@ -546,7 +546,7 @@ JavaObject::~JavaObject() {
 
 void JavaClassWrapper::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("wrap", "name"), &JavaClassWrapper::wrap);
+	ObjectTypeDB::bind_method(_MD("wrap:JavaClass", "name"), &JavaClassWrapper::wrap);
 }
 
 bool JavaClassWrapper::_get_type_sig(JNIEnv *env, jobject obj, uint32_t &sig, String &strsig) {
@@ -680,7 +680,7 @@ bool JavaClass::_convert_object_to_variant(JNIEnv *env, jobject obj, Variant &va
 		} break;
 		case ARG_TYPE_LONG | ARG_NUMBER_CLASS_BIT: {
 
-			var = (int64_t)env->CallLongMethod(obj, JavaClassWrapper::singleton->Long_longValue);
+			var = env->CallLongMethod(obj, JavaClassWrapper::singleton->Long_longValue);
 			return true;
 
 		} break;
@@ -802,7 +802,7 @@ bool JavaClass::_convert_object_to_variant(JNIEnv *env, jobject obj, Variant &va
 
 				jlong val;
 				env->GetLongArrayRegion((jlongArray)arr, 0, 1, &val);
-				ret.push_back((int64_t)val);
+				ret.push_back(val);
 			}
 
 			var = ret;
@@ -1196,7 +1196,7 @@ Ref<JavaClass> JavaClassWrapper::wrap(const String &p_class) {
 		env->DeleteLocalRef(return_type);
 
 		//args[i] = _jobject_to_variant(env, obj);
-		//print_line("\targ"+itos(i)+": "+Variant::get_type_name(args[i].get_type()));
+		//		print_line("\targ"+itos(i)+": "+Variant::get_type_name(args[i].get_type()));
 	};
 
 	env->DeleteLocalRef(methods);

@@ -31,16 +31,16 @@
 #define SHAPE_H
 
 #include "resource.h"
-class ArrayMesh;
+class Mesh;
 
 class Shape : public Resource {
 
-	GDCLASS(Shape, Resource);
+	OBJ_TYPE(Shape, Resource);
 	OBJ_SAVE_TYPE(Shape);
-	RES_BASE_EXTENSION("shape");
+	RES_BASE_EXTENSION("shp");
 	RID shape;
 
-	Ref<ArrayMesh> debug_mesh_cache;
+	Ref<Mesh> debug_mesh_cache;
 
 protected:
 	_FORCE_INLINE_ RID get_shape() const { return shape; }
@@ -50,9 +50,9 @@ protected:
 public:
 	virtual RID get_rid() const { return shape; }
 
-	Ref<ArrayMesh> get_debug_mesh();
+	Ref<Mesh> get_debug_mesh();
 
-	void add_vertices_to_array(PoolVector<Vector3> &array, const Transform &p_xform);
+	void add_vertices_to_array(DVector<Vector3> &array, const Transform &p_xform);
 
 	Shape();
 	~Shape();

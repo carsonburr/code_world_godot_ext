@@ -35,7 +35,7 @@
 
 class Camera2D : public Node2D {
 
-	GDCLASS(Camera2D, Node2D);
+	OBJ_TYPE(Camera2D, Node2D);
 
 public:
 	enum AnchorMode {
@@ -63,7 +63,6 @@ protected:
 	float smoothing;
 	bool smoothing_enabled;
 	int limit[4];
-	bool limit_smoothing_enabled;
 	float drag_margin[4];
 
 	bool h_drag_enabled;
@@ -79,12 +78,8 @@ protected:
 
 	void _set_old_smoothing(float p_enable);
 
-	bool screen_drawing_enabled;
-	bool limit_drawing_enabled;
-	bool margin_drawing_enabled;
-
 protected:
-	virtual Transform2D get_camera_transform();
+	virtual Matrix32 get_camera_transform();
 	void _notification(int p_what);
 	static void _bind_methods();
 
@@ -100,9 +95,6 @@ public:
 
 	void set_limit(Margin p_margin, int p_limit);
 	int get_limit(Margin p_margin) const;
-
-	void set_limit_smoothing_enabled(bool enable);
-	bool is_limit_smoothing_enabled() const;
 
 	void set_h_drag_enabled(bool p_enabled);
 	bool is_h_drag_enabled() const;
@@ -137,19 +129,10 @@ public:
 	void set_custom_viewport(Node *p_viewport);
 	Node *get_custom_viewport() const;
 
-	Vector2 get_camera_position() const;
+	Vector2 get_camera_pos() const;
 	void force_update_scroll();
 	void reset_smoothing();
 	void align();
-
-	void set_screen_drawing_enabled(bool enable);
-	bool is_screen_drawing_enabled() const;
-
-	void set_limit_drawing_enabled(bool enable);
-	bool is_limit_drawing_enabled() const;
-
-	void set_margin_drawing_enabled(bool enable);
-	bool is_margin_drawing_enabled() const;
 
 	Camera2D();
 };

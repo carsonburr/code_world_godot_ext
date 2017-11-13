@@ -32,7 +32,6 @@
 #ifndef OS_IPHONE_H
 #define OS_IPHONE_H
 
-#include "drivers/coreaudio/audio_driver_coreaudio.h"
 #include "drivers/unix/os_unix.h"
 #include "os/input.h"
 
@@ -40,12 +39,18 @@
 #include "icloud.h"
 #include "in_app_store.h"
 #include "main/input_default.h"
-#include "servers/audio_server.h"
+#include "servers/audio/audio_server_sw.h"
+#include "servers/audio/sample_manager_sw.h"
 #include "servers/physics/physics_server_sw.h"
 #include "servers/physics_2d/physics_2d_server_sw.h"
 #include "servers/physics_2d/physics_2d_server_wrap_mt.h"
+#include "servers/spatial_sound/spatial_sound_server_sw.h"
+#include "servers/spatial_sound_2d/spatial_sound_2d_server_sw.h"
 #include "servers/visual/rasterizer.h"
 #include "servers/visual_server.h"
+
+class AudioDriverIphone;
+class RasterizerGLES2;
 
 class OSIPhone : public OS_Unix {
 
@@ -65,11 +70,19 @@ private:
 
 	uint8_t supported_orientations;
 
+	Rasterizer *rasterizer;
+
+	RasterizerGLES2 *rasterizer_gles22;
+
 	VisualServer *visual_server;
 	PhysicsServer *physics_server;
 	Physics2DServer *physics_2d_server;
 
-	AudioDriverCoreAudio audio_driver;
+	AudioServerSW *audio_server;
+	SampleManagerMallocSW *sample_manager;
+	SpatialSoundServerSW *spatial_sound_server;
+	SpatialSound2DServerSW *spatial_sound_2d_server;
+	AudioDriverIphone *audio_driver;
 
 #ifdef GAME_CENTER_ENABLED
 	GameCenter *game_center;
@@ -90,7 +103,6 @@ private:
 
 	virtual VideoMode get_default_video_mode() const;
 
-	virtual void initialize_logger();
 	virtual void initialize_core();
 	virtual void initialize(const VideoMode &p_desired, int p_video_driver, int p_audio_driver);
 
@@ -114,17 +126,16 @@ private:
 
 	Vector3 last_accel;
 
-	Ref<InputEvent> event_queue[MAX_EVENTS];
+	InputEvent event_queue[MAX_EVENTS];
 	int event_count;
-	void queue_event(const Ref<InputEvent> &p_event);
+	int last_event_id;
+	void queue_event(const InputEvent &p_event);
 
 	String data_dir;
 	String unique_ID;
 	String locale_code;
 
 	InputDefault *input;
-
-	int virtual_keyboard_height;
 
 public:
 	bool iterate();
@@ -135,7 +146,6 @@ public:
 	void mouse_move(int p_idx, int p_prev_x, int p_prev_y, int p_x, int p_y, bool p_use_as_mouse);
 	void touches_cancelled();
 	void key(uint32_t p_key, bool p_pressed);
-	void set_virtual_keyboard_height(int p_height);
 
 	int set_base_framebuffer(int p_fb);
 
@@ -154,7 +164,7 @@ public:
 	virtual void set_mouse_show(bool p_show);
 	virtual void set_mouse_grab(bool p_grab);
 	virtual bool is_mouse_grab_enabled() const;
-	virtual Point2 get_mouse_position() const;
+	virtual Point2 get_mouse_pos() const;
 	virtual int get_mouse_button_state() const;
 	virtual void set_window_title(const String &p_title);
 
@@ -171,7 +181,6 @@ public:
 	virtual bool has_virtual_keyboard() const;
 	virtual void show_virtual_keyboard(const String &p_existing_text, const Rect2 &p_screen_rect = Rect2());
 	virtual void hide_virtual_keyboard();
-	virtual int get_virtual_keyboard_height() const;
 
 	virtual void set_cursor_shape(CursorShape p_shape);
 
@@ -190,8 +199,8 @@ public:
 	void set_locale(String p_locale);
 	String get_locale() const;
 
-	void set_unique_id(String p_ID);
-	String get_unique_id() const;
+	void set_unique_ID(String p_ID);
+	String get_unique_ID() const;
 
 	virtual Error native_video_play(String p_path, float p_volume, String p_audio_track, String p_subtitle_track);
 	virtual bool native_video_is_playing() const;
@@ -200,8 +209,7 @@ public:
 	virtual void native_video_focus_out();
 	virtual void native_video_stop();
 
-	virtual bool _check_internal_feature_support(const String &p_feature);
-	OSIPhone(int width, int height, String p_data_dir);
+	OSIPhone(int width, int height);
 	~OSIPhone();
 };
 

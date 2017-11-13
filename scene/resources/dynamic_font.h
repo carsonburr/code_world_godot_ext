@@ -43,7 +43,7 @@ class DynamicFont;
 
 class DynamicFontData : public Resource {
 
-	GDCLASS(DynamicFontData, Resource);
+	OBJ_TYPE(DynamicFontData, Resource);
 
 public:
 	struct CacheID {
@@ -72,7 +72,7 @@ private:
 
 	friend class DynamicFont;
 
-	Ref<DynamicFontAtSize> _get_dynamic_font_at_size(CacheID p_cache_id);
+	Ref<DynamicFontAtSize> _get_dynamic_font_at_size(CacheID p_cache);
 
 protected:
 	static void _bind_methods();
@@ -89,7 +89,7 @@ public:
 
 class DynamicFontAtSize : public Reference {
 
-	GDCLASS(DynamicFontAtSize, Reference)
+	OBJ_TYPE(DynamicFontAtSize, Reference)
 
 	_THREAD_SAFE_CLASS_
 
@@ -108,7 +108,7 @@ class DynamicFontAtSize : public Reference {
 
 	struct CharTexture {
 
-		PoolVector<uint8_t> imgdata;
+		DVector<uint8_t> imgdata;
 		int texture_size;
 		Vector<int> offsets;
 		Ref<ImageTexture> texture;
@@ -166,7 +166,7 @@ public:
 
 class DynamicFont : public Font {
 
-	GDCLASS(DynamicFont, Font);
+	OBJ_TYPE(DynamicFont, Font);
 
 public:
 	enum SpacingType {
@@ -235,8 +235,6 @@ public:
 	DynamicFont();
 	~DynamicFont();
 };
-
-VARIANT_ENUM_CAST(DynamicFont::SpacingType);
 
 /////////////
 

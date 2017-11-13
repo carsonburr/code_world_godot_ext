@@ -30,13 +30,12 @@
 #ifndef AUDIO_DRIVER_ANDROID_H
 #define AUDIO_DRIVER_ANDROID_H
 
-#include "servers/audio_server.h"
-
+#include "servers/audio/audio_server_sw.h"
 #ifndef ANDROID_NATIVE_ACTIVITY
 
 #include "java_glue.h"
 
-class AudioDriverAndroid : public AudioDriver {
+class AudioDriverAndroid : public AudioDriverSW {
 
 	static Mutex *mutex;
 	static AudioDriverAndroid *s_ad;
@@ -64,14 +63,14 @@ public:
 	virtual Error init();
 	virtual void start();
 	virtual int get_mix_rate() const;
-	virtual SpeakerMode get_speaker_mode() const;
+	virtual OutputFormat get_output_format() const;
 	virtual void lock();
 	virtual void unlock();
 	virtual void finish();
 
 	virtual void set_pause(bool p_pause);
 
-	static void setup(jobject p_io);
+	static void setup(jobject act);
 	static void thread_func(JNIEnv *env);
 
 	AudioDriverAndroid();

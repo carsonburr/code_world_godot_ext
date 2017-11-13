@@ -1,32 +1,3 @@
-/*************************************************************************/
-/*  dynamic_font_stb.h                                                   */
-/*************************************************************************/
-/*                       This file is part of:                           */
-/*                           GODOT ENGINE                                */
-/*                      https://godotengine.org                          */
-/*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
-/*                                                                       */
-/* Permission is hereby granted, free of charge, to any person obtaining */
-/* a copy of this software and associated documentation files (the       */
-/* "Software"), to deal in the Software without restriction, including   */
-/* without limitation the rights to use, copy, modify, merge, publish,   */
-/* distribute, sublicense, and/or sell copies of the Software, and to    */
-/* permit persons to whom the Software is furnished to do so, subject to */
-/* the following conditions:                                             */
-/*                                                                       */
-/* The above copyright notice and this permission notice shall be        */
-/* included in all copies or substantial portions of the Software.       */
-/*                                                                       */
-/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,       */
-/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF    */
-/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.*/
-/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY  */
-/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,  */
-/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
-/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
-/*************************************************************************/
 #ifndef DYNAMICFONT_STB_H
 #define DYNAMICFONT_STB_H
 
@@ -42,12 +13,12 @@ class DynamicFont;
 
 class DynamicFontData : public Resource {
 
-	GDCLASS(DynamicFontData, Resource);
+	OBJ_TYPE(DynamicFontData, Resource);
 
 	bool valid;
 
-	PoolVector<uint8_t> font_data;
-	PoolVector<uint8_t>::Read fr;
+	DVector<uint8_t> font_data;
+	DVector<uint8_t>::Read fr;
 	const uint8_t *last_data_ptr;
 
 	struct KerningPairKey {
@@ -82,20 +53,20 @@ class DynamicFontData : public Resource {
 	Ref<DynamicFontAtSize> _get_dynamic_font_at_size(int p_size);
 
 public:
-	void set_font_data(const PoolVector<uint8_t> &p_font);
+	void set_font_data(const DVector<uint8_t> &p_font);
 	DynamicFontData();
 	~DynamicFontData();
 };
 
 class DynamicFontAtSize : public Reference {
 
-	GDCLASS(DynamicFontAtSize, Reference);
+	OBJ_TYPE(DynamicFontAtSize, Reference);
 
 	int rect_margin;
 
 	struct CharTexture {
 
-		PoolVector<uint8_t> imgdata;
+		DVector<uint8_t> imgdata;
 		int texture_size;
 		Vector<int> offsets;
 		Ref<ImageTexture> texture;
@@ -145,7 +116,7 @@ public:
 
 class DynamicFont : public Font {
 
-	GDCLASS(DynamicFont, Font);
+	OBJ_TYPE(DynamicFont, Font);
 
 	Ref<DynamicFontData> data;
 	Ref<DynamicFontAtSize> data_at_size;

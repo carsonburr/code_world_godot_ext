@@ -31,11 +31,10 @@
 
 #ifdef UNIX_ENABLED
 
-#include "servers/visual_server.h"
-
 #include "core/os/thread_dummy.h"
+#include "memory_pool_static_malloc.h"
 #include "mutex_posix.h"
-#include "rw_lock_posix.h"
+#include "os/memory_pool_dynamic_static.h"
 #include "semaphore_posix.h"
 #include "thread_posix.h"
 
@@ -53,9 +52,8 @@
 #if defined(__FreeBSD__) || defined(__OpenBSD__)
 #include <sys/param.h>
 #endif
-#include "project_settings.h"
+#include "globals.h"
 #include <assert.h>
-#include <dlfcn.h>
 #include <errno.h>
 #include <poll.h>
 #include <signal.h>
@@ -64,7 +62,35 @@
 #include <string.h>
 #include <sys/time.h>
 #include <sys/wait.h>
-#include <unistd.h>
+
+extern bool _print_error_enabled;
+
+void OS_Unix::print_error(const char *p_function, const char *p_file, int p_line, const char *p_code, const char *p_rationale, ErrorType p_type) {
+
+	if (!_print_error_enabled)
+		return;
+
+	const char *err_details;
+	if (p_rationale && p_rationale[0])
+		err_details = p_rationale;
+	else
+		err_details = p_code;
+
+	switch (p_type) {
+		case ERR_ERROR:
+			print("\E[1;31mERROR: %s: \E[0m\E[1m%s\n", p_function, err_details);
+			print("\E[0;31m   At: %s:%i.\E[0m\n", p_file, p_line);
+			break;
+		case ERR_WARNING:
+			print("\E[1;33mWARNING: %s: \E[0m\E[1m%s\n", p_function, err_details);
+			print("\E[0;33m   At: %s:%i.\E[0m\n", p_file, p_line);
+			break;
+		case ERR_SCRIPT:
+			print("\E[1;35mSCRIPT ERROR: %s: \E[0m\E[1m%s\n", p_function, err_details);
+			print("\E[0;35m   At: %s:%i.\E[0m\n", p_file, p_line);
+			break;
+	}
+}
 
 void OS_Unix::debug_break() {
 
@@ -85,6 +111,9 @@ int OS_Unix::unix_initialize_audio(int p_audio_driver) {
 	return 0;
 }
 
+static MemoryPoolStaticMalloc *mempool_static = NULL;
+static MemoryPoolDynamicStatic *mempool_dynamic = NULL;
+
 // Very simple signal handler to reap processes where ::execute was called with
 // !p_blocking
 void handle_sigchld(int sig) {
@@ -104,7 +133,6 @@ void OS_Unix::initialize_core() {
 	ThreadPosix::make_default();
 	SemaphorePosix::make_default();
 	MutexPosix::make_default();
-	RWLockPosix::make_default();
 #endif
 	FileAccess::make_default<FileAccessUnix>(FileAccess::ACCESS_RESOURCES);
 	FileAccess::make_default<FileAccessUnix>(FileAccess::ACCESS_USERDATA);
@@ -120,6 +148,8 @@ void OS_Unix::initialize_core() {
 	PacketPeerUDPPosix::make_default();
 	IP_Unix::make_default();
 #endif
+	mempool_static = new MemoryPoolStaticMalloc;
+	mempool_dynamic = memnew(MemoryPoolDynamicStatic);
 
 	ticks_start = 0;
 	ticks_start = get_ticks_usec();
@@ -133,16 +163,33 @@ void OS_Unix::initialize_core() {
 	}
 }
 
-void OS_Unix::initialize_logger() {
-	Vector<Logger *> loggers;
-	loggers.push_back(memnew(UnixTerminalLogger));
-	loggers.push_back(memnew(RotatedFileLogger("user://logs/log.txt")));
-	_set_logger(memnew(CompositeLogger(loggers)));
-}
-
 void OS_Unix::finalize_core() {
+
+	if (mempool_dynamic)
+		memdelete(mempool_dynamic);
+	delete mempool_static;
 }
 
+void OS_Unix::vprint(const char *p_format, va_list p_list, bool p_stder) {
+
+	if (p_stder) {
+
+		vfprintf(stderr, p_format, p_list);
+		fflush(stderr);
+	} else {
+
+		vprintf(p_format, p_list);
+		fflush(stdout);
+	}
+}
+
+void OS_Unix::print(const char *p_format, ...) {
+
+	va_list argp;
+	va_start(argp, p_format);
+	vprintf(p_format, argp);
+	va_end(argp);
+}
 void OS_Unix::alert(const String &p_alert, const String &p_title) {
 
 	fprintf(stderr, "ERROR: %s\n", p_alert.utf8().get_data());
@@ -270,9 +317,7 @@ OS::TimeZoneInfo OS_Unix::get_time_zone_info() const {
 
 void OS_Unix::delay_usec(uint32_t p_usec) const {
 
-	struct timespec rem = { p_usec / 1000000, (p_usec % 1000000) * 1000 };
-	while (nanosleep(&rem, &rem) == EINTR) {
-	}
+	usleep(p_usec);
 }
 uint64_t OS_Unix::get_ticks_usec() const {
 
@@ -343,7 +388,7 @@ Error OS_Unix::execute(const String &p_path, const List<String> &p_arguments, bo
 			execvp(getprogname(), &args[0]);
 		}
 #else
-		execvp(p_path.utf8().get_data(), &args[0]);
+		execv(p_path.utf8().get_data(), &args[0]);
 #endif
 		// still alive? something failed..
 		fprintf(stderr, "**ERROR** OS_Unix::execute - Could not create child process while executing: %s\n", p_path.utf8().get_data());
@@ -353,7 +398,7 @@ Error OS_Unix::execute(const String &p_path, const List<String> &p_arguments, bo
 	if (p_blocking) {
 
 		int status;
-		waitpid(pid, &status, 0);
+		pid_t rpid = waitpid(pid, &status, 0);
 		if (r_exitcode)
 			*r_exitcode = WEXITSTATUS(status);
 	} else {
@@ -376,7 +421,7 @@ Error OS_Unix::kill(const ProcessID &p_pid) {
 	return ret ? ERR_INVALID_PARAMETER : OK;
 }
 
-int OS_Unix::get_process_id() const {
+int OS_Unix::get_process_ID() const {
 
 	return getpid();
 };
@@ -396,40 +441,6 @@ String OS_Unix::get_locale() const {
 	if (tp != -1)
 		locale = locale.substr(0, tp);
 	return locale;
-}
-
-Error OS_Unix::open_dynamic_library(const String p_path, void *&p_library_handle) {
-	p_library_handle = dlopen(p_path.utf8().get_data(), RTLD_NOW);
-	if (!p_library_handle) {
-		ERR_EXPLAIN("Can't open dynamic library: " + p_path + ". Error: " + dlerror());
-		ERR_FAIL_V(ERR_CANT_OPEN);
-	}
-	return OK;
-}
-
-Error OS_Unix::close_dynamic_library(void *p_library_handle) {
-	if (dlclose(p_library_handle)) {
-		return FAILED;
-	}
-	return OK;
-}
-
-Error OS_Unix::get_dynamic_library_symbol_handle(void *p_library_handle, const String p_name, void *&p_symbol_handle, bool p_optional) {
-	const char *error;
-	dlerror(); // Clear existing errors
-
-	p_symbol_handle = dlsym(p_library_handle, p_name.utf8().get_data());
-
-	error = dlerror();
-	if (error != NULL) {
-		if (!p_optional) {
-			ERR_EXPLAIN("Can't resolve symbol " + p_name + ". Error: " + error);
-			ERR_FAIL_V(ERR_CANT_RESOLVE);
-		} else {
-			return ERR_CANT_RESOLVE;
-		}
-	}
-	return OK;
 }
 
 Error OS_Unix::set_cwd(const String &p_cwd) {
@@ -459,7 +470,7 @@ String OS_Unix::get_data_dir() const {
 
 		if (has_environment("HOME")) {
 
-			bool use_godot = ProjectSettings::get_singleton()->get("application/config/use_shared_user_dir");
+			bool use_godot = Globals::get_singleton()->get("application/use_shared_user_dir");
 			if (use_godot)
 				return get_environment("HOME") + "/.godot/app_userdata/" + an;
 			else
@@ -467,7 +478,7 @@ String OS_Unix::get_data_dir() const {
 		}
 	}
 
-	return ProjectSettings::get_singleton()->get_resource_path();
+	return Globals::get_singleton()->get_resource_path();
 }
 
 String OS_Unix::get_installed_templates_path() const {
@@ -517,39 +528,5 @@ String OS_Unix::get_executable_path() const {
 	return OS::get_executable_path();
 #endif
 }
-
-void UnixTerminalLogger::log_error(const char *p_function, const char *p_file, int p_line, const char *p_code, const char *p_rationale, ErrorType p_type) {
-	if (!should_log(true)) {
-		return;
-	}
-
-	const char *err_details;
-	if (p_rationale && p_rationale[0])
-		err_details = p_rationale;
-	else
-		err_details = p_code;
-
-	switch (p_type) {
-		case ERR_WARNING:
-			logf_error("\E[1;33mWARNING: %s: \E[0m\E[1m%s\n", p_function, err_details);
-			logf_error("\E[0;33m   At: %s:%i.\E[0m\n", p_file, p_line);
-			break;
-		case ERR_SCRIPT:
-			logf_error("\E[1;35mSCRIPT ERROR: %s: \E[0m\E[1m%s\n", p_function, err_details);
-			logf_error("\E[0;35m   At: %s:%i.\E[0m\n", p_file, p_line);
-			break;
-		case ERR_SHADER:
-			logf_error("\E[1;36mSHADER ERROR: %s: \E[0m\E[1m%s\n", p_function, err_details);
-			logf_error("\E[0;36m   At: %s:%i.\E[0m\n", p_file, p_line);
-			break;
-		case ERR_ERROR:
-		default:
-			logf_error("\E[1;31mERROR: %s: \E[0m\E[1m%s\n", p_function, err_details);
-			logf_error("\E[0;31m   At: %s:%i.\E[0m\n", p_file, p_line);
-			break;
-	}
-}
-
-UnixTerminalLogger::~UnixTerminalLogger() {}
 
 #endif

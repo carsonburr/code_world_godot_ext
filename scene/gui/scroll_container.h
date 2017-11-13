@@ -36,7 +36,7 @@
 
 class ScrollContainer : public Container {
 
-	GDCLASS(ScrollContainer, Container);
+	OBJ_TYPE(ScrollContainer, Container);
 
 	HScrollBar *h_scroll;
 	VScrollBar *v_scroll;
@@ -64,13 +64,13 @@ class ScrollContainer : public Container {
 protected:
 	Size2 get_minimum_size() const;
 
-	void _gui_input(const Ref<InputEvent> &p_gui_input);
+	void _input_event(const InputEvent &p_input_event);
 	void _notification(int p_what);
 
 	void _scroll_moved(float);
 	static void _bind_methods();
 
-	void _update_scrollbar_position();
+	void _update_scrollbar_pos();
 
 public:
 	int get_v_scroll() const;
@@ -86,9 +86,6 @@ public:
 	bool is_v_scroll_enabled() const;
 
 	virtual bool clips_input() const;
-
-	virtual String get_configuration_warning() const;
-
 	ScrollContainer();
 };
 

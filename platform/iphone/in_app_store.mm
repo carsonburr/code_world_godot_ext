@@ -28,7 +28,6 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 #ifdef STOREKIT_ENABLED
-
 #include "in_app_store.h"
 
 #ifdef MODULE_FUSEBOXX_ENABLED
@@ -65,13 +64,13 @@ NSMutableDictionary *pending_transactions = [NSMutableDictionary dictionary];
 InAppStore *InAppStore::instance = NULL;
 
 void InAppStore::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("request_product_info"), &InAppStore::request_product_info);
-	ClassDB::bind_method(D_METHOD("purchase"), &InAppStore::purchase);
+	ObjectTypeDB::bind_method(_MD("request_product_info"), &InAppStore::request_product_info);
+	ObjectTypeDB::bind_method(_MD("purchase"), &InAppStore::purchase);
 
-	ClassDB::bind_method(D_METHOD("get_pending_event_count"), &InAppStore::get_pending_event_count);
-	ClassDB::bind_method(D_METHOD("pop_pending_event"), &InAppStore::pop_pending_event);
-	ClassDB::bind_method(D_METHOD("finish_transaction"), &InAppStore::finish_transaction);
-	ClassDB::bind_method(D_METHOD("set_auto_finish_transaction"), &InAppStore::set_auto_finish_transaction);
+	ObjectTypeDB::bind_method(_MD("get_pending_event_count"), &InAppStore::get_pending_event_count);
+	ObjectTypeDB::bind_method(_MD("pop_pending_event"), &InAppStore::pop_pending_event);
+	ObjectTypeDB::bind_method(_MD("finish_transaction"), &InAppStore::finish_transaction);
+	ObjectTypeDB::bind_method(_MD("set_auto_finish_transaction"), &InAppStore::set_auto_finish_transaction);
 };
 
 @interface ProductsDelegate : NSObject <SKProductsRequestDelegate> {
@@ -87,11 +86,11 @@ void InAppStore::_bind_methods() {
 	Dictionary ret;
 	ret["type"] = "product_info";
 	ret["result"] = "ok";
-	PoolStringArray titles;
-	PoolStringArray descriptions;
-	PoolRealArray prices;
-	PoolStringArray ids;
-	PoolStringArray localized_prices;
+	StringArray titles;
+	StringArray descriptions;
+	RealArray prices;
+	StringArray ids;
+	StringArray localized_prices;
 
 	for (int i = 0; i < [products count]; i++) {
 
@@ -112,7 +111,7 @@ void InAppStore::_bind_methods() {
 	ret["ids"] = ids;
 	ret["localized_prices"] = localized_prices;
 
-	PoolStringArray invalid_ids;
+	StringArray invalid_ids;
 
 	for (NSString *ipid in response.invalidProductIdentifiers) {
 
@@ -132,7 +131,7 @@ Error InAppStore::request_product_info(Variant p_params) {
 	Dictionary params = p_params;
 	ERR_FAIL_COND_V(!params.has("product_ids"), ERR_INVALID_PARAMETER);
 
-	PoolStringArray pids = params["product_ids"];
+	StringArray pids = params["product_ids"];
 	printf("************ request product info! %i\n", pids.size());
 
 	NSMutableArray *array = [[[NSMutableArray alloc] initWithCapacity:pids.size()] autorelease];
@@ -235,15 +234,16 @@ Error InAppStore::request_product_info(Variant p_params) {
 				ret["product_id"] = pid;
 				InAppStore::get_singleton()->_post_event(ret);
 				[[SKPaymentQueue defaultQueue] finishTransaction:transaction];
-			} break;
+			}; break;
 			case SKPaymentTransactionStateRestored: {
 				printf("status transaction restored!\n");
 				String pid = String::utf8([transaction.originalTransaction.payment.productIdentifier UTF8String]);
 				InAppStore::get_singleton()->_record_purchase(pid);
 				[[SKPaymentQueue defaultQueue] finishTransaction:transaction];
-			} break;
+			}; break;
 			default: {
 				printf("status default %i!\n", (int)transaction.transactionState);
+
 			}; break;
 		};
 	};
@@ -323,6 +323,8 @@ void InAppStore::set_auto_finish_transaction(bool b) {
 	auto_finish_transactions = b;
 }
 
-InAppStore::~InAppStore(){};
+InAppStore::~InAppStore(){
+
+};
 
 #endif

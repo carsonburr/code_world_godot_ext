@@ -28,19 +28,18 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 #include "editor_file_server.h"
-
 #include "../editor_settings.h"
 #include "io/marshalls.h"
 #include "io/marshalls.h"
 
 //#define DEBUG_PRINT(m_p) print_line(m_p)
-#define DEBUG_TIME(m_what) printf("MS: %s - %lu\n", m_what, OS::get_singleton()->get_ticks_usec());
+#define DEBUG_TIME(m_what) printf("MS: %s - %lli\n", m_what, OS::get_singleton()->get_ticks_usec());
 
 //#define DEBUG_TIME(m_what)
 
 void EditorFileServer::_close_client(ClientData *cd) {
 
-	cd->connection->disconnect_from_host();
+	cd->connection->disconnect();
 	cd->efs->wait_mutex->lock();
 	cd->efs->to_wait.insert(cd->thread);
 	cd->efs->wait_mutex->unlock();
@@ -313,8 +312,8 @@ void EditorFileServer::_thread_start(void *s) {
 void EditorFileServer::start() {
 
 	stop();
-	port = EDITOR_DEF("filesystem/file_server/port", 6010);
-	password = EDITOR_DEF("filesystem/file_server/password", "");
+	port = EDITOR_DEF("file_server/port", 6010);
+	password = EDITOR_DEF("file_server/password", "");
 	cmd = CMD_ACTIVATE;
 }
 
@@ -337,8 +336,8 @@ EditorFileServer::EditorFileServer() {
 	cmd = CMD_NONE;
 	thread = Thread::create(_thread_start, this);
 
-	EDITOR_DEF("filesystem/file_server/port", 6010);
-	EDITOR_DEF("filesystem/file_server/password", "");
+	EDITOR_DEF("file_server/port", 6010);
+	EDITOR_DEF("file_server/password", "");
 }
 
 EditorFileServer::~EditorFileServer() {

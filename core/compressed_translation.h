@@ -34,7 +34,7 @@
 
 class PHashTranslation : public Translation {
 
-	GDCLASS(PHashTranslation, Translation);
+	OBJ_TYPE(PHashTranslation, Translation);
 
 	//this translation uses a sort of modified perfect hash algorithm
 	//it requieres hashing strings twice and then does a binary search,
@@ -42,9 +42,9 @@ class PHashTranslation : public Translation {
 	//of catching untranslated strings
 
 	//load/store friendly types
-	PoolVector<int> hash_table;
-	PoolVector<int> bucket_table;
-	PoolVector<uint8_t> strings;
+	DVector<int> hash_table;
+	DVector<int> bucket_table;
+	DVector<uint8_t> strings;
 
 	struct Bucket {
 

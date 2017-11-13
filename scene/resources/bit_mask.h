@@ -30,13 +30,12 @@
 #ifndef BIT_MASK_H
 #define BIT_MASK_H
 
-#include "image.h"
 #include "io/resource_loader.h"
 #include "resource.h"
 
 class BitMap : public Resource {
 
-	GDCLASS(BitMap, Resource);
+	OBJ_TYPE(BitMap, Resource);
 	OBJ_SAVE_TYPE(BitMap);
 	RES_BASE_EXTENSION("pbm");
 
@@ -52,7 +51,7 @@ protected:
 
 public:
 	void create(const Size2 &p_size);
-	void create_from_image_alpha(const Ref<Image> &p_image);
+	void create_from_image_alpha(const Image &p_image);
 
 	void set_bit(const Point2 &p_pos, bool p_value);
 	bool get_bit(const Point2 &p_pos) const;

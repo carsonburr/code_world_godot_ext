@@ -36,7 +36,7 @@
 
 class EditorSubScene : public ConfirmationDialog {
 
-	GDCLASS(EditorSubScene, ConfirmationDialog);
+	OBJ_TYPE(EditorSubScene, ConfirmationDialog);
 
 	LineEdit *path;
 	Tree *tree;

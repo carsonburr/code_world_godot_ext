@@ -33,6 +33,7 @@
 #include "editor/editor_node.h"
 #include "editor/editor_plugin.h"
 #include "scene/2d/light_occluder_2d.h"
+#include "scene/gui/button_group.h"
 #include "scene/gui/tool_button.h"
 
 /**
@@ -42,7 +43,7 @@ class CanvasItemEditor;
 
 class LightOccluder2DEditor : public HBoxContainer {
 
-	GDCLASS(LightOccluder2DEditor, HBoxContainer);
+	OBJ_TYPE(LightOccluder2DEditor, HBoxContainer);
 
 	UndoRedo *undo_redo;
 	enum Mode {
@@ -72,6 +73,7 @@ class LightOccluder2DEditor : public HBoxContainer {
 	ConfirmationDialog *create_poly;
 
 	void _wip_close(bool p_closed);
+	void _canvas_draw();
 	void _menu_option(int p_option);
 	void _create_poly();
 
@@ -82,27 +84,25 @@ protected:
 
 public:
 	Vector2 snap_point(const Vector2 &p_point) const;
-	void forward_draw_over_canvas(Control *p_canvas);
-	bool forward_gui_input(const Ref<InputEvent> &p_event);
+	bool forward_input_event(const InputEvent &p_event);
 	void edit(Node *p_collision_polygon);
 	LightOccluder2DEditor(EditorNode *p_editor);
 };
 
 class LightOccluder2DEditorPlugin : public EditorPlugin {
 
-	GDCLASS(LightOccluder2DEditorPlugin, EditorPlugin);
+	OBJ_TYPE(LightOccluder2DEditorPlugin, EditorPlugin);
 
-	LightOccluder2DEditor *light_occluder_editor;
+	LightOccluder2DEditor *collision_polygon_editor;
 	EditorNode *editor;
 
 public:
-	virtual bool forward_canvas_gui_input(const Ref<InputEvent> &p_event) { return light_occluder_editor->forward_gui_input(p_event); }
-	virtual void forward_draw_over_canvas(Control *p_canvas) { return light_occluder_editor->forward_draw_over_canvas(p_canvas); }
+	virtual bool forward_input_event(const InputEvent &p_event) { return collision_polygon_editor->forward_input_event(p_event); }
 
 	virtual String get_name() const { return "LightOccluder2D"; }
 	bool has_main_screen() const { return false; }
-	virtual void edit(Object *p_object);
-	virtual bool handles(Object *p_object) const;
+	virtual void edit(Object *p_node);
+	virtual bool handles(Object *p_node) const;
 	virtual void make_visible(bool p_visible);
 
 	LightOccluder2DEditorPlugin(EditorNode *p_node);

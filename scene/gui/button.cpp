@@ -34,7 +34,7 @@
 
 Size2 Button::get_minimum_size() const {
 
-	Size2 minsize = get_font("font")->get_string_size(xl_text);
+	Size2 minsize = get_font("font")->get_string_size(text);
 	if (clip_text)
 		minsize.width = 0;
 
@@ -48,7 +48,7 @@ Size2 Button::get_minimum_size() const {
 
 		minsize.height = MAX(minsize.height, _icon->get_height());
 		minsize.width += _icon->get_width();
-		if (xl_text != "")
+		if (text != "")
 			minsize.width += get_constant("hseparation");
 	}
 
@@ -57,66 +57,41 @@ Size2 Button::get_minimum_size() const {
 
 void Button::_notification(int p_what) {
 
-	if (p_what == NOTIFICATION_TRANSLATION_CHANGED) {
-
-		xl_text = tr(text);
-		minimum_size_changed();
-		update();
-	}
-
 	if (p_what == NOTIFICATION_DRAW) {
 
 		RID ci = get_canvas_item();
 		Size2 size = get_size();
 		Color color;
-		Color color_icon(1, 1, 1, 1);
 
 		//print_line(get_text()+": "+itos(is_flat())+" hover "+itos(get_draw_mode()));
-
-		Ref<StyleBox> style = get_stylebox("normal");
 
 		switch (get_draw_mode()) {
 
 			case DRAW_NORMAL: {
 
-				style = get_stylebox("normal");
 				if (!flat)
-					style->draw(ci, Rect2(Point2(0, 0), size));
+					get_stylebox("normal")->draw(ci, Rect2(Point2(0, 0), size));
 				color = get_color("font_color");
-				if (has_color("icon_color_normal"))
-					color_icon = get_color("icon_color_normal");
 			} break;
 			case DRAW_PRESSED: {
 
-				style = get_stylebox("pressed");
-				if (!flat)
-					style->draw(ci, Rect2(Point2(0, 0), size));
+				get_stylebox("pressed")->draw(ci, Rect2(Point2(0, 0), size));
 				if (has_color("font_color_pressed"))
 					color = get_color("font_color_pressed");
 				else
 					color = get_color("font_color");
-				if (has_color("icon_color_pressed"))
-					color_icon = get_color("icon_color_pressed");
 
 			} break;
 			case DRAW_HOVER: {
 
-				style = get_stylebox("hover");
-				if (!flat)
-					style->draw(ci, Rect2(Point2(0, 0), size));
+				get_stylebox("hover")->draw(ci, Rect2(Point2(0, 0), size));
 				color = get_color("font_color_hover");
-				if (has_color("icon_color_hover"))
-					color_icon = get_color("icon_color_hover");
 
 			} break;
 			case DRAW_DISABLED: {
 
-				style = get_stylebox("disabled");
-				if (!flat)
-					style->draw(ci, Rect2(Point2(0, 0), size));
+				get_stylebox("disabled")->draw(ci, Rect2(Point2(0, 0), size));
 				color = get_color("font_color_disabled");
-				if (has_color("icon_color_disabled"))
-					color_icon = get_color("icon_color_disabled");
 
 			} break;
 		}
@@ -127,6 +102,7 @@ void Button::_notification(int p_what) {
 			style->draw(ci, Rect2(Point2(), size));
 		}
 
+		Ref<StyleBox> style = get_stylebox("normal");
 		Ref<Font> font = get_font("font");
 		Ref<Texture> _icon;
 		if (icon.is_null() && has_icon("icon"))
@@ -136,7 +112,7 @@ void Button::_notification(int p_what) {
 
 		Point2 icon_ofs = (!_icon.is_null()) ? Point2(_icon->get_width() + get_constant("hseparation"), 0) : Point2();
 		int text_clip = size.width - style->get_minimum_size().width - icon_ofs.width;
-		Point2 text_ofs = (size - style->get_minimum_size() - icon_ofs - font->get_string_size(xl_text)) / 2.0;
+		Point2 text_ofs = (size - style->get_minimum_size() - icon_ofs - font->get_string_size(text)) / 2.0;
 
 		switch (align) {
 			case ALIGN_LEFT: {
@@ -150,19 +126,18 @@ void Button::_notification(int p_what) {
 				text_ofs += style->get_offset();
 			} break;
 			case ALIGN_RIGHT: {
-				text_ofs.x = size.x - style->get_margin(MARGIN_RIGHT) - font->get_string_size(xl_text).x;
+				text_ofs.x = size.x - style->get_margin(MARGIN_RIGHT) - font->get_string_size(text).x;
 				text_ofs.y += style->get_offset().y;
 			} break;
 		}
 
 		text_ofs.y += font->get_ascent();
-		font->draw(ci, text_ofs.floor(), xl_text, color, clip_text ? text_clip : -1);
+		font->draw(ci, text_ofs.floor(), text, color, clip_text ? text_clip : -1);
 		if (!_icon.is_null()) {
 
 			int valign = size.height - style->get_minimum_size().y;
-			if (is_disabled())
-				color_icon.a = 0.4;
-			_icon->draw(ci, style->get_offset() + Point2(0, Math::floor((valign - _icon->get_height()) / 2.0)), color_icon);
+
+			_icon->draw(ci, style->get_offset() + Point2(0, Math::floor((valign - _icon->get_height()) / 2.0)), is_disabled() ? Color(1, 1, 1, 0.4) : Color(1, 1, 1));
 		}
 	}
 }
@@ -171,8 +146,7 @@ void Button::set_text(const String &p_text) {
 
 	if (text == p_text)
 		return;
-	text = p_text;
-	xl_text = tr(p_text);
+	text = XL_MESSAGE(p_text);
 	update();
 	_change_notify("text");
 	minimum_size_changed();
@@ -234,33 +208,33 @@ Button::TextAlign Button::get_text_align() const {
 
 void Button::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("set_text", "text"), &Button::set_text);
-	ClassDB::bind_method(D_METHOD("get_text"), &Button::get_text);
-	ClassDB::bind_method(D_METHOD("set_button_icon", "texture"), &Button::set_icon);
-	ClassDB::bind_method(D_METHOD("get_button_icon"), &Button::get_icon);
-	ClassDB::bind_method(D_METHOD("set_flat", "enabled"), &Button::set_flat);
-	ClassDB::bind_method(D_METHOD("set_clip_text", "enabled"), &Button::set_clip_text);
-	ClassDB::bind_method(D_METHOD("get_clip_text"), &Button::get_clip_text);
-	ClassDB::bind_method(D_METHOD("set_text_align", "align"), &Button::set_text_align);
-	ClassDB::bind_method(D_METHOD("get_text_align"), &Button::get_text_align);
-	ClassDB::bind_method(D_METHOD("is_flat"), &Button::is_flat);
+	ObjectTypeDB::bind_method(_MD("set_text", "text"), &Button::set_text);
+	ObjectTypeDB::bind_method(_MD("get_text"), &Button::get_text);
+	ObjectTypeDB::bind_method(_MD("set_button_icon", "texture:Texture"), &Button::set_icon);
+	ObjectTypeDB::bind_method(_MD("get_button_icon:Texture"), &Button::get_icon);
+	ObjectTypeDB::bind_method(_MD("set_flat", "enabled"), &Button::set_flat);
+	ObjectTypeDB::bind_method(_MD("set_clip_text", "enabled"), &Button::set_clip_text);
+	ObjectTypeDB::bind_method(_MD("get_clip_text"), &Button::get_clip_text);
+	ObjectTypeDB::bind_method(_MD("set_text_align", "align"), &Button::set_text_align);
+	ObjectTypeDB::bind_method(_MD("get_text_align"), &Button::get_text_align);
+	ObjectTypeDB::bind_method(_MD("is_flat"), &Button::is_flat);
 
-	BIND_ENUM_CONSTANT(ALIGN_LEFT);
-	BIND_ENUM_CONSTANT(ALIGN_CENTER);
-	BIND_ENUM_CONSTANT(ALIGN_RIGHT);
+	BIND_CONSTANT(ALIGN_LEFT);
+	BIND_CONSTANT(ALIGN_CENTER);
+	BIND_CONSTANT(ALIGN_RIGHT);
 
-	ADD_PROPERTYNZ(PropertyInfo(Variant::STRING, "text", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_DEFAULT_INTL), "set_text", "get_text");
-	ADD_PROPERTYNZ(PropertyInfo(Variant::OBJECT, "icon", PROPERTY_HINT_RESOURCE_TYPE, "Texture"), "set_button_icon", "get_button_icon");
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "flat"), "set_flat", "is_flat");
-	ADD_PROPERTYNZ(PropertyInfo(Variant::BOOL, "clip_text"), "set_clip_text", "get_clip_text");
-	ADD_PROPERTYNO(PropertyInfo(Variant::INT, "align", PROPERTY_HINT_ENUM, "Left,Center,Right"), "set_text_align", "get_text_align");
+	ADD_PROPERTYNZ(PropertyInfo(Variant::STRING, "text", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_DEFAULT_INTL), _SCS("set_text"), _SCS("get_text"));
+	ADD_PROPERTYNZ(PropertyInfo(Variant::OBJECT, "icon", PROPERTY_HINT_RESOURCE_TYPE, "Texture"), _SCS("set_button_icon"), _SCS("get_button_icon"));
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "flat"), _SCS("set_flat"), _SCS("is_flat"));
+	ADD_PROPERTYNZ(PropertyInfo(Variant::BOOL, "clip_text"), _SCS("set_clip_text"), _SCS("get_clip_text"));
+	ADD_PROPERTYNO(PropertyInfo(Variant::INT, "align", PROPERTY_HINT_ENUM, "Left,Center,Right"), _SCS("set_text_align"), _SCS("get_text_align"));
 }
 
 Button::Button(const String &p_text) {
 
 	flat = false;
 	clip_text = false;
-	set_mouse_filter(MOUSE_FILTER_STOP);
+	set_stop_mouse(true);
 	set_text(p_text);
 	align = ALIGN_CENTER;
 }

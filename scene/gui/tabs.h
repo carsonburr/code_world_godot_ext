@@ -34,15 +34,14 @@
 
 class Tabs : public Control {
 
-	GDCLASS(Tabs, Control);
+	OBJ_TYPE(Tabs, Control);
 
 public:
 	enum TabAlign {
 
 		ALIGN_LEFT,
 		ALIGN_CENTER,
-		ALIGN_RIGHT,
-		ALIGN_MAX
+		ALIGN_RIGHT
 	};
 
 	enum CloseButtonDisplayPolicy {
@@ -50,7 +49,6 @@ public:
 		CLOSE_BUTTON_SHOW_NEVER,
 		CLOSE_BUTTON_SHOW_ACTIVE_ONLY,
 		CLOSE_BUTTON_SHOW_ALWAYS,
-		CLOSE_BUTTON_MAX
 	};
 
 private:
@@ -59,9 +57,7 @@ private:
 		String text;
 		Ref<Texture> icon;
 		int ofs_cache;
-		bool disabled;
 		int size_cache;
-		int size_text;
 		int x_cache;
 		int x_size_cache;
 
@@ -72,11 +68,12 @@ private:
 
 	int offset;
 	int max_drawn_tab;
-	int highlight_arrow;
+	int hilite_arrow;
 	bool buttons_visible;
 	bool missing_right;
 	Vector<Tab> tabs;
 	int current;
+	Control *_get_tab(int idx) const;
 	int _get_top_margin() const;
 	TabAlign tab_align;
 	int rb_hover;
@@ -87,21 +84,14 @@ private:
 	CloseButtonDisplayPolicy cb_displaypolicy;
 
 	int hover; // hovered tab
-	int min_width;
 
 	int get_tab_width(int p_idx) const;
 	void _ensure_no_over_offset();
-	void _update_cache();
 
 protected:
-	void _gui_input(const Ref<InputEvent> &p_event);
+	void _input_event(const InputEvent &p_event);
 	void _notification(int p_what);
 	static void _bind_methods();
-
-	Variant get_drag_data(const Point2 &p_point);
-	bool can_drop_data(const Point2 &p_point, const Variant &p_data) const;
-	void drop_data(const Point2 &p_point, const Variant &p_data);
-	int get_tab_idx_at_point(const Point2 &p_point) const;
 
 public:
 	void add_tab(const String &p_str = "", const Ref<Texture> &p_icon = Ref<Texture>());
@@ -112,39 +102,29 @@ public:
 	void set_tab_icon(int p_tab, const Ref<Texture> &p_icon);
 	Ref<Texture> get_tab_icon(int p_tab) const;
 
-	void set_tab_disabled(int p_tab, bool p_disabled);
-	bool get_tab_disabled(int p_tab) const;
-
 	void set_tab_right_button(int p_tab, const Ref<Texture> &p_right_button);
 	Ref<Texture> get_tab_right_button(int p_tab) const;
 
 	void set_tab_align(TabAlign p_align);
 	TabAlign get_tab_align() const;
 
-	void move_tab(int from, int to);
-
 	void set_tab_close_display_policy(CloseButtonDisplayPolicy p_policy);
-	CloseButtonDisplayPolicy get_tab_close_display_policy() const;
 
 	int get_tab_count() const;
 	void set_current_tab(int p_current);
 	int get_current_tab() const;
-	int get_hovered_tab() const;
 
 	void remove_tab(int p_idx);
 
 	void clear_tabs();
 
 	void ensure_tab_visible(int p_idx);
-	void set_min_width(int p_width);
 
-	Rect2 get_tab_rect(int p_tab) const;
 	Size2 get_minimum_size() const;
 
 	Tabs();
 };
 
 VARIANT_ENUM_CAST(Tabs::TabAlign);
-VARIANT_ENUM_CAST(Tabs::CloseButtonDisplayPolicy);
 
 #endif // TABS_H

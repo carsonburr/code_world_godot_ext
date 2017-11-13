@@ -6,7 +6,7 @@ from compat import isbasestring
 # Not building in a separate env as scene needs it
 
 # Thirdparty source files
-if env['builtin_freetype']:
+if (env['builtin_freetype'] != 'no'):
     thirdparty_dir = "#thirdparty/freetype/"
     thirdparty_sources = [
         "src/autofit/autofit.c",
@@ -58,14 +58,14 @@ if env['builtin_freetype']:
     ]
     thirdparty_sources = [thirdparty_dir + file for file in thirdparty_sources]
 
-    # Include header for UWP to fix build issues
-    if "platform" in env and env["platform"] == "uwp":
-        env.Append(CCFLAGS=['/FI', '"modules/freetype/uwpdef.h"'])
+    # Include header for WinRT to fix build issues
+    if "platform" in env and env["platform"] == "winrt":
+        env.Append(CCFLAGS=['/FI', '"modules/freetype/winrtdef.h"'])
 
     env.Append(CPPPATH=[thirdparty_dir, thirdparty_dir + "/include"])
 
     # also requires libpng headers
-    if env['builtin_libpng']:
+    if (env['builtin_libpng'] != 'no'):
         env.Append(CPPPATH=["#thirdparty/libpng"])
 
     lib = env.Library("freetype_builtin", thirdparty_sources)

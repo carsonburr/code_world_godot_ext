@@ -27,7 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
-#include "servers/audio_server.h"
+#include "servers/audio/audio_server_sw.h"
 
 #ifdef MEDIA_KIT_ENABLED
 
@@ -37,7 +37,7 @@
 #include <SoundPlayer.h>
 #include <kernel/image.h> // needed for image_id
 
-class AudioDriverMediaKit : public AudioDriver {
+class AudioDriverMediaKit : public AudioDriverSW {
 	Mutex *mutex;
 
 	BSoundPlayer *player;
@@ -46,7 +46,7 @@ class AudioDriverMediaKit : public AudioDriver {
 	static void PlayBuffer(void *cookie, void *buffer, size_t size, const media_raw_audio_format &format);
 
 	unsigned int mix_rate;
-	SpeakerMode speaker_mode;
+	OutputFormat output_format;
 	unsigned int buffer_size;
 	int channels;
 
@@ -60,7 +60,7 @@ public:
 	virtual Error init();
 	virtual void start();
 	virtual int get_mix_rate() const;
-	virtual SpeakerMode get_speaker_mode() const;
+	virtual OutputFormat get_output_format() const;
 	virtual void lock();
 	virtual void unlock();
 	virtual void finish();

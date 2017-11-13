@@ -29,15 +29,15 @@
 /*************************************************************************/
 #include "register_types.h"
 #ifndef _3D_DISABLED
-#include "class_db.h"
 #include "grid_map.h"
 #include "grid_map_editor_plugin.h"
+#include "object_type_db.h"
 #endif
 
 void register_gridmap_types() {
 
 #ifndef _3D_DISABLED
-	ClassDB::register_class<GridMap>();
+	ObjectTypeDB::register_type<GridMap>();
 #ifdef TOOLS_ENABLED
 	EditorPlugins::add_by_type<GridMapEditorPlugin>();
 #endif

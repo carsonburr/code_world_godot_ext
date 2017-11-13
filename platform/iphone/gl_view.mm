@@ -29,8 +29,8 @@
 /*************************************************************************/
 #import "gl_view.h"
 
+#include "core/globals.h"
 #include "core/os/keyboard.h"
-#include "core/project_settings.h"
 #include "os_iphone.h"
 #include "servers/audio_server.h"
 
@@ -63,7 +63,6 @@ void _pause_video();
 void _focus_out_video();
 void _unpause_video();
 void _stop_video();
-CGFloat _points_to_pixels(CGFloat);
 
 void _show_keyboard(String p_existing) {
 	keyboard_text = p_existing;
@@ -78,7 +77,7 @@ void _hide_keyboard() {
 };
 
 bool _play_video(String p_path, float p_volume, String p_audio_track, String p_subtitle_track) {
-	p_path = ProjectSettings::get_singleton()->globalize_path(p_path);
+	p_path = Globals::get_singleton()->globalize_path(p_path);
 
 	NSString *file_path = [[[NSString alloc] initWithUTF8String:p_path.utf8().get_data()] autorelease];
 
@@ -173,19 +172,6 @@ void _stop_video() {
 	[_instance.avPlayerLayer removeFromSuperlayer];
 	_instance.avPlayer = nil;
 	video_playing = false;
-}
-
-CGFloat _points_to_pixels(CGFloat points) {
-	float pixelPerInch;
-	if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
-		pixelPerInch = 132;
-	} else if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPhone) {
-		pixelPerInch = 163;
-	} else {
-		pixelPerInch = 160;
-	}
-	CGFloat pointsPerInch = 72.0;
-	return (points / pointsPerInch * pixelPerInch);
 }
 
 @implementation GLView
@@ -284,7 +270,7 @@ static void clear_touches() {
 			nil];
 
 	// Create our EAGLContext, and if successful make it current and create our framebuffer.
-	context = [[EAGLContext alloc] initWithAPI:kEAGLRenderingAPIOpenGLES3];
+	context = [[EAGLContext alloc] initWithAPI:kEAGLRenderingAPIOpenGLES2];
 
 	if (!context || ![EAGLContext setCurrentContext:context] || ![self createFramebuffer]) {
 		[self release];
@@ -335,7 +321,7 @@ static void clear_touches() {
 	glBindFramebufferOES(GL_FRAMEBUFFER_OES, viewFramebuffer);
 	glBindRenderbufferOES(GL_RENDERBUFFER_OES, viewRenderbuffer);
 	// This call associates the storage for the current render buffer with the EAGLDrawable (our CAEAGLLayer)
-	// allowing us to draw into a buffer that will later be rendered to screen wherever the layer is (which corresponds with our view).
+	// allowing us to draw into a buffer that will later be rendered to screen whereever the layer is (which corresponds with our view).
 	[context renderbufferStorage:GL_RENDERBUFFER_OES fromDrawable:(id<EAGLDrawable>)self.layer];
 	glFramebufferRenderbufferOES(GL_FRAMEBUFFER_OES, GL_COLOR_ATTACHMENT0_OES, GL_RENDERBUFFER_OES, viewRenderbuffer);
 
@@ -383,6 +369,7 @@ static void clear_touches() {
 - (void)startAnimation {
 	if (active)
 		return;
+
 	active = TRUE;
 	printf("start animation!\n");
 	if (useCADisplayLink) {
@@ -408,6 +395,7 @@ static void clear_touches() {
 - (void)stopAnimation {
 	if (!active)
 		return;
+
 	active = FALSE;
 	printf("******** stop animation!\n");
 
@@ -441,8 +429,8 @@ static void clear_touches() {
 		[displayLink setPaused:YES];
 
 		// Process all input events
-		while (CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0, TRUE) == kCFRunLoopRunHandledSource)
-			;
+		while (CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0, TRUE) == kCFRunLoopRunHandledSource) {
+		}
 
 		// We are good to go, resume the CADisplayLink
 		[displayLink setPaused:NO];
@@ -503,6 +491,7 @@ static void clear_touches() {
 			UITouch *touch = [tlist objectAtIndex:i];
 			if (touch.phase != UITouchPhaseMoved)
 				continue;
+
 			int tid = get_touch_id(touch);
 			ERR_FAIL_COND(tid == -1);
 			int first = get_first_id(touch);
@@ -522,6 +511,7 @@ static void clear_touches() {
 			UITouch *touch = [tlist objectAtIndex:i];
 			if (touch.phase != UITouchPhaseEnded)
 				continue;
+
 			int tid = get_touch_id(touch);
 			ERR_FAIL_COND(tid == -1);
 			int rem = remove_touch(touch);
@@ -551,23 +541,10 @@ static void clear_touches() {
 	[self resignFirstResponder];
 };
 
-- (void)keyboardOnScreen:(NSNotification *)notification {
-	NSDictionary *info = notification.userInfo;
-	NSValue *value = info[UIKeyboardFrameEndUserInfoKey];
-
-	CGRect rawFrame = [value CGRectValue];
-	CGRect keyboardFrame = [self convertRect:rawFrame fromView:nil];
-
-	OSIPhone::get_singleton()->set_virtual_keyboard_height(_points_to_pixels(keyboardFrame.size.height));
-}
-
-- (void)keyboardHidden:(NSNotification *)notification {
-	OSIPhone::get_singleton()->set_virtual_keyboard_height(0);
-}
-
 - (void)deleteBackward {
 	if (keyboard_text.length())
 		keyboard_text.erase(keyboard_text.length() - 1, 1);
+
 	OSIPhone::get_singleton()->key(KEY_BACKSPACE, true);
 };
 
@@ -634,31 +611,19 @@ static void clear_touches() {
 				   name:AVAudioSessionRouteChangeNotification
 				 object:nil];
 
-	printf("******** adding observer for keyboard show/hide\n");
-	[[NSNotificationCenter defaultCenter]
-			addObserver:self
-			   selector:@selector(keyboardOnScreen:)
-				   name:UIKeyboardDidShowNotification
-				 object:nil];
-	[[NSNotificationCenter defaultCenter]
-			addObserver:self
-			   selector:@selector(keyboardHidden:)
-				   name:UIKeyboardDidHideNotification
-				 object:nil];
-
 	//self.autoresizesSubviews = YES;
 	//[self setAutoresizingMask:UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleWidth];
 
 	return self;
 }
 
-//- (BOOL)automaticallyForwardAppearanceAndRotationMethodsToChildViewControllers {
-//	return YES;
-//}
+// -(BOOL)automaticallyForwardAppearanceAndRotationMethodsToChildViewControllers {
+//     return YES;
+// }
 
-//- (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation{
-//	return YES;
-//}
+// - (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation{
+//     return YES;
+// }
 
 // Stop animating and release resources when they are no longer needed.
 - (void)dealloc {
@@ -674,7 +639,9 @@ static void clear_touches() {
 	[super dealloc];
 }
 
-- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context {
+- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object
+						change:(NSDictionary *)change
+					   context:(void *)context {
 
 	if (object == _instance.avPlayerItem && [keyPath isEqualToString:@"status"]) {
 		if (_instance.avPlayerItem.status == AVPlayerStatusFailed || _instance.avPlayer.status == AVPlayerStatusFailed) {

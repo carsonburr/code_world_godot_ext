@@ -28,13 +28,14 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 #include "world_2d.h"
-#include "servers/physics_2d_server.h"
-#include "servers/visual_server.h"
-//#include "servers/spatial_sound_2d_server.h"
-#include "project_settings.h"
+#include "globals.h"
+#include "globals.h"
 #include "scene/2d/camera_2d.h"
 #include "scene/2d/visibility_notifier_2d.h"
 #include "scene/main/viewport.h"
+#include "servers/physics_2d_server.h"
+#include "servers/spatial_sound_2d_server.h"
+#include "servers/visual_server.h"
 
 struct SpatialIndexer2D {
 
@@ -96,9 +97,9 @@ struct SpatialIndexer2D {
 
 	void _notifier_update_cells(VisibilityNotifier2D *p_notifier, const Rect2 &p_rect, bool p_add) {
 
-		Point2i begin = p_rect.position;
+		Point2i begin = p_rect.pos;
 		begin /= cell_size;
-		Point2i end = p_rect.position + p_rect.size;
+		Point2i end = p_rect.pos + p_rect.size;
 		end /= cell_size;
 		for (int i = begin.x; i <= end.x; i++) {
 
@@ -219,9 +220,9 @@ struct SpatialIndexer2D {
 
 		for (Map<Viewport *, ViewportData>::Element *E = viewports.front(); E; E = E->next()) {
 
-			Point2i begin = E->get().rect.position;
+			Point2i begin = E->get().rect.pos;
 			begin /= cell_size;
-			Point2i end = E->get().rect.position + E->get().rect.size;
+			Point2i end = E->get().rect.pos + E->get().rect.size;
 			end /= cell_size;
 			pass++;
 			List<VisibilityNotifier2D *> added;
@@ -359,19 +360,18 @@ RID World2D::get_space() {
 	return space;
 }
 
-void World2D::get_viewport_list(List<Viewport *> *r_viewports) {
+RID World2D::get_sound_space() {
 
-	for (Map<Viewport *, SpatialIndexer2D::ViewportData>::Element *E = indexer->viewports.front(); E; E = E->next()) {
-		r_viewports->push_back(E->key());
-	}
+	return sound_space;
 }
 
 void World2D::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("get_canvas"), &World2D::get_canvas);
-	ClassDB::bind_method(D_METHOD("get_space"), &World2D::get_space);
+	ObjectTypeDB::bind_method(_MD("get_canvas"), &World2D::get_canvas);
+	ObjectTypeDB::bind_method(_MD("get_space"), &World2D::get_space);
+	ObjectTypeDB::bind_method(_MD("get_sound_space"), &World2D::get_sound_space);
 
-	ClassDB::bind_method(D_METHOD("get_direct_space_state"), &World2D::get_direct_space_state);
+	ObjectTypeDB::bind_method(_MD("get_direct_space_state:Physics2DDirectSpaceState"), &World2D::get_direct_space_state);
 }
 
 Physics2DDirectSpaceState *World2D::get_direct_space_state() {
@@ -383,13 +383,22 @@ World2D::World2D() {
 
 	canvas = VisualServer::get_singleton()->canvas_create();
 	space = Physics2DServer::get_singleton()->space_create();
+	sound_space = SpatialSound2DServer::get_singleton()->space_create();
 
 	//set space2D to be more friendly with pixels than meters, by adjusting some constants
 	Physics2DServer::get_singleton()->space_set_active(space, true);
-	Physics2DServer::get_singleton()->area_set_param(space, Physics2DServer::AREA_PARAM_GRAVITY, GLOBAL_DEF("physics/2d/default_gravity", 98));
-	Physics2DServer::get_singleton()->area_set_param(space, Physics2DServer::AREA_PARAM_GRAVITY_VECTOR, GLOBAL_DEF("physics/2d/default_gravity_vector", Vector2(0, 1)));
-	Physics2DServer::get_singleton()->area_set_param(space, Physics2DServer::AREA_PARAM_LINEAR_DAMP, GLOBAL_DEF("physics/2d/default_linear_damp", 0.1));
-	Physics2DServer::get_singleton()->area_set_param(space, Physics2DServer::AREA_PARAM_ANGULAR_DAMP, GLOBAL_DEF("physics/2d/default_angular_damp", 1));
+	Physics2DServer::get_singleton()->area_set_param(space, Physics2DServer::AREA_PARAM_GRAVITY, GLOBAL_DEF("physics_2d/default_gravity", 98));
+	Physics2DServer::get_singleton()->area_set_param(space, Physics2DServer::AREA_PARAM_GRAVITY_VECTOR, GLOBAL_DEF("physics_2d/default_gravity_vector", Vector2(0, 1)));
+	// TODO: Remove this deprecation warning and compatibility code for 2.2 or 3.0
+	if (Globals::get_singleton()->get("physics_2d/default_density") && !Globals::get_singleton()->get("physics_2d/default_linear_damp")) {
+		WARN_PRINT("Deprecated parameter 'physics_2d/default_density'. It was renamed to 'physics_2d/default_linear_damp', adjusting your project settings accordingly (make sure to adjust scripts that potentially rely on 'physics_2d/default_density'.");
+		Globals::get_singleton()->set("physics_2d/default_linear_damp", Globals::get_singleton()->get("physics_2d/default_density"));
+		Globals::get_singleton()->set_persisting("physics_2d/default_linear_damp", true);
+		Globals::get_singleton()->set_persisting("physics_2d/default_density", false);
+		Globals::get_singleton()->save();
+	}
+	Physics2DServer::get_singleton()->area_set_param(space, Physics2DServer::AREA_PARAM_LINEAR_DAMP, GLOBAL_DEF("physics_2d/default_linear_damp", 0.1));
+	Physics2DServer::get_singleton()->area_set_param(space, Physics2DServer::AREA_PARAM_ANGULAR_DAMP, GLOBAL_DEF("physics_2d/default_angular_damp", 1));
 	indexer = memnew(SpatialIndexer2D);
 }
 
@@ -397,5 +406,6 @@ World2D::~World2D() {
 
 	VisualServer::get_singleton()->free(canvas);
 	Physics2DServer::get_singleton()->free(space);
+	SpatialSound2DServer::get_singleton()->free(sound_space);
 	memdelete(indexer);
 }

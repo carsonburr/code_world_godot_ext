@@ -28,16 +28,32 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 #include "path.h"
-
-#include "engine.h"
 #include "scene/scene_string_names.h"
 
 void Path::_notification(int p_what) {
+#if 0
+	if (p_what==NOTIFICATION_DRAW && curve.is_valid() && is_inside_scene() && get_scene()->is_editor_hint()) {
+		//draw the curve!!
+
+		for(int i=0;i<curve->get_point_count();i++) {
+
+			Vector2 prev_p=curve->get_point_pos(i);
+
+			for(int j=1;j<=8;j++) {
+
+				real_t frac = j/8.0;
+				Vector2 p = curve->interpolate(i,frac);
+				draw_line(prev_p,p,Color(0.5,0.6,1.0,0.7),2);
+				prev_p=p;
+			}
+		}
+	}
+#endif
 }
 
 void Path::_curve_changed() {
 
-	if (is_inside_tree() && Engine::get_singleton()->is_editor_hint())
+	if (is_inside_tree() && get_tree()->is_editor_hint())
 		update_gizmo();
 }
 
@@ -62,11 +78,11 @@ Ref<Curve3D> Path::get_curve() const {
 
 void Path::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("set_curve", "curve"), &Path::set_curve);
-	ClassDB::bind_method(D_METHOD("get_curve"), &Path::get_curve);
-	ClassDB::bind_method(D_METHOD("_curve_changed"), &Path::_curve_changed);
+	ObjectTypeDB::bind_method(_MD("set_curve", "curve:Curve3D"), &Path::set_curve);
+	ObjectTypeDB::bind_method(_MD("get_curve:Curve3D", "curve"), &Path::get_curve);
+	ObjectTypeDB::bind_method(_MD("_curve_changed"), &Path::_curve_changed);
 
-	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "curve", PROPERTY_HINT_RESOURCE_TYPE, "Curve3D"), "set_curve", "get_curve");
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "curve", PROPERTY_HINT_RESOURCE_TYPE, "Curve3D"), _SCS("set_curve"), _SCS("get_curve"));
 }
 
 Path::Path() {
@@ -85,75 +101,47 @@ void PathFollow::_update_transform() {
 	if (!c.is_valid())
 		return;
 
-	if (delta_offset == 0) {
-		return;
-	}
-
 	float o = offset;
-
-	if (loop) {
+	if (loop)
 		o = Math::fposmod(o, c->get_baked_length());
-	}
 
 	Vector3 pos = c->interpolate_baked(o, cubic);
 	Transform t = get_transform();
 
-	t.origin = pos;
-	Vector3 pos_offset = Vector3(h_offset, v_offset, 0);
-
 	if (rotation_mode != ROTATION_NONE) {
-		// perform parallel transport
-		//
-		// see C. Dougan, The Parallel Transport Frame, Game Programming Gems 2 for example
-		// for a discussion about why not Frenet frame.
 
-		Vector3 t_prev = (pos - c->interpolate_baked(o - delta_offset, cubic)).normalized();
-		Vector3 t_cur = (c->interpolate_baked(o + delta_offset, cubic) - pos).normalized();
+		Vector3 n = (c->interpolate_baked(o + lookahead, cubic) - pos).normalized();
 
-		Vector3 axis = t_prev.cross(t_cur);
-		float dot = t_prev.dot(t_cur);
-		float angle = Math::acos(CLAMP(dot, -1, 1));
+		if (rotation_mode == ROTATION_Y) {
 
-		if (likely(Math::abs(angle) > CMP_EPSILON)) {
-			if (rotation_mode == ROTATION_Y) {
-				// assuming we're referring to global Y-axis. is this correct?
-				axis.x = 0;
-				axis.z = 0;
-			} else if (rotation_mode == ROTATION_XY) {
-				axis.z = 0;
-			} else if (rotation_mode == ROTATION_XYZ) {
-				// all components are allowed
-			}
+			n.y = 0;
+			n.normalize();
+		}
 
-			if (likely(axis.length() > CMP_EPSILON)) {
-				t.rotate_basis(axis.normalized(), angle);
+		if (n.length() < CMP_EPSILON) { //nothing, use previous
+			n = -t.get_basis().get_axis(2).normalized();
+		}
+
+		Vector3 up = Vector3(0, 1, 0);
+
+		if (rotation_mode == ROTATION_XYZ) {
+
+			float tilt = c->interpolate_baked_tilt(o);
+			if (tilt != 0) {
+
+				Matrix3 rot(-n, tilt); //remember.. lookat will be znegative.. znegative!! we abide by opengl clan.
+				up = rot.xform(up);
 			}
 		}
 
-		// do the additional tilting
-		float tilt_angle = c->interpolate_baked_tilt(o);
-		Vector3 tilt_axis = t_cur; // not sure what tilt is supposed to do, is this correct??
+		t.set_look_at(pos, pos + n, up);
 
-		if (likely(Math::abs(tilt_angle) > CMP_EPSILON)) {
-			if (rotation_mode == ROTATION_Y) {
-				tilt_axis.x = 0;
-				tilt_axis.z = 0;
-			} else if (rotation_mode == ROTATION_XY) {
-				tilt_axis.z = 0;
-			} else if (rotation_mode == ROTATION_XYZ) {
-				// all components are allowed
-			}
-
-			if (likely(tilt_axis.length() > CMP_EPSILON)) {
-				t.rotate_basis(tilt_axis.normalized(), tilt_angle);
-			}
-		}
-
-		t.translate(pos_offset);
 	} else {
-		t.origin += pos_offset;
+
+		t.origin = pos;
 	}
 
+	t.origin += t.basis.get_axis(0) * h_offset + t.basis.get_axis(1) * v_offset;
 	set_transform(t);
 }
 
@@ -165,7 +153,8 @@ void PathFollow::_notification(int p_what) {
 
 			Node *parent = get_parent();
 			if (parent) {
-				path = Object::cast_to<Path>(parent);
+
+				path = parent->cast_to<Path>();
 				if (path) {
 					_update_transform();
 				}
@@ -205,6 +194,8 @@ bool PathFollow::_set(const StringName &p_name, const Variant &p_value) {
 		set_cubic_interpolation(p_value);
 	} else if (String(p_name) == "loop") {
 		set_loop(p_value);
+	} else if (String(p_name) == "lookahead") {
+		set_lookahead(p_value);
 	} else
 		return false;
 
@@ -227,6 +218,8 @@ bool PathFollow::_get(const StringName &p_name, Variant &r_ret) const {
 		r_ret = cubic;
 	} else if (String(p_name) == "loop") {
 		r_ret = loop;
+	} else if (String(p_name) == "lookahead") {
+		r_ret = lookahead;
 	} else
 		return false;
 
@@ -244,41 +237,41 @@ void PathFollow::_get_property_list(List<PropertyInfo> *p_list) const {
 	p_list->push_back(PropertyInfo(Variant::INT, "rotation_mode", PROPERTY_HINT_ENUM, "None,Y,XY,XYZ"));
 	p_list->push_back(PropertyInfo(Variant::BOOL, "cubic_interp"));
 	p_list->push_back(PropertyInfo(Variant::BOOL, "loop"));
+	p_list->push_back(PropertyInfo(Variant::REAL, "lookahead", PROPERTY_HINT_RANGE, "0.001,1024.0,0.001"));
 }
 
 void PathFollow::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("set_offset", "offset"), &PathFollow::set_offset);
-	ClassDB::bind_method(D_METHOD("get_offset"), &PathFollow::get_offset);
+	ObjectTypeDB::bind_method(_MD("set_offset", "offset"), &PathFollow::set_offset);
+	ObjectTypeDB::bind_method(_MD("get_offset"), &PathFollow::get_offset);
 
-	ClassDB::bind_method(D_METHOD("set_h_offset", "h_offset"), &PathFollow::set_h_offset);
-	ClassDB::bind_method(D_METHOD("get_h_offset"), &PathFollow::get_h_offset);
+	ObjectTypeDB::bind_method(_MD("set_h_offset", "h_offset"), &PathFollow::set_h_offset);
+	ObjectTypeDB::bind_method(_MD("get_h_offset"), &PathFollow::get_h_offset);
 
-	ClassDB::bind_method(D_METHOD("set_v_offset", "v_offset"), &PathFollow::set_v_offset);
-	ClassDB::bind_method(D_METHOD("get_v_offset"), &PathFollow::get_v_offset);
+	ObjectTypeDB::bind_method(_MD("set_v_offset", "v_offset"), &PathFollow::set_v_offset);
+	ObjectTypeDB::bind_method(_MD("get_v_offset"), &PathFollow::get_v_offset);
 
-	ClassDB::bind_method(D_METHOD("set_unit_offset", "unit_offset"), &PathFollow::set_unit_offset);
-	ClassDB::bind_method(D_METHOD("get_unit_offset"), &PathFollow::get_unit_offset);
+	ObjectTypeDB::bind_method(_MD("set_unit_offset", "unit_offset"), &PathFollow::set_unit_offset);
+	ObjectTypeDB::bind_method(_MD("get_unit_offset"), &PathFollow::get_unit_offset);
 
-	ClassDB::bind_method(D_METHOD("set_rotation_mode", "rotation_mode"), &PathFollow::set_rotation_mode);
-	ClassDB::bind_method(D_METHOD("get_rotation_mode"), &PathFollow::get_rotation_mode);
+	ObjectTypeDB::bind_method(_MD("set_rotation_mode", "rotation_mode"), &PathFollow::set_rotation_mode);
+	ObjectTypeDB::bind_method(_MD("get_rotation_mode"), &PathFollow::get_rotation_mode);
 
-	ClassDB::bind_method(D_METHOD("set_cubic_interpolation", "enable"), &PathFollow::set_cubic_interpolation);
-	ClassDB::bind_method(D_METHOD("get_cubic_interpolation"), &PathFollow::get_cubic_interpolation);
+	ObjectTypeDB::bind_method(_MD("set_cubic_interpolation", "enable"), &PathFollow::set_cubic_interpolation);
+	ObjectTypeDB::bind_method(_MD("get_cubic_interpolation"), &PathFollow::get_cubic_interpolation);
 
-	ClassDB::bind_method(D_METHOD("set_loop", "loop"), &PathFollow::set_loop);
-	ClassDB::bind_method(D_METHOD("has_loop"), &PathFollow::has_loop);
+	ObjectTypeDB::bind_method(_MD("set_loop", "loop"), &PathFollow::set_loop);
+	ObjectTypeDB::bind_method(_MD("has_loop"), &PathFollow::has_loop);
 
-	BIND_ENUM_CONSTANT(ROTATION_NONE);
-	BIND_ENUM_CONSTANT(ROTATION_Y);
-	BIND_ENUM_CONSTANT(ROTATION_XY);
-	BIND_ENUM_CONSTANT(ROTATION_XYZ);
+	BIND_CONSTANT(ROTATION_NONE);
+	BIND_CONSTANT(ROTATION_Y);
+	BIND_CONSTANT(ROTATION_XY);
+	BIND_CONSTANT(ROTATION_XYZ);
 }
 
 void PathFollow::set_offset(float p_offset) {
-	delta_offset = p_offset - offset;
-	offset = p_offset;
 
+	offset = p_offset;
 	if (path)
 		_update_transform();
 	_change_notify("offset");
@@ -328,6 +321,16 @@ float PathFollow::get_unit_offset() const {
 		return 0;
 }
 
+void PathFollow::set_lookahead(float p_lookahead) {
+
+	lookahead = p_lookahead;
+}
+
+float PathFollow::get_lookahead() const {
+
+	return lookahead;
+}
+
 void PathFollow::set_rotation_mode(RotationMode p_rotation_mode) {
 
 	rotation_mode = p_rotation_mode;
@@ -352,11 +355,11 @@ bool PathFollow::has_loop() const {
 PathFollow::PathFollow() {
 
 	offset = 0;
-	delta_offset = 0;
 	h_offset = 0;
 	v_offset = 0;
 	path = NULL;
 	rotation_mode = ROTATION_XYZ;
 	cubic = true;
 	loop = true;
+	lookahead = 0.1;
 }

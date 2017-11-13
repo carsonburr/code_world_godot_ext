@@ -36,10 +36,10 @@
 #ifdef WINDOWS_ENABLED
 #include <stdio.h>
 #include <winsock2.h>
-// Needs to be included after winsocks2.h
+// Needs to be included after winsock2.h
 #include <windows.h>
 #include <ws2tcpip.h>
-#ifndef UWP_ENABLED
+#ifndef WINRT_ENABLED
 #if defined(__MINGW32__) && (!defined(__MINGW64_VERSION_MAJOR) || __MINGW64_VERSION_MAJOR < 4)
 // MinGW-w64 on Ubuntu 12.04 (our Travis build env) has bugs in this code where
 // some includes are missing in dependencies of iphlpapi.h for WINVER >= 0x0600 (Vista).
@@ -122,14 +122,21 @@ IP_Address IP_Unix::_resolve_hostname(const String &p_hostname, Type p_type) {
 
 #if defined(WINDOWS_ENABLED)
 
-#if defined(UWP_ENABLED)
+#if defined(WINRT_ENABLED)
 
 void IP_Unix::get_local_addresses(List<IP_Address> *r_addresses) const {
 
 	using namespace Windows::Networking;
 	using namespace Windows::Networking::Connectivity;
-
 	auto hostnames = NetworkInformation::GetHostNames();
+
+	for (int i = 0; i < hostnames->Size; i++) {
+
+		if (hostnames->GetAt(i)->Type == HostNameType::Ipv4 && hostnames->GetAt(i)->IPInformation != nullptr) {
+
+			r_addresses->push_back(IP_Address(String(hostnames->GetAt(i)->CanonicalName->Data())));
+		}
+	}
 
 	for (int i = 0; i < hostnames->Size; i++) {
 
@@ -149,10 +156,7 @@ void IP_Unix::get_local_addresses(List<IP_Address> *r_addresses) const {
 	while (true) {
 
 		addrs = (IP_ADAPTER_ADDRESSES *)memalloc(buf_size);
-		int err = GetAdaptersAddresses(AF_UNSPEC, GAA_FLAG_SKIP_ANYCAST |
-														  GAA_FLAG_SKIP_MULTICAST |
-														  GAA_FLAG_SKIP_DNS_SERVER |
-														  GAA_FLAG_SKIP_FRIENDLY_NAME,
+		int err = GetAdaptersAddresses(AF_UNSPEC, GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST | GAA_FLAG_SKIP_DNS_SERVER | GAA_FLAG_SKIP_FRIENDLY_NAME,
 				NULL, addrs, &buf_size);
 		if (err == NO_ERROR) {
 			break;

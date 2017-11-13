@@ -1,39 +1,9 @@
-/*************************************************************************/
-/*  gd_function.h                                                        */
-/*************************************************************************/
-/*                       This file is part of:                           */
-/*                           GODOT ENGINE                                */
-/*                      https://godotengine.org                          */
-/*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
-/*                                                                       */
-/* Permission is hereby granted, free of charge, to any person obtaining */
-/* a copy of this software and associated documentation files (the       */
-/* "Software"), to deal in the Software without restriction, including   */
-/* without limitation the rights to use, copy, modify, merge, publish,   */
-/* distribute, sublicense, and/or sell copies of the Software, and to    */
-/* permit persons to whom the Software is furnished to do so, subject to */
-/* the following conditions:                                             */
-/*                                                                       */
-/* The above copyright notice and this permission notice shall be        */
-/* included in all copies or substantial portions of the Software.       */
-/*                                                                       */
-/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,       */
-/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF    */
-/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.*/
-/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY  */
-/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,  */
-/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
-/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
-/*************************************************************************/
 #ifndef GD_FUNCTION_H
 #define GD_FUNCTION_H
 
 #include "os/thread.h"
 #include "pair.h"
 #include "reference.h"
-#include "script_language.h"
 #include "self_list.h"
 #include "string_db.h"
 #include "variant.h"
@@ -50,8 +20,6 @@ public:
 		OPCODE_GET,
 		OPCODE_SET_NAMED,
 		OPCODE_GET_NAMED,
-		OPCODE_SET_MEMBER,
-		OPCODE_GET_MEMBER,
 		OPCODE_ASSIGN,
 		OPCODE_ASSIGN_TRUE,
 		OPCODE_ASSIGN_FALSE,
@@ -94,14 +62,6 @@ public:
 		ADDR_TYPE_NIL = 8
 	};
 
-	enum RPCMode {
-		RPC_DISABLED,
-		RPC_ENABLED,
-		RPC_SYNC,
-		RPC_SYNC_MASTER,
-		RPC_SYNC_SLAVE
-	};
-
 	struct StackDebug {
 
 		int line;
@@ -129,8 +89,6 @@ private:
 	int _call_size;
 	int _initial_line;
 	bool _static;
-	ScriptInstance::RPCMode rpc_mode;
-
 	GDScript *_script;
 
 	StringName name;
@@ -210,9 +168,8 @@ public:
 #ifdef TOOLS_ENABLED
 		ERR_FAIL_INDEX_V(p_idx, arg_names.size(), StringName());
 		return arg_names[p_idx];
-#else
-		return StringName();
 #endif
+		return StringName();
 	}
 	Variant get_default_argument(int p_idx) const {
 		ERR_FAIL_INDEX_V(p_idx, default_arguments.size(), Variant());
@@ -221,14 +178,13 @@ public:
 
 	Variant call(GDInstance *p_instance, const Variant **p_args, int p_argcount, Variant::CallError &r_err, CallState *p_state = NULL);
 
-	_FORCE_INLINE_ ScriptInstance::RPCMode get_rpc_mode() const { return rpc_mode; }
 	GDFunction();
 	~GDFunction();
 };
 
 class GDFunctionState : public Reference {
 
-	GDCLASS(GDFunctionState, Reference);
+	OBJ_TYPE(GDFunctionState, Reference);
 	friend class GDFunction;
 	GDFunction *function;
 	GDFunction::CallState state;

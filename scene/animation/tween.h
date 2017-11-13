@@ -34,11 +34,11 @@
 
 class Tween : public Node {
 
-	GDCLASS(Tween, Node);
+	OBJ_TYPE(Tween, Node);
 
 public:
 	enum TweenProcessMode {
-		TWEEN_PROCESS_PHYSICS,
+		TWEEN_PROCESS_FIXED,
 		TWEEN_PROCESS_IDLE,
 	};
 
@@ -92,7 +92,7 @@ private:
 		Variant final_val;
 		ObjectID target_id;
 		StringName target_key;
-		real_t duration;
+		real_t times_in_sec;
 		TransitionType trans_type;
 		EaseType ease_type;
 		real_t delay;
@@ -132,7 +132,6 @@ private:
 
 	void _tween_process(float p_delta);
 	void _set_process(bool p_process, bool p_force = false);
-	void _remove(Object *p_object, String p_key, bool first_only);
 
 protected:
 	bool _set(const StringName &p_name, const Variant &p_value);
@@ -152,38 +151,38 @@ public:
 	void set_tween_process_mode(TweenProcessMode p_mode);
 	TweenProcessMode get_tween_process_mode() const;
 
-	void set_speed_scale(float p_speed);
-	float get_speed_scale() const;
+	void set_speed(float p_speed);
+	float get_speed() const;
 
 	bool start();
-	bool reset(Object *p_object, String p_key);
+	bool reset(Object *p_node, String p_key);
 	bool reset_all();
-	bool stop(Object *p_object, String p_key);
+	bool stop(Object *p_node, String p_key);
 	bool stop_all();
-	bool resume(Object *p_object, String p_key);
+	bool resume(Object *p_node, String p_key);
 	bool resume_all();
-	bool remove(Object *p_object, String p_key);
+	bool remove(Object *p_node, String p_key);
 	bool remove_all();
 
 	bool seek(real_t p_time);
 	real_t tell() const;
 	real_t get_runtime() const;
 
-	bool interpolate_property(Object *p_object, String p_property, Variant p_initial_val, Variant p_final_val, real_t p_duration, TransitionType p_trans_type, EaseType p_ease_type, real_t p_delay = 0);
+	bool interpolate_property(Object *p_node, String p_property, Variant p_initial_val, Variant p_final_val, real_t p_times_in_sec, TransitionType p_trans_type, EaseType p_ease_type, real_t p_delay = 0);
 
-	bool interpolate_method(Object *p_object, String p_method, Variant p_initial_val, Variant p_final_val, real_t p_duration, TransitionType p_trans_type, EaseType p_ease_type, real_t p_delay = 0);
+	bool interpolate_method(Object *p_node, String p_method, Variant p_initial_val, Variant p_final_val, real_t p_times_in_sec, TransitionType p_trans_type, EaseType p_ease_type, real_t p_delay = 0);
 
-	bool interpolate_callback(Object *p_object, real_t p_duration, String p_callback, VARIANT_ARG_DECLARE);
+	bool interpolate_callback(Object *p_object, real_t p_times_in_sec, String p_callback, VARIANT_ARG_DECLARE);
 
-	bool interpolate_deferred_callback(Object *p_object, real_t p_duration, String p_callback, VARIANT_ARG_DECLARE);
+	bool interpolate_deferred_callback(Object *p_object, real_t p_times_in_sec, String p_callback, VARIANT_ARG_DECLARE);
 
-	bool follow_property(Object *p_object, String p_property, Variant p_initial_val, Object *p_target, String p_target_property, real_t p_duration, TransitionType p_trans_type, EaseType p_ease_type, real_t p_delay = 0);
+	bool follow_property(Object *p_node, String p_property, Variant p_initial_val, Object *p_target, String p_target_property, real_t p_times_in_sec, TransitionType p_trans_type, EaseType p_ease_type, real_t p_delay = 0);
 
-	bool follow_method(Object *p_object, String p_method, Variant p_initial_val, Object *p_target, String p_target_method, real_t p_duration, TransitionType p_trans_type, EaseType p_ease_type, real_t p_delay = 0);
+	bool follow_method(Object *p_node, String p_method, Variant p_initial_val, Object *p_target, String p_target_method, real_t p_times_in_sec, TransitionType p_trans_type, EaseType p_ease_type, real_t p_delay = 0);
 
-	bool targeting_property(Object *p_object, String p_property, Object *p_initial, String p_initial_property, Variant p_final_val, real_t p_duration, TransitionType p_trans_type, EaseType p_ease_type, real_t p_delay = 0);
+	bool targeting_property(Object *p_node, String p_property, Object *p_initial, String p_initial_property, Variant p_final_val, real_t p_times_in_sec, TransitionType p_trans_type, EaseType p_ease_type, real_t p_delay = 0);
 
-	bool targeting_method(Object *p_object, String p_method, Object *p_initial, String p_initial_method, Variant p_final_val, real_t p_duration, TransitionType p_trans_type, EaseType p_ease_type, real_t p_delay = 0);
+	bool targeting_method(Object *p_node, String p_method, Object *p_initial, String p_initial_method, Variant p_final_val, real_t p_times_in_sec, TransitionType p_trans_type, EaseType p_ease_type, real_t p_delay = 0);
 
 	Tween();
 	~Tween();

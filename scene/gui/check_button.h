@@ -36,7 +36,7 @@
 */
 class CheckButton : public Button {
 
-	GDCLASS(CheckButton, Button);
+	OBJ_TYPE(CheckButton, Button);
 
 protected:
 	void _notification(int p_what);

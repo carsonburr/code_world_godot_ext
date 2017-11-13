@@ -39,7 +39,7 @@
 */
 class VisualInstance : public Spatial {
 
-	GDCLASS(VisualInstance, Spatial);
+	OBJ_TYPE(VisualInstance, Spatial);
 	OBJ_CATEGORY("3D Visual Nodes");
 
 	RID instance;
@@ -48,8 +48,6 @@ class VisualInstance : public Spatial {
 	RID _get_visual_instance_rid() const;
 
 protected:
-	void _update_visibility();
-
 	void _notification(int p_what);
 	static void _bind_methods();
 
@@ -62,10 +60,10 @@ public:
 	};
 
 	RID get_instance() const;
-	virtual Rect3 get_aabb() const = 0;
-	virtual PoolVector<Face3> get_faces(uint32_t p_usage_flags) const = 0;
+	virtual AABB get_aabb() const = 0;
+	virtual DVector<Face3> get_faces(uint32_t p_usage_flags) const = 0;
 
-	virtual Rect3 get_transformed_aabb() const; // helper
+	virtual AABB get_transformed_aabb() const; // helper
 
 	void set_base(const RID &p_base);
 
@@ -76,12 +74,21 @@ public:
 	~VisualInstance();
 };
 
+class BakedLightInstance;
+
 class GeometryInstance : public VisualInstance {
 
-	GDCLASS(GeometryInstance, VisualInstance);
+	OBJ_TYPE(GeometryInstance, VisualInstance);
 
 public:
 	enum Flags {
+		FLAG_VISIBLE = VS::INSTANCE_FLAG_VISIBLE,
+		FLAG_CAST_SHADOW = VS::INSTANCE_FLAG_CAST_SHADOW,
+		FLAG_RECEIVE_SHADOWS = VS::INSTANCE_FLAG_RECEIVE_SHADOWS,
+		FLAG_BILLBOARD = VS::INSTANCE_FLAG_BILLBOARD,
+		FLAG_BILLBOARD_FIX_Y = VS::INSTANCE_FLAG_BILLBOARD_FIX_Y,
+		FLAG_DEPH_SCALE = VS::INSTANCE_FLAG_DEPH_SCALE,
+		FLAG_VISIBLE_IN_ALL_ROOMS = VS::INSTANCE_FLAG_VISIBLE_IN_ALL_ROOMS,
 		FLAG_USE_BAKED_LIGHT = VS::INSTANCE_FLAG_USE_BAKED_LIGHT,
 		FLAG_MAX = VS::INSTANCE_FLAG_MAX,
 	};
@@ -97,12 +104,15 @@ private:
 	bool flags[FLAG_MAX];
 	ShadowCastingSetting shadow_casting_setting;
 	Ref<Material> material_override;
-	float lod_min_distance;
-	float lod_max_distance;
-	float lod_min_hysteresis;
-	float lod_max_hysteresis;
-
+	float draw_begin;
+	float draw_end;
+	void _find_baked_light();
+	BakedLightInstance *baked_light_instance;
+	int baked_light_texture_id;
 	float extra_cull_margin;
+
+	void _baked_light_changed();
+	void _update_visibility();
 
 protected:
 	void _notification(int p_what);
@@ -115,20 +125,17 @@ public:
 	void set_cast_shadows_setting(ShadowCastingSetting p_shadow_casting_setting);
 	ShadowCastingSetting get_cast_shadows_setting() const;
 
-	void set_lod_min_distance(float p_dist);
-	float get_lod_min_distance() const;
+	void set_draw_range_begin(float p_dist);
+	float get_draw_range_begin() const;
 
-	void set_lod_max_distance(float p_dist);
-	float get_lod_max_distance() const;
-
-	void set_lod_min_hysteresis(float p_dist);
-	float get_lod_min_hysteresis() const;
-
-	void set_lod_max_hysteresis(float p_dist);
-	float get_lod_max_hysteresis() const;
+	void set_draw_range_end(float p_dist);
+	float get_draw_range_end() const;
 
 	void set_material_override(const Ref<Material> &p_material);
 	Ref<Material> get_material_override() const;
+
+	void set_baked_light_texture_id(int p_id);
+	int get_baked_light_texture_id() const;
 
 	void set_extra_cull_margin(float p_margin);
 	float get_extra_cull_margin() const;

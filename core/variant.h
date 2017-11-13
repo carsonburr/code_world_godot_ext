@@ -34,20 +34,23 @@
 	@author Juan Linietsky <reduzio@gmail.com>
 */
 
+#include "aabb.h"
 #include "array.h"
 #include "color.h"
 #include "dictionary.h"
 #include "dvector.h"
 #include "face3.h"
+#include "image.h"
 #include "io/ip_address.h"
 #include "math_2d.h"
 #include "matrix3.h"
-#include "node_path.h"
+#include "os/input_event.h"
+#include "path_db.h"
 #include "plane.h"
 #include "quat.h"
-#include "rect3.h"
 #include "ref_ptr.h"
 #include "rid.h"
+#include "simple_type.h"
 #include "transform.h"
 #include "ustring.h"
 #include "vector3.h"
@@ -60,17 +63,16 @@ class Control; // helper
 struct PropertyInfo;
 struct MethodInfo;
 
-typedef PoolVector<uint8_t> PoolByteArray;
-typedef PoolVector<int> PoolIntArray;
-typedef PoolVector<real_t> PoolRealArray;
-typedef PoolVector<String> PoolStringArray;
-typedef PoolVector<Vector2> PoolVector2Array;
-typedef PoolVector<Vector3> PoolVector3Array;
-typedef PoolVector<Color> PoolColorArray;
+typedef DVector<uint8_t> ByteArray;
+typedef DVector<int> IntArray;
+typedef DVector<real_t> RealArray;
+typedef DVector<String> StringArray;
+typedef DVector<Vector2> Vector2Array;
+typedef DVector<Vector3> Vector3Array;
+typedef DVector<Color> ColorArray;
 
 class Variant {
 public:
-	// If this changes the table in variant_op must be updated
 	enum Type {
 
 		NIL,
@@ -86,29 +88,31 @@ public:
 		VECTOR2, // 5
 		RECT2,
 		VECTOR3,
-		TRANSFORM2D,
+		MATRIX32,
 		PLANE,
 		QUAT, // 10
-		RECT3,
-		BASIS,
+		_AABB, //sorry naming convention fail :( not like it's used often
+		MATRIX3,
 		TRANSFORM,
 
 		// misc types
 		COLOR,
-		NODE_PATH, // 15
+		IMAGE, // 15
+		NODE_PATH,
 		_RID,
 		OBJECT,
-		DICTIONARY,
+		INPUT_EVENT,
+		DICTIONARY, // 20
 		ARRAY,
 
 		// arrays
-		POOL_BYTE_ARRAY, // 20
-		POOL_INT_ARRAY,
-		POOL_REAL_ARRAY,
-		POOL_STRING_ARRAY,
-		POOL_VECTOR2_ARRAY,
-		POOL_VECTOR3_ARRAY, // 25
-		POOL_COLOR_ARRAY,
+		RAW_ARRAY,
+		INT_ARRAY,
+		REAL_ARRAY,
+		STRING_ARRAY, // 25
+		VECTOR2_ARRAY,
+		VECTOR3_ARRAY,
+		COLOR_ARRAY,
 
 		VARIANT_MAX
 
@@ -133,13 +137,15 @@ private:
 	union {
 
 		bool _bool;
-		int64_t _int;
+		int _int;
 		double _real;
-		Transform2D *_transform2d;
-		Rect3 *_rect3;
-		Basis *_basis;
+		Matrix32 *_matrix32;
+		AABB *_aabb;
+		Matrix3 *_matrix3;
 		Transform *_transform;
 		RefPtr *_resource;
+		InputEvent *_input_event;
+		Image *_image;
 		void *_ptr; //generic pointer
 		uint8_t _mem[sizeof(ObjData) > (sizeof(real_t) * 4) ? sizeof(ObjData) : (sizeof(real_t) * 4)];
 	} _data;
@@ -152,6 +158,15 @@ public:
 	static String get_type_name(Variant::Type p_type);
 	static bool can_convert(Type p_type_from, Type p_type_to);
 	static bool can_convert_strict(Type p_type_from, Type p_type_to);
+
+	template <class T>
+	static Type get_type_for() {
+
+		GetSimpleType<T> t;
+		Variant v(t.type);
+		Type r = v.get_type();
+		return r;
+	}
 
 	bool is_ref() const;
 	_FORCE_INLINE_ bool is_num() const { return type == INT || type == REAL; };
@@ -184,17 +199,18 @@ public:
 	operator Rect2() const;
 	operator Vector3() const;
 	operator Plane() const;
-	operator Rect3() const;
+	operator AABB() const;
 	operator Quat() const;
-	operator Basis() const;
+	operator Matrix3() const;
 	operator Transform() const;
-	operator Transform2D() const;
+	operator Matrix32() const;
 
 	operator Color() const;
+	operator Image() const;
 	operator NodePath() const;
 	operator RefPtr() const;
 	operator RID() const;
-
+	operator InputEvent() const;
 	operator Object *() const;
 	operator Node *() const;
 	operator Control *() const;
@@ -202,14 +218,14 @@ public:
 	operator Dictionary() const;
 	operator Array() const;
 
-	operator PoolVector<uint8_t>() const;
-	operator PoolVector<int>() const;
-	operator PoolVector<real_t>() const;
-	operator PoolVector<String>() const;
-	operator PoolVector<Vector3>() const;
-	operator PoolVector<Color>() const;
-	operator PoolVector<Plane>() const;
-	operator PoolVector<Face3>() const;
+	operator DVector<uint8_t>() const;
+	operator DVector<int>() const;
+	operator DVector<real_t>() const;
+	operator DVector<String>() const;
+	operator DVector<Vector3>() const;
+	operator DVector<Color>() const;
+	operator DVector<Plane>() const;
+	operator DVector<Face3>() const;
 
 	operator Vector<Variant>() const;
 	operator Vector<uint8_t>() const;
@@ -220,7 +236,7 @@ public:
 	operator Vector<Color>() const;
 	operator Vector<RID>() const;
 	operator Vector<Vector2>() const;
-	operator PoolVector<Vector2>() const;
+	operator DVector<Vector2>() const;
 	operator Vector<Plane>() const;
 
 	// some core type enums to convert to
@@ -253,27 +269,29 @@ public:
 	Variant(const Rect2 &p_rect2);
 	Variant(const Vector3 &p_vector3);
 	Variant(const Plane &p_plane);
-	Variant(const Rect3 &p_aabb);
+	Variant(const AABB &p_aabb);
 	Variant(const Quat &p_quat);
-	Variant(const Basis &p_transform);
-	Variant(const Transform2D &p_transform);
+	Variant(const Matrix3 &p_transform);
+	Variant(const Matrix32 &p_transform);
 	Variant(const Transform &p_transform);
 	Variant(const Color &p_color);
+	Variant(const Image &p_image);
 	Variant(const NodePath &p_path);
 	Variant(const RefPtr &p_resource);
 	Variant(const RID &p_rid);
 	Variant(const Object *p_object);
+	Variant(const InputEvent &p_input_event);
 	Variant(const Dictionary &p_dictionary);
 
 	Variant(const Array &p_array);
-	Variant(const PoolVector<Plane> &p_array); // helper
-	Variant(const PoolVector<uint8_t> &p_raw_array);
-	Variant(const PoolVector<int> &p_int_array);
-	Variant(const PoolVector<real_t> &p_real_array);
-	Variant(const PoolVector<String> &p_string_array);
-	Variant(const PoolVector<Vector3> &p_vector3_array);
-	Variant(const PoolVector<Color> &p_color_array);
-	Variant(const PoolVector<Face3> &p_face_array);
+	Variant(const DVector<Plane> &p_array); // helper
+	Variant(const DVector<uint8_t> &p_raw_array);
+	Variant(const DVector<int> &p_int_array);
+	Variant(const DVector<real_t> &p_real_array);
+	Variant(const DVector<String> &p_string_array);
+	Variant(const DVector<Vector3> &p_vector3_array);
+	Variant(const DVector<Color> &p_color_array);
+	Variant(const DVector<Face3> &p_face_array);
 
 	Variant(const Vector<Variant> &p_array);
 	Variant(const Vector<uint8_t> &p_raw_array);
@@ -285,11 +303,10 @@ public:
 	Variant(const Vector<Plane> &p_array); // helper
 	Variant(const Vector<RID> &p_array); // helper
 	Variant(const Vector<Vector2> &p_array); // helper
-	Variant(const PoolVector<Vector2> &p_array); // helper
+	Variant(const DVector<Vector2> &p_array); // helper
 
 	Variant(const IP_Address &p_address);
 
-	// If this changes the table in variant_op must be updated
 	enum Operator {
 
 		//comparation
@@ -301,11 +318,10 @@ public:
 		OP_GREATER_EQUAL,
 		//mathematic
 		OP_ADD,
-		OP_SUBTRACT,
+		OP_SUBSTRACT,
 		OP_MULTIPLY,
 		OP_DIVIDE,
 		OP_NEGATE,
-		OP_POSITIVE,
 		OP_MODULE,
 		OP_STRING_CONCAT,
 		//bitwise
@@ -364,11 +380,6 @@ public:
 
 	void get_method_list(List<MethodInfo> *p_list) const;
 	bool has_method(const StringName &p_method) const;
-	static Vector<Variant::Type> get_method_argument_types(Variant::Type p_type, const StringName &p_method);
-	static Vector<Variant> get_method_default_arguments(Variant::Type p_type, const StringName &p_method);
-	static Variant::Type get_method_return_type(Variant::Type p_type, const StringName &p_method, bool *r_has_return = NULL);
-	static Vector<StringName> get_method_argument_names(Variant::Type p_type, const StringName &p_method);
-	static bool is_method_const(Variant::Type p_type, const StringName &p_method);
 
 	void set_named(const StringName &p_index, const Variant &p_value, bool *r_valid = NULL);
 	Variant get_named(const StringName &p_index, bool *r_valid = NULL) const;
@@ -391,13 +402,13 @@ public:
 	uint32_t hash() const;
 
 	bool hash_compare(const Variant &p_variant) const;
-	bool booleanize() const;
+	bool booleanize(bool &valid) const;
 
 	void static_assign(const Variant &p_variant);
 	static void get_constructor_list(Variant::Type p_type, List<MethodInfo> *p_list);
 	static void get_numeric_constants_for_type(Variant::Type p_type, List<StringName> *p_constants);
 	static bool has_numeric_constant(Variant::Type p_type, const StringName &p_value);
-	static int get_numeric_constant_value(Variant::Type p_type, const StringName &p_value, bool *r_valid = NULL);
+	static int get_numeric_constant_value(Variant::Type p_type, const StringName &p_value);
 
 	typedef String (*ObjectDeConstruct)(const Variant &p_object, void *ud);
 	typedef void (*ObjectConstruct)(const String &p_text, void *ud, Variant &r_value);
@@ -434,7 +445,6 @@ struct VariantComparator {
 };
 
 Variant::ObjData &Variant::_get_obj() {
-
 	return *reinterpret_cast<ObjData *>(&_data._mem[0]);
 }
 

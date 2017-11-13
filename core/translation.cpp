@@ -28,10 +28,9 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 #include "translation.h"
-
+#include "globals.h"
 #include "io/resource_loader.h"
 #include "os/os.h"
-#include "project_settings.h"
 
 static const char *locale_list[] = {
 	"aa", //  Afar
@@ -294,7 +293,6 @@ static const char *locale_list[] = {
 	"pa_PK", //  Panjabi (Pakistan)
 	"pl", //  Polish
 	"pl_PL", //  Polish (Poland)
-	"pr", //  Pirate
 	"ps_AF", //  Pushto (Afghanistan)
 	"pt", //  Portuguese
 	"pt_BR", //  Portuguese (Brazil)
@@ -654,7 +652,6 @@ static const char *locale_names[] = {
 	"Panjabi (Pakistan)",
 	"Polish",
 	"Polish (Poland)",
-	"Pirate",
 	"Pushto (Afghanistan)",
 	"Portuguese",
 	"Portuguese (Brazil)",
@@ -753,20 +750,6 @@ static const char *locale_names[] = {
 	0
 };
 
-bool TranslationServer::is_locale_valid(const String &p_locale) {
-
-	const char **ptr = locale_list;
-
-	while (*ptr) {
-
-		if (*ptr == p_locale)
-			return true;
-		ptr++;
-	}
-
-	return false;
-}
-
 Vector<String> TranslationServer::get_all_locales() {
 
 	Vector<String> locales;
@@ -813,9 +796,9 @@ static bool is_valid_locale(const String &p_locale) {
 	return false;
 }
 
-PoolVector<String> Translation::_get_messages() const {
+DVector<String> Translation::_get_messages() const {
 
-	PoolVector<String> msgs;
+	DVector<String> msgs;
 	msgs.resize(translation_map.size() * 2);
 	int idx = 0;
 	for (const Map<StringName, StringName>::Element *E = translation_map.front(); E; E = E->next()) {
@@ -828,9 +811,9 @@ PoolVector<String> Translation::_get_messages() const {
 	return msgs;
 }
 
-PoolVector<String> Translation::_get_message_list() const {
+DVector<String> Translation::_get_message_list() const {
 
-	PoolVector<String> msgs;
+	DVector<String> msgs;
 	msgs.resize(translation_map.size());
 	int idx = 0;
 	for (const Map<StringName, StringName>::Element *E = translation_map.front(); E; E = E->next()) {
@@ -842,12 +825,12 @@ PoolVector<String> Translation::_get_message_list() const {
 	return msgs;
 }
 
-void Translation::_set_messages(const PoolVector<String> &p_messages) {
+void Translation::_set_messages(const DVector<String> &p_messages) {
 
 	int msg_count = p_messages.size();
 	ERR_FAIL_COND(msg_count % 2);
 
-	PoolVector<String>::Read r = p_messages.read();
+	DVector<String>::Read r = p_messages.read();
 
 	for (int i = 0; i < msg_count; i += 2) {
 
@@ -869,10 +852,6 @@ void Translation::set_locale(const String &p_locale) {
 		locale = trimmed_locale;
 	} else {
 		locale = univ_locale;
-	}
-
-	if (OS::get_singleton()->get_main_loop()) {
-		OS::get_singleton()->get_main_loop()->notification(MainLoop::NOTIFICATION_TRANSLATION_CHANGED);
 	}
 }
 
@@ -909,22 +888,23 @@ int Translation::get_message_count() const {
 
 void Translation::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("set_locale", "locale"), &Translation::set_locale);
-	ClassDB::bind_method(D_METHOD("get_locale"), &Translation::get_locale);
-	ClassDB::bind_method(D_METHOD("add_message", "src_message", "xlated_message"), &Translation::add_message);
-	ClassDB::bind_method(D_METHOD("get_message", "src_message"), &Translation::get_message);
-	ClassDB::bind_method(D_METHOD("erase_message", "src_message"), &Translation::erase_message);
-	ClassDB::bind_method(D_METHOD("get_message_list"), &Translation::_get_message_list);
-	ClassDB::bind_method(D_METHOD("get_message_count"), &Translation::get_message_count);
-	ClassDB::bind_method(D_METHOD("_set_messages"), &Translation::_set_messages);
-	ClassDB::bind_method(D_METHOD("_get_messages"), &Translation::_get_messages);
+	ObjectTypeDB::bind_method(_MD("set_locale", "locale"), &Translation::set_locale);
+	ObjectTypeDB::bind_method(_MD("get_locale"), &Translation::get_locale);
+	ObjectTypeDB::bind_method(_MD("add_message", "src_message", "xlated_message"), &Translation::add_message);
+	ObjectTypeDB::bind_method(_MD("get_message", "src_message"), &Translation::get_message);
+	ObjectTypeDB::bind_method(_MD("erase_message", "src_message"), &Translation::erase_message);
+	ObjectTypeDB::bind_method(_MD("get_message_list"), &Translation::_get_message_list);
+	ObjectTypeDB::bind_method(_MD("get_message_count"), &Translation::get_message_count);
+	ObjectTypeDB::bind_method(_MD("_set_messages"), &Translation::_set_messages);
+	ObjectTypeDB::bind_method(_MD("_get_messages"), &Translation::_get_messages);
 
-	ADD_PROPERTY(PropertyInfo(Variant::POOL_STRING_ARRAY, "messages", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR), "_set_messages", "_get_messages");
-	ADD_PROPERTY(PropertyInfo(Variant::STRING, "locale"), "set_locale", "get_locale");
+	ADD_PROPERTY(PropertyInfo(Variant::STRING_ARRAY, "messages", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR), _SCS("_set_messages"), _SCS("_get_messages"));
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "locale"), _SCS("set_locale"), _SCS("get_locale"));
 }
 
-Translation::Translation()
-	: locale("en") {
+Translation::Translation() {
+
+	locale = "en";
 }
 
 ///////////////////////////////////////////////
@@ -944,23 +924,11 @@ void TranslationServer::set_locale(const String &p_locale) {
 	} else {
 		locale = univ_locale;
 	}
-
-	if (OS::get_singleton()->get_main_loop()) {
-		OS::get_singleton()->get_main_loop()->notification(MainLoop::NOTIFICATION_TRANSLATION_CHANGED);
-	}
-
-	ResourceLoader::reload_translation_remaps();
 }
 
 String TranslationServer::get_locale() const {
 
 	return locale;
-}
-
-String TranslationServer::get_locale_name(const String &p_locale) const {
-
-	if (!locale_name_map.has(p_locale)) return String();
-	return locale_name_map[p_locale];
 }
 
 void TranslationServer::add_translation(const Ref<Translation> &p_translation) {
@@ -1058,13 +1026,13 @@ TranslationServer *TranslationServer::singleton = NULL;
 
 bool TranslationServer::_load_translations(const String &p_from) {
 
-	if (ProjectSettings::get_singleton()->has_setting(p_from)) {
-		PoolVector<String> translations = ProjectSettings::get_singleton()->get(p_from);
+	if (Globals::get_singleton()->has(p_from)) {
+		DVector<String> translations = Globals::get_singleton()->get(p_from);
 
 		int tcount = translations.size();
 
 		if (tcount) {
-			PoolVector<String>::Read r = translations.read();
+			DVector<String>::Read r = translations.read();
 
 			for (int i = 0; i < tcount; i++) {
 
@@ -1100,7 +1068,7 @@ void TranslationServer::setup() {
 			options += locale_list[idx];
 			idx++;
 		}
-		ProjectSettings::get_singleton()->set_custom_property_info("locale/fallback", PropertyInfo(Variant::STRING, "locale/fallback", PROPERTY_HINT_ENUM, options));
+		Globals::get_singleton()->set_custom_property_info("locale/fallback", PropertyInfo(Variant::STRING, "locale/fallback", PROPERTY_HINT_ENUM, options));
 	}
 #endif
 	//load translations
@@ -1125,17 +1093,15 @@ StringName TranslationServer::tool_translate(const StringName &p_message) const 
 
 void TranslationServer::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("set_locale", "locale"), &TranslationServer::set_locale);
-	ClassDB::bind_method(D_METHOD("get_locale"), &TranslationServer::get_locale);
+	ObjectTypeDB::bind_method(_MD("set_locale", "locale"), &TranslationServer::set_locale);
+	ObjectTypeDB::bind_method(_MD("get_locale"), &TranslationServer::get_locale);
 
-	ClassDB::bind_method(D_METHOD("get_locale_name", "locale"), &TranslationServer::get_locale_name);
+	ObjectTypeDB::bind_method(_MD("translate", "message"), &TranslationServer::translate);
 
-	ClassDB::bind_method(D_METHOD("translate", "message"), &TranslationServer::translate);
+	ObjectTypeDB::bind_method(_MD("add_translation", "translation:Translation"), &TranslationServer::add_translation);
+	ObjectTypeDB::bind_method(_MD("remove_translation", "translation:Translation"), &TranslationServer::remove_translation);
 
-	ClassDB::bind_method(D_METHOD("add_translation", "translation"), &TranslationServer::add_translation);
-	ClassDB::bind_method(D_METHOD("remove_translation", "translation"), &TranslationServer::remove_translation);
-
-	ClassDB::bind_method(D_METHOD("clear"), &TranslationServer::clear);
+	ObjectTypeDB::bind_method(_MD("clear"), &TranslationServer::clear);
 }
 
 void TranslationServer::load_translations() {
@@ -1151,13 +1117,9 @@ void TranslationServer::load_translations() {
 	}
 }
 
-TranslationServer::TranslationServer()
-	: locale("en"),
-	  enabled(true) {
+TranslationServer::TranslationServer() {
+
 	singleton = this;
-
-	for (int i = 0; locale_list[i]; ++i) {
-
-		locale_name_map.insert(locale_list[i], locale_names[i]);
-	}
+	locale = "en";
+	enabled = true;
 }

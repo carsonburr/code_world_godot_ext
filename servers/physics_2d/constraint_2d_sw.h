@@ -32,7 +32,7 @@
 
 #include "body_2d_sw.h"
 
-class Constraint2DSW : public RID_Data {
+class Constraint2DSW {
 
 	Body2DSW **_body_ptr;
 	int _body_count;
@@ -65,8 +65,10 @@ public:
 	_FORCE_INLINE_ Body2DSW **get_body_ptr() const { return _body_ptr; }
 	_FORCE_INLINE_ int get_body_count() const { return _body_count; }
 
-	virtual bool setup(real_t p_step) = 0;
-	virtual void solve(real_t p_step) = 0;
+	virtual bool setup(float p_step) = 0;
+	virtual void solve(float p_step) = 0;
+
+	virtual void shift_shape_indices(const CollisionObject2DSW *p_object, int p_removed_index) {}
 
 	virtual ~Constraint2DSW() {}
 };

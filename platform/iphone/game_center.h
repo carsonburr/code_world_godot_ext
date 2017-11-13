@@ -36,20 +36,18 @@
 
 class GameCenter : public Object {
 
-	GDCLASS(GameCenter, Object);
+	OBJ_TYPE(GameCenter, Object);
 
 	static GameCenter *instance;
 	static void _bind_methods();
 
 	List<Variant> pending_events;
 
-	bool authenticated;
-
-	void return_connect_error(const char *p_error_description);
+	bool connected;
 
 public:
-	void connect();
-	bool is_authenticated();
+	Error connect();
+	bool is_connected();
 
 	Error post_score(Variant p_score);
 	Error award_achievement(Variant p_params);
@@ -57,7 +55,6 @@ public:
 	void request_achievements();
 	void request_achievement_descriptions();
 	Error show_game_center(Variant p_params);
-	Error request_identity_verification_signature();
 
 	void game_center_closed();
 

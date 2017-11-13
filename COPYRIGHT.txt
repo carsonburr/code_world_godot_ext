@@ -51,7 +51,7 @@ Files: ./icon.png
  ./logo.png
  ./logo.svg
 Comment: Godot Engine logo
-Copyright: 2017, Andrea Calabró
+Copyright: 2014, Andrea Calabró
 License: CC-BY-3.0
 
 Files: ./platform/android/android_native_app_glue.c
@@ -85,15 +85,18 @@ Comment: The Android Open Source Project
 Copyright: 2002, Google Inc.
 License: Apache-2.0
 
-Files: ./platform/android/power_android.cpp
- ./platform/osx/power_osx.cpp
- ./platform/windows/power_windows.cpp
- ./platform/x11/power_x11.cpp
-Comment: Simple DirectMedia Layer
-Copyright: 1997-2017, Sam Lantinga
+Files: ./platform/bb10/bbutil.c
+ ./platform/bb10/bbutil.h
+Comment: BlackBerry NDK-Samples
+Copyright: 2011-2013, Research In Motion Limited.
+License: Apache-2.0
+
+Files: ./platform/uwp/export/export.cpp
+Comment: fb-util-for-appx
+Copyright: 2016, Facebook, Inc. All rights reserved.
   2007-2017, Juan Linietsky, Ariel Manzur.
   2014-2017, Godot Engine contributors.
-License: Expat and Zlib
+License: BSD-3-clause and Expat
 
 Files: ./servers/physics/gjk_epa.cpp
  ./servers/physics/joints/generic_6dof_joint_sw.cpp
@@ -122,7 +125,7 @@ License: Expat and Zlib
 Files: ./thirdparty/b2d_convexdecomp/
 Comment: Box2D (ConvexDecomp)
 Copyright: 2007, Eric Jordan
-Copyright: 2006-2009, Erin Catto
+  2006-2009, Erin Catto
 License: Zlib
 
 Files: ./thirdparty/certs/ca-certificates.crt
@@ -130,45 +133,42 @@ Comment: FIXME
 Copyright: FIXME
 License: FIXME
 
-Files: ./thirdparty/enet/
-Comment: ENet
-Copyright: 2002-2016, Lee Salzman
-License: Expat
-
-Files: ./thirdparty/etc2comp/
-Comment: Etc2Comp
-Copyright: 2015, Etc2Comp Authors
-License: Apache-2.0
-
 Files: ./thirdparty/fonts/DroidSans*.ttf
 Comment: DroidSans font
 Copyright: 2008, The Android Open Source Project
 License: Apache-2.0
 
-Files: ./thirdparty/fonts/NotoSans*.ttf
-Comment: Noto Sans font
+Files: ./thirdparty/fonts/NotoSansUI_Regular.ttf
+Comment: Noto Sans UI Regular font
 Copyright: 2012, Google Inc.
 License: OFL-1.1
 
-Files: ./thirdparty/fonts/Hack_Regular.ttf
-Comment: Hack font
-Copyright: 2015-2017, Christopher Simpkins (with Reserved Font Name Hack).
-License: Hack Open Font License v2.0
+Files: ./thirdparty/fonts/source_code_pro.otf
+Comment: Source Code Pro font
+Copyright: 2010, 2012, Adobe Systems Incorporated
+License: OFL-1.1
 
 Files: ./thirdparty/freetype/
 Comment: The FreeType Project
 Copyright: 1996-2017, David Turner, Robert Wilhelm, and Werner Lemberg.
 License: FTL
 
-Files: ./thirdparty/glad/
-Comment: glad
-Copyright: 2013, David Herberth
-License: Expat
+Files: ./thirdparty/glew/
+Comment: OpenGL Extension Wrangler Library (GLEW)
+Copyright: 2002-2007, Milan Ikits
+  2002-2007, Marcelo E. Magallon
+  2002, Lev Povalahev
+License: BSD-2-Clause
 
 Files: ./thirdparty/jpeg_compressor/
 Comment: jpeg-compressor
 Copyright: 2012, Rich Geldreich
 License: public-domain
+
+Files: ./thirdparty/libmpcdec/
+Comment: Musepack
+Copyright: 2005, The Musepack Development Team
+License: BSD-3-clause
 
 Files: ./thirdparty/libogg/
 Comment: OggVorbis
@@ -182,16 +182,6 @@ Copyright: 1995-1996, Guy Eric Schalnat, Group 42, Inc.
  1998-2016, Glenn Randers-Pehrson
 License: Zlib
 
-Files: ./thirdparty/libsimplewebm/
-Comment: libsimplewebm
-Copyright: 2016, Błażej Szczygieł
-License: Expat
-
-Files: ./thirdparty/libsimplewebm/libwebm/
-Comment: The WebM Project
-Copyright: 2010, Google Inc.
-License: BSD-3-clause
-
 Files: ./thirdparty/libtheora/
 Comment: OggTheora
 Copyright: 2002-2009, Xiph.org Foundation
@@ -200,11 +190,6 @@ License: BSD-3-clause
 Files: ./thirdparty/libvorbis/
 Comment: OggVorbis
 Copyright: 2002-2015, Xiph.org Foundation
-License: BSD-3-clause
-
-Files: ./thirdparty/libvpx/
-Comment: The WebM Project
-Copyright: 2010, The WebM Project authors.
 License: BSD-3-clause
 
 Files: ./thirdparty/libwebp/
@@ -263,12 +248,6 @@ Comment: Tangent Space Normal Maps implementation
 Copyright: 2011, Morten S. Mikkelsen
 License: Zlib
 
-Files: ./thirdparty/misc/pcg.cpp
- ./thirdparty/misc/pcg.h
-Comment: Minimal PCG32 implementation
-Copyright: 2014, M.E. O'Neill
-License: Apache-2.0
-
 Files: ./thirdparty/misc/smaz.c
  ./thirdparty/misc/smaz.h
 Comment: SMAZ
@@ -276,7 +255,6 @@ Copyright: 2006-2009, Salvatore Sanfilippo
 License: BSD-3-clause
 
 Files: ./thirdparty/misc/stb_truetype.h
- ./thirdparty/misc/stb_vorbis.c
 Comment: stb libraries
 Copyright: 2007-2017, Sean Barrett
 License: public-domain
@@ -305,19 +283,14 @@ Copyright: 2001-2011, Xiph.Org, Skype Limited, Octasic,
  Erik de Castro Lopo
 License: BSD-3-clause
 
-Files: ./thirdparty/nanosvg/
-Comment: NanoSVG
-Copyright: 2013-2014, Mikko Mononen
-License: Zlib
-
 Files: ./thirdparty/pvrtccompressor/
 Comment: PvrTcCompressor
 Copyright: 2014, Jeffrey Lim.
 License: BSD-3-clause
 
-Files: ./thirdparty/recastnavigation/
-Comment: Recast
-Copyright: 2009, Mikko Mononen
+Files: ./thirdparty/rg-etc1/
+Comment: rg-etc1
+Copyright: 2012, Rich Geldreich
 License: Zlib
 
 Files: ./thirdparty/rtaudio/
@@ -325,26 +298,26 @@ Comment: RtAudio
 Copyright: 2001-2016, Gary P. Scavone
 License: Expat
 
+Files: ./thirdparty/speex/
+Comment: Speex
+Copyright: 2002-2008, Xiph.org Foundation
+  2002-2008, Jean-Marc Valin
+  2005-2007, Analog Devices Inc.
+  2005-2008, Commonwealth Scientific and Industrial Research Organisation (CSIRO)
+  1993, 2002, 2006, David Rowe
+  2003, EpicGames
+  1992-1994, Jutta Degener, Carsten Bormann
+License: BSD-3-Clause
+
 Files: ./thirdparty/squish/
 Comment: libSquish
 Copyright: 2006, Simon Brown
 License: Expat
 
-Files: ./thirdparty/tinyexr/
-Comment: TinyEXR
-Copyright: 2014-2017, Syoyo Fujita
-  2002, Industrial Light & Magic, a division of Lucas Digital Ltd. LLC
-License: BSD-3-Clause
-
 Files: ./thirdparty/zlib/
 Comment: zlib
 Copyright: 1995-2017, Jean-loup Gailly and Mark Adler
 License: Zlib
-
-Files: ./thirdparty/zstd/
-Comment: Zstandard
-Copyright: 2016-2017, Facebook, Inc.
-License: BSD-3-Clause
 
 
 

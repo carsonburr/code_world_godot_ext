@@ -144,42 +144,41 @@ void HaikuDirectWindow::HandleMouseButton(BMessage *message) {
 	last_buttons_state = buttons;
 
 	// TODO: implement the mouse_mode checks
-	/*
-	if (mouse_mode == MOUSE_MODE_CAPTURED) {
-		event.xbutton.x=last_mouse_pos.x;
-		event.xbutton.y=last_mouse_pos.y;
-	}
-	*/
+	//if (mouse_mode == MOUSE_MODE_CAPTURED) {
+	//	event.xbutton.x=last_mouse_pos.x;
+	//	event.xbutton.y=last_mouse_pos.y;
+	//}
 
-	Ref<InputEvent> mouse_event;
-	mouse_event.type = Ref<InputEvent>::MOUSE_BUTTON;
+	InputEvent mouse_event;
+	mouse_event.ID = ++event_id;
+	mouse_event.type = InputEvent::MOUSE_BUTTON;
 	mouse_event.device = 0;
 
 	mouse_event.mouse_button.mod = GetKeyModifierState(modifiers);
-	mouse_event->get_button_mask() = GetMouseButtonState(buttons);
-	mouse_event->get_position().x = where.x;
-	mouse_event->get_position().y = where.y;
+	mouse_event.mouse_button.button_mask = GetMouseButtonState(buttons);
+	mouse_event.mouse_button.x = where.x;
+	mouse_event.mouse_button.y = where.y;
 	mouse_event.mouse_button.global_x = where.x;
 	mouse_event.mouse_button.global_y = where.y;
 
 	switch (button) {
 		default:
 		case B_PRIMARY_MOUSE_BUTTON:
-			mouse_event->get_button_index() = 1;
+			mouse_event.mouse_button.button_index = 1;
 			break;
 
 		case B_SECONDARY_MOUSE_BUTTON:
-			mouse_event->get_button_index() = 2;
+			mouse_event.mouse_button.button_index = 2;
 			break;
 
 		case B_TERTIARY_MOUSE_BUTTON:
-			mouse_event->get_button_index() = 3;
+			mouse_event.mouse_button.button_index = 3;
 			break;
 	}
 
-	mouse_event->is_pressed() = (message->what == B_MOUSE_DOWN);
+	mouse_event.mouse_button.pressed = (message->what == B_MOUSE_DOWN);
 
-	if (message->what == B_MOUSE_DOWN && mouse_event->get_button_index() == 1) {
+	if (message->what == B_MOUSE_DOWN && mouse_event.mouse_button.button_index == 1) {
 		int32 clicks = message->FindInt32("clicks");
 
 		if (clicks > 1) {
@@ -207,22 +206,23 @@ void HaikuDirectWindow::HandleMouseMoved(BMessage *message) {
 
 	Point2i rel = pos - last_mouse_position;
 
-	Ref<InputEvent> motion_event;
-	motion_event.type = Ref<InputEvent>::MOUSE_MOTION;
+	InputEvent motion_event;
+	motion_event.ID = ++event_id;
+	motion_event.type = InputEvent::MOUSE_MOTION;
 	motion_event.device = 0;
 
 	motion_event.mouse_motion.mod = GetKeyModifierState(modifiers);
-	motion_event->get_button_mask() = GetMouseButtonState(buttons);
+	motion_event.mouse_motion.button_mask = GetMouseButtonState(buttons);
 	motion_event.mouse_motion.x = pos.x;
 	motion_event.mouse_motion.y = pos.y;
-	input->set_mouse_position(pos);
+	input->set_mouse_pos(pos);
 	motion_event.mouse_motion.global_x = pos.x;
 	motion_event.mouse_motion.global_y = pos.y;
-	motion_event.mouse_motion.speed_x = input->get_last_mouse_speed().x;
-	motion_event.mouse_motion.speed_y = input->get_last_mouse_speed().y;
+	motion_event.mouse_motion.speed_x = input->get_mouse_speed().x;
+	motion_event.mouse_motion.speed_y = input->get_mouse_speed().y;
 
-	motion_event->get_relative().x = rel.x;
-	motion_event->get_relative().y = rel.y;
+	motion_event.mouse_motion.relative_x = rel.x;
+	motion_event.mouse_motion.relative_y = rel.y;
 
 	last_mouse_position = pos;
 
@@ -235,22 +235,24 @@ void HaikuDirectWindow::HandleMouseWheelChanged(BMessage *message) {
 		return;
 	}
 
-	Ref<InputEvent> mouse_event;
-	mouse_event.type = Ref<InputEvent>::MOUSE_BUTTON;
+	InputEvent mouse_event;
+	mouse_event.ID = ++event_id;
+	mouse_event.type = InputEvent::MOUSE_BUTTON;
 	mouse_event.device = 0;
 
-	mouse_event->get_button_index() = wheel_delta_y < 0 ? 4 : 5;
+	mouse_event.mouse_button.button_index = wheel_delta_y < 0 ? 4 : 5;
 	mouse_event.mouse_button.mod = GetKeyModifierState(last_key_modifier_state);
-	mouse_event->get_button_mask() = last_button_mask;
-	mouse_event->get_position().x = last_mouse_position.x;
-	mouse_event->get_position().y = last_mouse_position.y;
+	mouse_event.mouse_button.button_mask = last_button_mask;
+	mouse_event.mouse_button.x = last_mouse_position.x;
+	mouse_event.mouse_button.y = last_mouse_position.y;
 	mouse_event.mouse_button.global_x = last_mouse_position.x;
 	mouse_event.mouse_button.global_y = last_mouse_position.y;
 
-	mouse_event->is_pressed() = true;
+	mouse_event.mouse_button.pressed = true;
 	input->parse_input_event(mouse_event);
 
-	mouse_event->is_pressed() = false;
+	mouse_event.ID = ++event_id;
+	mouse_event.mouse_button.pressed = false;
 	input->parse_input_event(mouse_event);
 }
 
@@ -271,13 +273,14 @@ void HaikuDirectWindow::HandleKeyboardEvent(BMessage *message) {
 		return;
 	}
 
-	Ref<InputEvent> event;
-	event.type = Ref<InputEvent>::KEY;
+	InputEvent event;
+	event.ID = ++event_id;
+	event.type = InputEvent::KEY;
 	event.device = 0;
 	event.key.mod = GetKeyModifierState(modifiers);
-	event->is_pressed() = (message->what == B_KEY_DOWN);
-	event->get_scancode() = KeyMappingHaiku::get_keysym(raw_char, key);
-	event->is_echo() = message->HasInt32("be:key_repeat");
+	event.key.pressed = (message->what == B_KEY_DOWN);
+	event.key.scancode = KeyMappingHaiku::get_keysym(raw_char, key);
+	event.key.echo = message->HasInt32("be:key_repeat");
 	event.key.unicode = 0;
 
 	const char *bytes = NULL;
@@ -285,10 +288,10 @@ void HaikuDirectWindow::HandleKeyboardEvent(BMessage *message) {
 		event.key.unicode = BUnicodeChar::FromUTF8(&bytes);
 	}
 
-	//make it consistent across platforms.
-	if (event->get_scancode() == KEY_BACKTAB) {
-		event->get_scancode() = KEY_TAB;
-		event->get_shift() = true;
+	//make it consistent accross platforms.
+	if (event.key.scancode == KEY_BACKTAB) {
+		event.key.scancode = KEY_TAB;
+		event.key.mod.shift = true;
 	}
 
 	input->parse_input_event(event);
@@ -308,13 +311,14 @@ void HaikuDirectWindow::HandleKeyboardModifierEvent(BMessage *message) {
 
 	int32 key = old_modifiers ^ modifiers;
 
-	Ref<InputEvent> event;
-	event.type = Ref<InputEvent>::KEY;
+	InputEvent event;
+	event.ID = ++event_id;
+	event.type = InputEvent::KEY;
 	event.device = 0;
 	event.key.mod = GetKeyModifierState(modifiers);
-	event->is_pressed() = ((modifiers & key) != 0);
-	event->get_scancode() = KeyMappingHaiku::get_modifier_keysym(key);
-	event->is_echo() = false;
+	event.key.pressed = ((modifiers & key) != 0);
+	event.key.scancode = KeyMappingHaiku::get_modifier_keysym(key);
+	event.key.echo = false;
 	event.key.unicode = 0;
 
 	input->parse_input_event(event);

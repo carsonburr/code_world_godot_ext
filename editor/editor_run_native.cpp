@@ -28,36 +28,36 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 #include "editor_run_native.h"
-
-#include "editor_export.h"
-#include "editor_node.h"
+#include "editor_import_export.h"
 
 void EditorRunNative::_notification(int p_what) {
 
 	if (p_what == NOTIFICATION_ENTER_TREE) {
 
-		for (int i = 0; i < EditorExport::get_singleton()->get_export_platform_count(); i++) {
+		List<StringName> ep;
+		EditorImportExport::get_singleton()->get_export_platforms(&ep);
+		ep.sort_custom<StringName::AlphCompare>();
+		for (List<StringName>::Element *E = ep.front(); E; E = E->next()) {
 
-			Ref<EditorExportPlatform> eep = EditorExport::get_singleton()->get_export_platform(i);
+			Ref<EditorExportPlatform> eep = EditorImportExport::get_singleton()->get_export_platform(E->get());
 			if (eep.is_null())
 				continue;
-			Ref<ImageTexture> icon = eep->get_run_icon();
+			Ref<ImageTexture> icon = eep->get_logo();
 			if (!icon.is_null()) {
-				Ref<Image> im = icon->get_data();
-				im = im->duplicate();
-				im->clear_mipmaps();
-				if (!im->empty()) {
+				Image im = icon->get_data();
+				im.clear_mipmaps();
+				if (!im.empty()) {
 
-					im->resize(16, 16);
-					Ref<ImageTexture> small_icon;
-					small_icon.instance();
-					small_icon->create_from_image(im, 0);
+					im.resize(16, 16);
+
+					Ref<ImageTexture> small_icon = memnew(ImageTexture);
+					small_icon->create_from_image(im);
 					MenuButton *mb = memnew(MenuButton);
-					mb->get_popup()->connect("id_pressed", this, "_run_native", varray(i));
-					//mb->connect("pressed", this, "_run_native", varray(-1, i));
+					mb->get_popup()->connect("item_pressed", this, "_run_native", varray(E->get()));
+					mb->connect("pressed", this, "_run_native", varray(-1, E->get()));
 					mb->set_icon(small_icon);
 					add_child(mb);
-					menus[i] = mb;
+					menus[E->get()] = mb;
 				}
 			}
 		}
@@ -65,13 +65,13 @@ void EditorRunNative::_notification(int p_what) {
 
 	if (p_what == NOTIFICATION_PROCESS) {
 
-		bool changed = EditorExport::get_singleton()->poll_export_platforms() || first;
+		bool changed = EditorImportExport::get_singleton()->poll_export_platforms() || first;
 
 		if (changed) {
 
-			for (Map<int, MenuButton *>::Element *E = menus.front(); E; E = E->next()) {
+			for (Map<StringName, MenuButton *>::Element *E = menus.front(); E; E = E->next()) {
 
-				Ref<EditorExportPlatform> eep = EditorExport::get_singleton()->get_export_platform(E->key());
+				Ref<EditorExportPlatform> eep = EditorImportExport::get_singleton()->get_export_platform(E->key());
 				MenuButton *mb = E->get();
 				int dc = eep->get_device_count();
 
@@ -80,10 +80,14 @@ void EditorRunNative::_notification(int p_what) {
 				} else {
 					mb->get_popup()->clear();
 					mb->show();
-					mb->set_tooltip(TTR("Select device from the list"));
-					for (int i = 0; i < dc; i++) {
-						mb->get_popup()->add_icon_item(get_icon("Play", "EditorIcons"), eep->get_device_name(i));
-						mb->get_popup()->set_item_tooltip(mb->get_popup()->get_item_count() - 1, eep->get_device_info(i).strip_edges());
+					if (dc == 1) {
+						mb->set_tooltip(eep->get_device_name(0) + "\n\n" + eep->get_device_info(0).strip_edges());
+					} else {
+						mb->set_tooltip("Select device from the list");
+						for (int i = 0; i < dc; i++) {
+							mb->get_popup()->add_icon_item(get_icon("Play", "EditorIcons"), eep->get_device_name(i));
+							mb->get_popup()->set_item_tooltip(mb->get_popup()->get_item_count() - 1, eep->get_device_info(i).strip_edges());
+						}
 					}
 				}
 			}
@@ -93,53 +97,36 @@ void EditorRunNative::_notification(int p_what) {
 	}
 }
 
-void EditorRunNative::_run_native(int p_idx, int p_platform) {
+void EditorRunNative::_run_native(int p_idx, const String &p_platform) {
 
-	Ref<EditorExportPlatform> eep = EditorExport::get_singleton()->get_export_platform(p_platform);
+	Ref<EditorExportPlatform> eep = EditorImportExport::get_singleton()->get_export_platform(p_platform);
 	ERR_FAIL_COND(eep.is_null());
-	/*if (p_idx == -1) {
+	if (p_idx == -1) {
 		if (eep->get_device_count() == 1) {
 			menus[p_platform]->get_popup()->hide();
 			p_idx = 0;
 		} else {
 			return;
 		}
-	}*/
-
-	Ref<EditorExportPreset> preset;
-
-	for (int i = 0; i < EditorExport::get_singleton()->get_export_preset_count(); i++) {
-
-		Ref<EditorExportPreset> ep = EditorExport::get_singleton()->get_export_preset(i);
-		if (ep->is_runnable() && ep->get_platform() == eep) {
-			preset = ep;
-			break;
-		}
 	}
-
-	if (preset.is_null()) {
-		EditorNode::get_singleton()->show_warning(TTR("No runnable export preset found for this platform.\nPlease add a runnable preset in the export menu."));
-		return;
-	}
-
 	emit_signal("native_run");
 
 	int flags = 0;
 	if (deploy_debug_remote)
-		flags |= EditorExportPlatform::DEBUG_FLAG_REMOTE_DEBUG;
+		flags |= EditorExportPlatform::EXPORT_REMOTE_DEBUG;
 	if (deploy_dumb)
-		flags |= EditorExportPlatform::DEBUG_FLAG_DUMB_CLIENT;
+		flags |= EditorExportPlatform::EXPORT_DUMB_CLIENT;
 	if (debug_collisions)
-		flags |= EditorExportPlatform::DEBUG_FLAG_VIEW_COLLISONS;
+		flags |= EditorExportPlatform::EXPORT_VIEW_COLLISONS;
 	if (debug_navigation)
-		flags |= EditorExportPlatform::DEBUG_FLAG_VIEW_NAVIGATION;
+		flags |= EditorExportPlatform::EXPORT_VIEW_NAVIGATION;
 
-	eep->run(preset, p_idx, flags);
+	eep->run(p_idx, flags);
 }
 
 void EditorRunNative::_bind_methods() {
 
-	ClassDB::bind_method("_run_native", &EditorRunNative::_run_native);
+	ObjectTypeDB::bind_method("_run_native", &EditorRunNative::_run_native);
 
 	ADD_SIGNAL(MethodInfo("native_run"));
 }

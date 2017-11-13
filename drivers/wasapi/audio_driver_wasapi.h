@@ -32,15 +32,13 @@
 
 #ifdef WASAPI_ENABLED
 
-#include "core/os/mutex.h"
-#include "core/os/thread.h"
-#include "servers/audio_server.h"
+#include "servers/audio/audio_server_sw.h"
 
 #include <audioclient.h>
 #include <mmdeviceapi.h>
 #include <windows.h>
 
-class AudioDriverWASAPI : public AudioDriver {
+class AudioDriverWASAPI : public AudioDriverSW {
 
 	HANDLE event;
 	IAudioClient *audio_client;
@@ -64,7 +62,7 @@ class AudioDriverWASAPI : public AudioDriver {
 
 	static void thread_func(void *p_udata);
 
-	Error init_device();
+	Error init_device(bool reinit = false);
 	Error finish_device();
 	Error reopen();
 
@@ -76,7 +74,7 @@ public:
 	virtual Error init();
 	virtual void start();
 	virtual int get_mix_rate() const;
-	virtual SpeakerMode get_speaker_mode() const;
+	virtual OutputFormat get_output_format() const;
 	virtual void lock();
 	virtual void unlock();
 	virtual void finish();

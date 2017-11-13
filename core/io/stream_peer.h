@@ -33,15 +33,15 @@
 #include "reference.h"
 
 class StreamPeer : public Reference {
-	GDCLASS(StreamPeer, Reference);
+	OBJ_TYPE(StreamPeer, Reference);
 	OBJ_CATEGORY("Networking");
 
 protected:
 	static void _bind_methods();
 
 	//bind helpers
-	Error _put_data(const PoolVector<uint8_t> &p_data);
-	Array _put_partial_data(const PoolVector<uint8_t> &p_data);
+	Error _put_data(const DVector<uint8_t> &p_data);
+	Array _put_partial_data(const DVector<uint8_t> &p_data);
 
 	Array _get_data(int p_bytes);
 	Array _get_partial_data(int p_bytes);
@@ -91,10 +91,10 @@ public:
 };
 
 class StreamPeerBuffer : public StreamPeer {
+	OBJ_TYPE(StreamPeerBuffer, StreamPeer);
+	OBJ_CATEGORY("Networking");
 
-	GDCLASS(StreamPeerBuffer, StreamPeer);
-
-	PoolVector<uint8_t> data;
+	DVector<uint8_t> data;
 	int pointer;
 
 protected:
@@ -107,15 +107,15 @@ public:
 	Error get_data(uint8_t *p_buffer, int p_bytes);
 	Error get_partial_data(uint8_t *p_buffer, int p_bytes, int &r_received);
 
-	virtual int get_available_bytes() const;
+	int get_available_bytes() const;
 
 	void seek(int p_pos);
 	int get_size() const;
-	int get_position() const;
+	int get_pos() const;
 	void resize(int p_size);
 
-	void set_data_array(const PoolVector<uint8_t> &p_data);
-	PoolVector<uint8_t> get_data_array() const;
+	void set_data_array(const DVector<uint8_t> &p_data);
+	DVector<uint8_t> get_data_array() const;
 
 	void clear();
 

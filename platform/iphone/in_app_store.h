@@ -36,7 +36,7 @@
 
 class InAppStore : public Object {
 
-	GDCLASS(InAppStore, Object);
+	OBJ_TYPE(InAppStore, Object);
 
 	static InAppStore *instance;
 	static void _bind_methods();

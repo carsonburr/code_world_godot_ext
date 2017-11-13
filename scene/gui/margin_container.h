@@ -33,7 +33,7 @@
 #include "scene/gui/container.h"
 
 class MarginContainer : public Container {
-	GDCLASS(MarginContainer, Container);
+	OBJ_TYPE(MarginContainer, Container);
 
 protected:
 	void _notification(int p_what);

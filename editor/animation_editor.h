@@ -37,7 +37,7 @@
 #include "scene/gui/slider.h"
 #include "scene/gui/spin_box.h"
 #include "scene/gui/tab_container.h"
-#include "scene/gui/texture_rect.h"
+#include "scene/gui/texture_frame.h"
 #include "scene/gui/tool_button.h"
 
 #include "editor_data.h"
@@ -45,13 +45,14 @@
 #include "scene/animation/animation_cache.h"
 #include "scene/resources/animation.h"
 #include "scene_tree_editor.h"
+#include "scene_tree_editor.h"
 
 class AnimationKeyEdit;
 class AnimationCurveEdit;
 
 class AnimationKeyEditor : public VBoxContainer {
 
-	GDCLASS(AnimationKeyEditor, VBoxContainer);
+	OBJ_TYPE(AnimationKeyEditor, VBoxContainer);
 
 	/*
 	enum {
@@ -113,7 +114,6 @@ class AnimationKeyEditor : public VBoxContainer {
 			OVER_KEY,
 			OVER_VALUE,
 			OVER_INTERP,
-			OVER_WRAP,
 			OVER_UP,
 			OVER_DOWN,
 			OVER_REMOVE,
@@ -166,9 +166,7 @@ class AnimationKeyEditor : public VBoxContainer {
 	int track_name_editing;
 	int interp_editing;
 	int cont_editing;
-	int wrap_editing;
 	int selected_track;
-	int track_ofs[5];
 
 	int last_menu_track_opt;
 	LineEdit *track_name;
@@ -176,7 +174,7 @@ class AnimationKeyEditor : public VBoxContainer {
 	PopupMenu *type_menu;
 
 	Control *ec;
-	TextureRect *zoomicon;
+	TextureFrame *zoomicon;
 	HSlider *zoom;
 	//MenuButton *menu;
 	SpinBox *length;
@@ -272,13 +270,13 @@ class AnimationKeyEditor : public VBoxContainer {
 	float _get_zoom_scale() const;
 
 	void _track_editor_draw();
-	void _track_editor_gui_input(const Ref<InputEvent> &p_input);
-	void _track_position_draw();
+	void _track_editor_input_event(const InputEvent &p_input);
+	void _track_pos_draw();
 
 	void _track_name_changed(const String &p_name);
 	void _track_menu_selected(int p_idx);
 	void _confirm_insert_list();
-	int _confirm_insert(InsertData p_id, int p_last_track = -1);
+	int _confirm_insert(InsertData p_id, int p_at_track = -1);
 	void _query_insert(const InsertData &p_id);
 	void _update_menu();
 	bool insert_queue;
@@ -339,7 +337,7 @@ public:
 	void insert_value_key(const String &p_property, const Variant &p_value, bool p_advance);
 	void insert_transform_key(Spatial *p_node, const String &p_sub, const Transform &p_xform);
 
-	void show_select_node_warning(bool p_show) { select_anim_warning->set_visible(p_show); }
+	void show_select_node_warning(bool p_show) { select_anim_warning->set_hidden(!p_show); }
 	AnimationKeyEditor();
 	~AnimationKeyEditor();
 };

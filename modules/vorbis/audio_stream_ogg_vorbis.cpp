@@ -58,7 +58,7 @@ int AudioStreamPlaybackOGGVorbis::_ov_seek_func(void *_f, ogg_int64_t offs, int 
 		fa->seek(offs);
 	} else if (whence == SEEK_CUR) {
 
-		fa->seek(fa->get_position() + offs);
+		fa->seek(fa->get_pos() + offs);
 	} else if (whence == SEEK_END) {
 
 		fa->seek_end(offs);
@@ -76,7 +76,7 @@ int AudioStreamPlaybackOGGVorbis::_ov_seek_func(void *_f, ogg_int64_t offs, int 
 }
 int AudioStreamPlaybackOGGVorbis::_ov_close_func(void *_f) {
 
-	//printf("close %p\n",_f);
+	//	printf("close %p\n",_f);
 	if (!_f)
 		return 0;
 	FileAccess *fa = (FileAccess *)_f;
@@ -89,7 +89,7 @@ long AudioStreamPlaybackOGGVorbis::_ov_tell_func(void *_f) {
 	//printf("close %p\n",_f);
 
 	FileAccess *fa = (FileAccess *)_f;
-	return fa->get_position();
+	return fa->get_pos();
 }
 
 int AudioStreamPlaybackOGGVorbis::mix(int16_t *p_bufer, int p_frames) {
@@ -180,7 +180,7 @@ void AudioStreamPlaybackOGGVorbis::play(float p_from) {
 	frames_mixed = 0;
 	playing = true;
 	if (p_from > 0) {
-		seek(p_from);
+		seek_pos(p_from);
 	}
 }
 
@@ -203,7 +203,7 @@ void AudioStreamPlaybackOGGVorbis::stop() {
 	//_clear();
 }
 
-float AudioStreamPlaybackOGGVorbis::get_playback_position() const {
+float AudioStreamPlaybackOGGVorbis::get_pos() const {
 
 	int32_t frames = int32_t(frames_mixed);
 	if (frames < 0)
@@ -211,7 +211,7 @@ float AudioStreamPlaybackOGGVorbis::get_playback_position() const {
 	return double(frames) / stream_srate;
 }
 
-void AudioStreamPlaybackOGGVorbis::seek(float p_time) {
+void AudioStreamPlaybackOGGVorbis::seek_pos(float p_time) {
 
 	if (!playing)
 		return;
@@ -404,7 +404,7 @@ void ResourceFormatLoaderAudioStreamOGGVorbis::get_recognized_extensions(List<St
 }
 String ResourceFormatLoaderAudioStreamOGGVorbis::get_resource_type(const String &p_path) const {
 
-	if (p_path.get_extension().to_lower() == "ogg")
+	if (p_path.extension().to_lower() == "ogg")
 		return "AudioStreamOGGVorbis";
 	return "";
 }

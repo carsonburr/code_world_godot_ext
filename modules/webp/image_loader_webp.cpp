@@ -37,67 +37,65 @@
 #include <webp/decode.h>
 #include <webp/encode.h>
 
-static PoolVector<uint8_t> _webp_lossy_pack(const Ref<Image> &p_image, float p_quality) {
+static DVector<uint8_t> _webp_lossy_pack(const Image &p_image, float p_quality) {
 
-	ERR_FAIL_COND_V(p_image.is_null() || p_image->empty(), PoolVector<uint8_t>());
+	ERR_FAIL_COND_V(p_image.empty(), DVector<uint8_t>());
 
-	Ref<Image> img = p_image->duplicate();
-	if (img->detect_alpha())
-		img->convert(Image::FORMAT_RGBA8);
+	Image img = p_image;
+	if (img.detect_alpha())
+		img.convert(Image::FORMAT_RGBA);
 	else
-		img->convert(Image::FORMAT_RGB8);
+		img.convert(Image::FORMAT_RGB);
 
-	Size2 s(img->get_width(), img->get_height());
-	PoolVector<uint8_t> data = img->get_data();
-	PoolVector<uint8_t>::Read r = data.read();
+	Size2 s(img.get_width(), img.get_height());
+	DVector<uint8_t> data = img.get_data();
+	DVector<uint8_t>::Read r = data.read();
 
 	uint8_t *dst_buff = NULL;
 	size_t dst_size = 0;
-	if (img->get_format() == Image::FORMAT_RGB8) {
+	if (img.get_format() == Image::FORMAT_RGB) {
 
 		dst_size = WebPEncodeRGB(r.ptr(), s.width, s.height, 3 * s.width, CLAMP(p_quality * 100.0, 0, 100.0), &dst_buff);
 	} else {
 		dst_size = WebPEncodeRGBA(r.ptr(), s.width, s.height, 4 * s.width, CLAMP(p_quality * 100.0, 0, 100.0), &dst_buff);
 	}
 
-	ERR_FAIL_COND_V(dst_size == 0, PoolVector<uint8_t>());
-	PoolVector<uint8_t> dst;
+	ERR_FAIL_COND_V(dst_size == 0, DVector<uint8_t>());
+	DVector<uint8_t> dst;
 	dst.resize(4 + dst_size);
-	PoolVector<uint8_t>::Write w = dst.write();
+	DVector<uint8_t>::Write w = dst.write();
 	w[0] = 'W';
 	w[1] = 'E';
 	w[2] = 'B';
 	w[3] = 'P';
 	copymem(&w[4], dst_buff, dst_size);
 	free(dst_buff);
-	w = PoolVector<uint8_t>::Write();
+	w = DVector<uint8_t>::Write();
 	return dst;
 }
 
-static Ref<Image> _webp_lossy_unpack(const PoolVector<uint8_t> &p_buffer) {
+static Image _webp_lossy_unpack(const DVector<uint8_t> &p_buffer) {
 
 	int size = p_buffer.size() - 4;
-	ERR_FAIL_COND_V(size <= 0, Ref<Image>());
-	PoolVector<uint8_t>::Read r = p_buffer.read();
+	ERR_FAIL_COND_V(size <= 0, Image());
+	DVector<uint8_t>::Read r = p_buffer.read();
 
-	ERR_FAIL_COND_V(r[0] != 'W' || r[1] != 'E' || r[2] != 'B' || r[3] != 'P', Ref<Image>());
+	ERR_FAIL_COND_V(r[0] != 'W' || r[1] != 'E' || r[2] != 'B' || r[3] != 'P', Image());
 	WebPBitstreamFeatures features;
 	if (WebPGetFeatures(&r[4], size, &features) != VP8_STATUS_OK) {
 		ERR_EXPLAIN("Error unpacking WEBP image:");
-		ERR_FAIL_V(Ref<Image>());
+		ERR_FAIL_V(Image());
 	}
 
-	/*
-	print_line("width: "+itos(features.width));
-	print_line("height: "+itos(features.height));
-	print_line("alpha: "+itos(features.has_alpha));
-	*/
+	//print_line("width: "+itos(features.width));
+	//print_line("height: "+itos(features.height));
+	//print_line("alpha: "+itos(features.has_alpha));
 
-	PoolVector<uint8_t> dst_image;
+	DVector<uint8_t> dst_image;
 	int datasize = features.width * features.height * (features.has_alpha ? 4 : 3);
 	dst_image.resize(datasize);
 
-	PoolVector<uint8_t>::Write dst_w = dst_image.write();
+	DVector<uint8_t>::Write dst_w = dst_image.write();
 
 	bool errdec = false;
 	if (features.has_alpha) {
@@ -107,23 +105,22 @@ static Ref<Image> _webp_lossy_unpack(const PoolVector<uint8_t> &p_buffer) {
 	}
 
 	//ERR_EXPLAIN("Error decoding webp! - "+p_file);
-	ERR_FAIL_COND_V(errdec, Ref<Image>());
+	ERR_FAIL_COND_V(errdec, Image());
 
-	dst_w = PoolVector<uint8_t>::Write();
+	dst_w = DVector<uint8_t>::Write();
 
-	Ref<Image> img = memnew(Image(features.width, features.height, 0, features.has_alpha ? Image::FORMAT_RGBA8 : Image::FORMAT_RGB8, dst_image));
-	return img;
+	return Image(features.width, features.height, 0, features.has_alpha ? Image::FORMAT_RGBA : Image::FORMAT_RGB, dst_image);
 }
 
-Error ImageLoaderWEBP::load_image(Ref<Image> p_image, FileAccess *f, bool p_force_linear, float p_scale) {
+Error ImageLoaderWEBP::load_image(Image *p_image, FileAccess *f) {
 
 	uint32_t size = f->get_len();
-	PoolVector<uint8_t> src_image;
+	DVector<uint8_t> src_image;
 	src_image.resize(size);
 
 	WebPBitstreamFeatures features;
 
-	PoolVector<uint8_t>::Write src_w = src_image.write();
+	DVector<uint8_t>::Write src_w = src_image.write();
 	f->get_buffer(src_w.ptr(), size);
 	ERR_FAIL_COND_V(f->eof_reached(), ERR_FILE_EOF);
 
@@ -133,20 +130,18 @@ Error ImageLoaderWEBP::load_image(Ref<Image> p_image, FileAccess *f, bool p_forc
 		ERR_FAIL_V(ERR_FILE_CORRUPT);
 	}
 
-	/*
 	print_line("width: " + itos(features.width));
 	print_line("height: " + itos(features.height));
 	print_line("alpha: " + itos(features.has_alpha));
-	*/
 
-	src_w = PoolVector<uint8_t>::Write();
+	src_w = DVector<uint8_t>::Write();
 
-	PoolVector<uint8_t> dst_image;
+	DVector<uint8_t> dst_image;
 	int datasize = features.width * features.height * (features.has_alpha ? 4 : 3);
 	dst_image.resize(datasize);
 
-	PoolVector<uint8_t>::Read src_r = src_image.read();
-	PoolVector<uint8_t>::Write dst_w = dst_image.write();
+	DVector<uint8_t>::Read src_r = src_image.read();
+	DVector<uint8_t>::Write dst_w = dst_image.write();
 
 	bool errdec = false;
 	if (features.has_alpha) {
@@ -158,10 +153,10 @@ Error ImageLoaderWEBP::load_image(Ref<Image> p_image, FileAccess *f, bool p_forc
 	//ERR_EXPLAIN("Error decoding webp! - "+p_file);
 	ERR_FAIL_COND_V(errdec, ERR_FILE_CORRUPT);
 
-	src_r = PoolVector<uint8_t>::Read();
-	dst_w = PoolVector<uint8_t>::Write();
+	src_r = DVector<uint8_t>::Read();
+	dst_w = DVector<uint8_t>::Write();
 
-	p_image->create(features.width, features.height, 0, features.has_alpha ? Image::FORMAT_RGBA8 : Image::FORMAT_RGB8, dst_image);
+	*p_image = Image(features.width, features.height, 0, features.has_alpha ? Image::FORMAT_RGBA : Image::FORMAT_RGB, dst_image);
 
 	return OK;
 }

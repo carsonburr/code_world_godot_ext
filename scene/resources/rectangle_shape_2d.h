@@ -33,7 +33,7 @@
 #include "scene/resources/shape_2d.h"
 
 class RectangleShape2D : public Shape2D {
-	GDCLASS(RectangleShape2D, Shape2D);
+	OBJ_TYPE(RectangleShape2D, Shape2D);
 
 	Vector2 extents;
 	void _update_shape();

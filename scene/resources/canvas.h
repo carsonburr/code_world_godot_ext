@@ -34,7 +34,7 @@
 
 class Canvas : public Resource {
 
-	GDCLASS(Canvas, Resource);
+	OBJ_TYPE(Canvas, Resource);
 
 	RID canvas;
 

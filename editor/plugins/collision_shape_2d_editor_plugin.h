@@ -38,7 +38,7 @@
 class CanvasItemEditor;
 
 class CollisionShape2DEditor : public Control {
-	GDCLASS(CollisionShape2DEditor, Control);
+	OBJ_TYPE(CollisionShape2DEditor, Control);
 
 	enum ShapeType {
 		CAPSULE_SHAPE,
@@ -68,27 +68,26 @@ class CollisionShape2DEditor : public Control {
 	void commit_handle(int idx, Variant &p_org);
 
 	void _get_current_shape_type();
+	void _canvas_draw();
 
 protected:
 	static void _bind_methods();
 
 public:
-	bool forward_canvas_gui_input(const Ref<InputEvent> &p_event);
-	void forward_draw_over_canvas(Control *p_canvas);
+	bool forward_input_event(const InputEvent &p_event);
 	void edit(Node *p_node);
 
 	CollisionShape2DEditor(EditorNode *p_editor);
 };
 
 class CollisionShape2DEditorPlugin : public EditorPlugin {
-	GDCLASS(CollisionShape2DEditorPlugin, EditorPlugin);
+	OBJ_TYPE(CollisionShape2DEditorPlugin, EditorPlugin);
 
 	CollisionShape2DEditor *collision_shape_2d_editor;
 	EditorNode *editor;
 
 public:
-	virtual bool forward_canvas_gui_input(const Ref<InputEvent> &p_event) { return collision_shape_2d_editor->forward_canvas_gui_input(p_event); }
-	virtual void forward_draw_over_canvas(Control *p_canvas) { return collision_shape_2d_editor->forward_draw_over_canvas(p_canvas); }
+	virtual bool forward_input_event(const InputEvent &p_event) { return collision_shape_2d_editor->forward_input_event(p_event); }
 
 	virtual String get_name() const { return "CollisionShape2D"; }
 	bool has_main_screen() const { return false; }

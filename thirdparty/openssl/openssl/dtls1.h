@@ -78,7 +78,7 @@
 #   include <sys/time.h>
 #  endif
 # endif
-#ifdef UWP_ENABLED // -- GODOT start --
+#ifdef WINRT_ENABLED // -- GODOT start --
 #include <winsock2.h>
 #endif // -- GODOT end --
 

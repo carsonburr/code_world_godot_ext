@@ -33,10 +33,10 @@
 #include "io/stream_peer.h"
 
 class StreamPeerSSL : public StreamPeer {
-	GDCLASS(StreamPeerSSL, StreamPeer);
+	OBJ_TYPE(StreamPeerSSL, StreamPeer);
 
 public:
-	typedef void (*LoadCertsFromMemory)(const PoolByteArray &p_certs);
+	typedef void (*LoadCertsFromMemory)(const ByteArray &p_certs);
 
 protected:
 	static StreamPeerSSL *(*_create)();
@@ -56,15 +56,15 @@ public:
 		STATUS_ERROR_HOSTNAME_MISMATCH
 	};
 
-	virtual Error accept_stream(Ref<StreamPeer> p_base) = 0;
-	virtual Error connect_to_stream(Ref<StreamPeer> p_base, bool p_validate_certs = false, const String &p_for_hostname = String()) = 0;
+	virtual Error accept(Ref<StreamPeer> p_base) = 0;
+	virtual Error connect(Ref<StreamPeer> p_base, bool p_validate_certs = false, const String &p_for_hostname = String()) = 0;
 	virtual Status get_status() const = 0;
 
-	virtual void disconnect_from_stream() = 0;
+	virtual void disconnect() = 0;
 
 	static StreamPeerSSL *create();
 
-	static void load_certs_from_memory(const PoolByteArray &p_memory);
+	static void load_certs_from_memory(const ByteArray &p_memory);
 	static bool is_available();
 
 	StreamPeerSSL();

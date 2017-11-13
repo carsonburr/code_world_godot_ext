@@ -115,12 +115,12 @@ void ItemListPlugin::_get_property_list(List<PropertyInfo> *p_list) const {
 
 void ItemListOptionButtonPlugin::set_object(Object *p_object) {
 
-	ob = Object::cast_to<OptionButton>(p_object);
+	ob = p_object->cast_to<OptionButton>();
 }
 
 bool ItemListOptionButtonPlugin::handles(Object *p_object) const {
 
-	return p_object->is_class("OptionButton");
+	return p_object->is_type("OptionButton");
 }
 
 int ItemListOptionButtonPlugin::get_flags() const {
@@ -154,15 +154,15 @@ ItemListOptionButtonPlugin::ItemListOptionButtonPlugin() {
 
 void ItemListPopupMenuPlugin::set_object(Object *p_object) {
 
-	if (p_object->is_class("MenuButton"))
-		pp = Object::cast_to<MenuButton>(p_object)->get_popup();
+	if (p_object->is_type("MenuButton"))
+		pp = p_object->cast_to<MenuButton>()->get_popup();
 	else
-		pp = Object::cast_to<PopupMenu>(p_object);
+		pp = p_object->cast_to<PopupMenu>();
 }
 
 bool ItemListPopupMenuPlugin::handles(Object *p_object) const {
 
-	return p_object->is_class("PopupMenu") || p_object->is_class("MenuButton");
+	return p_object->is_type("PopupMenu") || p_object->is_type("MenuButton");
 }
 
 int ItemListPopupMenuPlugin::get_flags() const {
@@ -188,45 +188,6 @@ void ItemListPopupMenuPlugin::erase(int p_idx) {
 }
 
 ItemListPopupMenuPlugin::ItemListPopupMenuPlugin() {
-
-	pp = NULL;
-}
-
-///////////////////////////////////////////////////////////////
-
-void ItemListItemListPlugin::set_object(Object *p_object) {
-
-	pp = Object::cast_to<ItemList>(p_object);
-}
-
-bool ItemListItemListPlugin::handles(Object *p_object) const {
-
-	return p_object->is_class("ItemList");
-}
-
-int ItemListItemListPlugin::get_flags() const {
-
-	return FLAG_ICON | FLAG_ENABLE;
-}
-
-void ItemListItemListPlugin::add_item() {
-
-	pp->add_item(vformat(TTR("Item %d"), pp->get_item_count()));
-	_change_notify();
-}
-
-int ItemListItemListPlugin::get_item_count() const {
-
-	return pp->get_item_count();
-}
-
-void ItemListItemListPlugin::erase(int p_idx) {
-
-	pp->remove_item(p_idx);
-	_change_notify();
-}
-
-ItemListItemListPlugin::ItemListItemListPlugin() {
 
 	pp = NULL;
 }
@@ -300,8 +261,8 @@ void ItemListEditor::edit(Node *p_item_list) {
 			item_plugins[i]->set_object(p_item_list);
 			property_editor->edit(item_plugins[i]);
 
-			if (has_icon(item_list->get_class(), "EditorIcons"))
-				toolbar_button->set_icon(get_icon(item_list->get_class(), "EditorIcons"));
+			if (has_icon(item_list->get_type(), "EditorIcons"))
+				toolbar_button->set_icon(get_icon(item_list->get_type(), "EditorIcons"));
 			else
 				toolbar_button->set_icon(Ref<Texture>());
 
@@ -327,9 +288,9 @@ bool ItemListEditor::handles(Object *p_object) const {
 
 void ItemListEditor::_bind_methods() {
 
-	ClassDB::bind_method("_edit_items", &ItemListEditor::_edit_items);
-	ClassDB::bind_method("_add_button", &ItemListEditor::_add_pressed);
-	ClassDB::bind_method("_delete_button", &ItemListEditor::_delete_pressed);
+	ObjectTypeDB::bind_method("_edit_items", &ItemListEditor::_edit_items);
+	ObjectTypeDB::bind_method("_add_button", &ItemListEditor::_add_pressed);
+	ObjectTypeDB::bind_method("_delete_button", &ItemListEditor::_delete_pressed);
 }
 
 ItemListEditor::ItemListEditor() {
@@ -349,7 +310,7 @@ ItemListEditor::ItemListEditor() {
 
 	VBoxContainer *vbc = memnew(VBoxContainer);
 	dialog->add_child(vbc);
-	//dialog->set_child_rect(vbc);
+	dialog->set_child_rect(vbc);
 
 	HBoxContainer *hbc = memnew(HBoxContainer);
 	hbc->set_h_size_flags(SIZE_EXPAND_FILL);
@@ -384,7 +345,7 @@ ItemListEditor::~ItemListEditor() {
 
 void ItemListEditorPlugin::edit(Object *p_object) {
 
-	item_list_editor->edit(Object::cast_to<Node>(p_object));
+	item_list_editor->edit(p_object->cast_to<Node>());
 }
 
 bool ItemListEditorPlugin::handles(Object *p_object) const {
@@ -412,7 +373,6 @@ ItemListEditorPlugin::ItemListEditorPlugin(EditorNode *p_node) {
 	item_list_editor->hide();
 	item_list_editor->add_plugin(memnew(ItemListOptionButtonPlugin));
 	item_list_editor->add_plugin(memnew(ItemListPopupMenuPlugin));
-	item_list_editor->add_plugin(memnew(ItemListItemListPlugin));
 }
 
 ItemListEditorPlugin::~ItemListEditorPlugin() {

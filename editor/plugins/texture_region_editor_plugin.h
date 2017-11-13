@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  texture_region_editor_plugin.h                                       */
+/*  texture_region_editor_plugin.h                                        */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -37,13 +37,13 @@
 #include "editor/editor_node.h"
 #include "editor/editor_plugin.h"
 #include "scene/2d/sprite.h"
-#include "scene/gui/nine_patch_rect.h"
+#include "scene/gui/patch_9_frame.h"
 #include "scene/resources/style_box.h"
 #include "scene/resources/texture.h"
 
 class TextureRegionEditor : public Control {
 
-	GDCLASS(TextureRegionEditor, Control);
+	OBJ_TYPE(TextureRegionEditor, Control);
 
 	enum SnapMode {
 		SNAP_NONE,
@@ -54,7 +54,7 @@ class TextureRegionEditor : public Control {
 
 	friend class TextureRegionEditorPlugin;
 	MenuButton *snap_mode_button;
-	TextureRect *icon_zoom;
+	TextureFrame *icon_zoom;
 	ToolButton *zoom_in;
 	ToolButton *zoom_reset;
 	ToolButton *zoom_out;
@@ -82,7 +82,7 @@ class TextureRegionEditor : public Control {
 	Vector2 snap_step;
 	Vector2 snap_separation;
 
-	NinePatchRect *node_ninepatch;
+	Patch9Frame *node_patch9;
 	Sprite *node_sprite;
 	Ref<StyleBoxTexture> obj_styleBox;
 	Ref<AtlasTexture> atlas_tex;
@@ -122,7 +122,7 @@ protected:
 public:
 	void _edit_region();
 	void _region_draw();
-	void _region_input(const Ref<InputEvent> &p_input);
+	void _region_input(const InputEvent &p_input);
 	void _scroll_changed(float);
 
 	void edit(Object *p_obj);
@@ -130,7 +130,7 @@ public:
 };
 
 class TextureRegionEditorPlugin : public EditorPlugin {
-	GDCLASS(TextureRegionEditorPlugin, EditorPlugin);
+	OBJ_TYPE(TextureRegionEditorPlugin, EditorPlugin);
 
 	Button *region_button;
 	TextureRegionEditor *region_editor;
@@ -139,8 +139,8 @@ class TextureRegionEditorPlugin : public EditorPlugin {
 public:
 	virtual String get_name() const { return "TextureRegion"; }
 	bool has_main_screen() const { return false; }
-	virtual void edit(Object *p_object);
-	virtual bool handles(Object *p_object) const;
+	virtual void edit(Object *p_node);
+	virtual bool handles(Object *p_node) const;
 	virtual void make_visible(bool p_visible);
 	void set_state(const Dictionary &p_state);
 	Dictionary get_state() const;

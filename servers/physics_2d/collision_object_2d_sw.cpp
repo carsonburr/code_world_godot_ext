@@ -30,15 +30,14 @@
 #include "collision_object_2d_sw.h"
 #include "space_2d_sw.h"
 
-void CollisionObject2DSW::add_shape(Shape2DSW *p_shape, const Transform2D &p_transform) {
+void CollisionObject2DSW::add_shape(Shape2DSW *p_shape, const Matrix32 &p_transform) {
 
 	Shape s;
 	s.shape = p_shape;
 	s.xform = p_transform;
 	s.xform_inv = s.xform.affine_inverse();
 	s.bpid = 0; //needs update
-	s.disabled = false;
-	s.one_way_collision = false;
+	s.trigger = false;
 	shapes.push_back(s);
 	p_shape->add_owner(this);
 	_update_shapes();
@@ -62,7 +61,7 @@ void CollisionObject2DSW::set_shape_metadata(int p_index, const Variant &p_metad
 	shapes[p_index].metadata = p_metadata;
 }
 
-void CollisionObject2DSW::set_shape_transform(int p_index, const Transform2D &p_transform) {
+void CollisionObject2DSW::set_shape_transform(int p_index, const Matrix32 &p_transform) {
 
 	ERR_FAIL_INDEX(p_index, shapes.size());
 
@@ -96,6 +95,7 @@ void CollisionObject2DSW::remove_shape(int p_index) {
 		space->get_broadphase()->remove(shapes[i].bpid);
 		shapes[i].bpid = 0;
 	}
+	_shape_index_removed(p_index);
 	shapes[p_index].shape->remove_owner(this);
 	shapes.remove(p_index);
 
@@ -144,7 +144,7 @@ void CollisionObject2DSW::_update_shapes() {
 
 		//not quite correct, should compute the next matrix..
 		Rect2 shape_aabb = s.shape->get_aabb();
-		Transform2D xform = transform * s.xform;
+		Matrix32 xform = transform * s.xform;
 		shape_aabb = xform.xform(shape_aabb);
 		s.aabb_cache = shape_aabb;
 		s.aabb_cache = s.aabb_cache.grow((s.aabb_cache.size.x + s.aabb_cache.size.y) * 0.5 * 0.05);
@@ -168,9 +168,9 @@ void CollisionObject2DSW::_update_shapes_with_motion(const Vector2 &p_motion) {
 
 		//not quite correct, should compute the next matrix..
 		Rect2 shape_aabb = s.shape->get_aabb();
-		Transform2D xform = transform * s.xform;
+		Matrix32 xform = transform * s.xform;
 		shape_aabb = xform.xform(shape_aabb);
-		shape_aabb = shape_aabb.merge(Rect2(shape_aabb.position + p_motion, shape_aabb.size)); //use motion
+		shape_aabb = shape_aabb.merge(Rect2(shape_aabb.pos + p_motion, shape_aabb.size)); //use motion
 		s.aabb_cache = shape_aabb;
 
 		space->get_broadphase()->move(s.bpid, shape_aabb);
@@ -215,6 +215,6 @@ CollisionObject2DSW::CollisionObject2DSW(Type p_type) {
 	space = NULL;
 	instance_id = 0;
 	collision_mask = 1;
-	collision_layer = 1;
+	layer_mask = 1;
 	pickable = true;
 }

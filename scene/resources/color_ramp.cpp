@@ -28,7 +28,6 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 #include "color_ramp.h"
-#include "core_string_names.h"
 
 //setter and getter names for property serialization
 #define COLOR_RAMP_GET_OFFSETS "get_offsets"
@@ -36,7 +35,7 @@
 #define COLOR_RAMP_SET_OFFSETS "set_offsets"
 #define COLOR_RAMP_SET_COLORS "set_colors"
 
-Gradient::Gradient() {
+ColorRamp::ColorRamp() {
 	//Set initial color ramp transition from black to white
 	points.resize(2);
 	points[0].color = Color(0, 0, 0, 1);
@@ -46,35 +45,35 @@ Gradient::Gradient() {
 	is_sorted = true;
 }
 
-Gradient::~Gradient() {
+ColorRamp::~ColorRamp() {
 }
 
-void Gradient::_bind_methods() {
+void ColorRamp::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("add_point", "offset", "color"), &Gradient::add_point);
-	ClassDB::bind_method(D_METHOD("remove_point", "offset"), &Gradient::remove_point);
+	ObjectTypeDB::bind_method(_MD("add_point", "offset", "color"), &ColorRamp::add_point);
+	ObjectTypeDB::bind_method(_MD("remove_point", "offset", "color"), &ColorRamp::remove_point);
 
-	ClassDB::bind_method(D_METHOD("set_offset", "point", "offset"), &Gradient::set_offset);
-	ClassDB::bind_method(D_METHOD("get_offset", "point"), &Gradient::get_offset);
+	ObjectTypeDB::bind_method(_MD("set_offset", "point", "offset"), &ColorRamp::set_offset);
+	ObjectTypeDB::bind_method(_MD("get_offset", "point"), &ColorRamp::get_offset);
 
-	ClassDB::bind_method(D_METHOD("set_color", "point", "color"), &Gradient::set_color);
-	ClassDB::bind_method(D_METHOD("get_color", "point"), &Gradient::get_color);
+	ObjectTypeDB::bind_method(_MD("set_color", "point", "color"), &ColorRamp::set_color);
+	ObjectTypeDB::bind_method(_MD("get_color", "point"), &ColorRamp::get_color);
 
-	ClassDB::bind_method(D_METHOD("interpolate", "offset"), &Gradient::get_color_at_offset);
+	ObjectTypeDB::bind_method(_MD("interpolate", "offset"), &ColorRamp::get_color_at_offset);
 
-	ClassDB::bind_method(D_METHOD("get_point_count"), &Gradient::get_points_count);
+	ObjectTypeDB::bind_method(_MD("get_point_count"), &ColorRamp::get_points_count);
 
-	ClassDB::bind_method(D_METHOD(COLOR_RAMP_SET_OFFSETS, "offsets"), &Gradient::set_offsets);
-	ClassDB::bind_method(D_METHOD(COLOR_RAMP_GET_OFFSETS), &Gradient::get_offsets);
+	ObjectTypeDB::bind_method(_MD(COLOR_RAMP_SET_OFFSETS, "offsets"), &ColorRamp::set_offsets);
+	ObjectTypeDB::bind_method(_MD(COLOR_RAMP_GET_OFFSETS), &ColorRamp::get_offsets);
 
-	ClassDB::bind_method(D_METHOD(COLOR_RAMP_SET_COLORS, "colors"), &Gradient::set_colors);
-	ClassDB::bind_method(D_METHOD(COLOR_RAMP_GET_COLORS), &Gradient::get_colors);
+	ObjectTypeDB::bind_method(_MD(COLOR_RAMP_SET_COLORS, "colors"), &ColorRamp::set_colors);
+	ObjectTypeDB::bind_method(_MD(COLOR_RAMP_GET_COLORS), &ColorRamp::get_colors);
 
-	ADD_PROPERTY(PropertyInfo(Variant::REAL, "offsets"), COLOR_RAMP_SET_OFFSETS, COLOR_RAMP_GET_OFFSETS);
-	ADD_PROPERTY(PropertyInfo(Variant::REAL, "colors"), COLOR_RAMP_SET_COLORS, COLOR_RAMP_GET_COLORS);
+	ADD_PROPERTY(PropertyInfo(Variant::REAL, "offsets"), _SCS(COLOR_RAMP_SET_OFFSETS), _SCS(COLOR_RAMP_GET_OFFSETS));
+	ADD_PROPERTY(PropertyInfo(Variant::REAL, "colors"), _SCS(COLOR_RAMP_SET_COLORS), _SCS(COLOR_RAMP_GET_COLORS));
 }
 
-Vector<float> Gradient::get_offsets() const {
+Vector<float> ColorRamp::get_offsets() const {
 	Vector<float> offsets;
 	offsets.resize(points.size());
 	for (int i = 0; i < points.size(); i++) {
@@ -83,7 +82,7 @@ Vector<float> Gradient::get_offsets() const {
 	return offsets;
 }
 
-Vector<Color> Gradient::get_colors() const {
+Vector<Color> ColorRamp::get_colors() const {
 	Vector<Color> colors;
 	colors.resize(points.size());
 	for (int i = 0; i < points.size(); i++) {
@@ -92,83 +91,75 @@ Vector<Color> Gradient::get_colors() const {
 	return colors;
 }
 
-void Gradient::set_offsets(const Vector<float> &p_offsets) {
+void ColorRamp::set_offsets(const Vector<float> &p_offsets) {
 	points.resize(p_offsets.size());
 	for (int i = 0; i < points.size(); i++) {
 		points[i].offset = p_offsets[i];
 	}
 	is_sorted = false;
-	emit_signal(CoreStringNames::get_singleton()->changed);
 }
 
-void Gradient::set_colors(const Vector<Color> &p_colors) {
+void ColorRamp::set_colors(const Vector<Color> &p_colors) {
 	if (points.size() < p_colors.size())
 		is_sorted = false;
 	points.resize(p_colors.size());
 	for (int i = 0; i < points.size(); i++) {
 		points[i].color = p_colors[i];
 	}
-	emit_signal(CoreStringNames::get_singleton()->changed);
 }
 
-Vector<Gradient::Point> &Gradient::get_points() {
+Vector<ColorRamp::Point> &ColorRamp::get_points() {
 	return points;
 }
 
-void Gradient::add_point(float p_offset, const Color &p_color) {
+void ColorRamp::add_point(float p_offset, const Color &p_color) {
 
 	Point p;
 	p.offset = p_offset;
 	p.color = p_color;
 	is_sorted = false;
 	points.push_back(p);
-
-	emit_signal(CoreStringNames::get_singleton()->changed);
 }
 
-void Gradient::remove_point(int p_index) {
+void ColorRamp::remove_point(int p_index) {
 
 	ERR_FAIL_INDEX(p_index, points.size());
 	ERR_FAIL_COND(points.size() <= 2);
 	points.remove(p_index);
-	emit_signal(CoreStringNames::get_singleton()->changed);
 }
 
-void Gradient::set_points(Vector<Gradient::Point> &p_points) {
+void ColorRamp::set_points(Vector<ColorRamp::Point> &p_points) {
 	points = p_points;
 	is_sorted = false;
-	emit_signal(CoreStringNames::get_singleton()->changed);
 }
 
-void Gradient::set_offset(int pos, const float offset) {
+void ColorRamp::set_offset(int pos, const float offset) {
 	if (points.size() <= pos)
 		points.resize(pos + 1);
 	points[pos].offset = offset;
 	is_sorted = false;
-	emit_signal(CoreStringNames::get_singleton()->changed);
 }
 
-float Gradient::get_offset(int pos) const {
+float ColorRamp::get_offset(int pos) const {
 	if (points.size() && points.size() > pos)
 		return points[pos].offset;
 	return 0; //TODO: Maybe throw some error instead?
 }
 
-void Gradient::set_color(int pos, const Color &color) {
+void ColorRamp::set_color(int pos, const Color &color) {
 	if (points.size() <= pos) {
 		points.resize(pos + 1);
 		is_sorted = false;
 	}
 	points[pos].color = color;
-	emit_signal(CoreStringNames::get_singleton()->changed);
 }
 
-Color Gradient::get_color(int pos) const {
+Color ColorRamp::get_color(int pos) const {
 	if (points.size() && points.size() > pos)
 		return points[pos].color;
 	return Color(0, 0, 0, 1); //TODO: Maybe throw some error instead?
 }
 
-int Gradient::get_points_count() const {
+int ColorRamp::get_points_count() const {
 	return points.size();
 }

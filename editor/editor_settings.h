@@ -35,14 +35,14 @@
 #include "core/io/config_file.h"
 #include "os/thread_safe.h"
 #include "resource.h"
-#include "scene/gui/shortcut.h"
+#include "scene/gui/input_action.h"
 #include "translation.h"
 
 class EditorPlugin;
 
 class EditorSettings : public Resource {
 
-	GDCLASS(EditorSettings, Resource);
+	OBJ_TYPE(EditorSettings, Resource);
 
 private:
 	_THREAD_SAFE_CLASS_
@@ -65,7 +65,6 @@ private:
 	struct VariantContainer {
 		int order;
 		Variant variant;
-		Variant initial;
 		bool hide_from_editor;
 		bool save;
 		VariantContainer() {
@@ -85,11 +84,9 @@ private:
 	HashMap<String, VariantContainer> props;
 	String resource_path;
 
-	bool _set(const StringName &p_name, const Variant &p_value, bool p_emit_signal = true);
+	bool _set(const StringName &p_name, const Variant &p_value);
 	bool _get(const StringName &p_name, Variant &r_ret) const;
 	void _get_property_list(List<PropertyInfo> *p_list) const;
-
-	void _initial_set(const StringName &p_name, const Variant &p_value);
 
 	static Ref<EditorSettings> singleton;
 
@@ -126,14 +123,7 @@ public:
 		NOTIFICATION_EDITOR_SETTINGS_CHANGED = 10000
 	};
 
-	void set_manually(const StringName &p_name, const Variant &p_value, bool p_emit_signal = false) {
-		_set(p_name, p_value, p_emit_signal);
-	}
-
-	void set_setting(const String &p_setting, const Variant &p_value);
-	Variant get_setting(const String &p_setting) const;
-
-	bool has_setting(String p_var) const;
+	bool has(String p_var) const;
 	static EditorSettings *get_singleton();
 	void erase(String p_var);
 	String get_settings_path() const;
@@ -155,7 +145,7 @@ public:
 
 	void add_property_hint(const PropertyInfo &p_hint);
 
-	void set_favorite_dirs(const Vector<String> &p_favorites_dirs);
+	void set_favorite_dirs(const Vector<String> &p_favorite_dirs);
 	Vector<String> get_favorite_dirs() const;
 
 	void set_recent_dirs(const Vector<String> &p_recent_dirs);
@@ -169,22 +159,12 @@ public:
 	bool save_text_editor_theme();
 	bool save_text_editor_theme_as(String p_file);
 
-	Vector<String> get_script_templates(const String &p_extension);
-
 	void add_shortcut(const String &p_name, Ref<ShortCut> &p_shortcut);
-	bool is_shortcut(const String &p_name, const Ref<InputEvent> &p_event) const;
+	bool is_shortcut(const String &p_name, const InputEvent &p_event) const;
 	Ref<ShortCut> get_shortcut(const String &p_name) const;
 	void get_shortcut_list(List<String> *r_shortcuts);
 
 	void set_optimize_save(bool p_optimize);
-
-	Variant get_project_metadata(const String &p_section, const String &p_key, Variant p_default);
-	void set_project_metadata(const String &p_section, const String &p_key, Variant p_data);
-
-	bool property_can_revert(const String &p_name);
-	Variant property_get_revert(const String &p_name);
-
-	void set_initial_value(const StringName &p_name, const Variant &p_value);
 
 	EditorSettings();
 	~EditorSettings();
@@ -194,9 +174,6 @@ public:
 
 #define EDITOR_DEF(m_var, m_val) _EDITOR_DEF(m_var, Variant(m_val))
 Variant _EDITOR_DEF(const String &p_var, const Variant &p_default);
-
-#define EDITOR_GET(m_var) _EDITOR_GET(m_var)
-Variant _EDITOR_GET(const String &p_var);
 
 #define ED_IS_SHORTCUT(p_name, p_ev) (EditorSettings::get_singleton()->is_shortcut(p_name, p_ev))
 Ref<ShortCut> ED_SHORTCUT(const String &p_path, const String &p_name, uint32_t p_keycode = 0);

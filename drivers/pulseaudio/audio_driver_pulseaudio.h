@@ -27,7 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
-#include "servers/audio_server.h"
+#include "servers/audio/audio_server_sw.h"
 
 #ifdef PULSEAUDIO_ENABLED
 
@@ -36,28 +36,30 @@
 
 #include <pulse/simple.h>
 
-class AudioDriverPulseAudio : public AudioDriver {
+class AudioDriverPulseAudio : public AudioDriverSW {
 
 	Thread *thread;
 	Mutex *mutex;
 
 	pa_simple *pulse;
 
-	Vector<int32_t> samples_in;
-	Vector<int16_t> samples_out;
+	int32_t *samples_in;
+	int16_t *samples_out;
+
+	static void thread_func(void *p_udata);
 
 	unsigned int mix_rate;
-	unsigned int buffer_frames;
+	OutputFormat output_format;
+
 	unsigned int buffer_size;
 	int channels;
 
 	bool active;
 	bool thread_exited;
 	mutable bool exit_thread;
+	bool pcm_open;
 
 	float latency;
-
-	static void thread_func(void *p_udata);
 
 public:
 	const char *get_name() const {
@@ -67,7 +69,7 @@ public:
 	virtual Error init();
 	virtual void start();
 	virtual int get_mix_rate() const;
-	virtual SpeakerMode get_speaker_mode() const;
+	virtual OutputFormat get_output_format() const;
 	virtual void lock();
 	virtual void unlock();
 	virtual void finish();

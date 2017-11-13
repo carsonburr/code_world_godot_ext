@@ -111,8 +111,8 @@ struct _ConcaveCollisionInfo {
 	int aabb_tests;
 	int collisions;
 	bool tested;
-	real_t margin_A;
-	real_t margin_B;
+	float margin_A;
+	float margin_B;
 	Vector3 close_A, close_B;
 };
 
@@ -129,7 +129,7 @@ void CollisionSolverSW::concave_callback(void *p_userdata, ShapeSW *p_convex) {
 	cinfo.collisions++;
 }
 
-bool CollisionSolverSW::solve_concave(const ShapeSW *p_shape_A, const Transform &p_transform_A, const ShapeSW *p_shape_B, const Transform &p_transform_B, CallbackResult p_result_callback, void *p_userdata, bool p_swap_result, real_t p_margin_A, real_t p_margin_B) {
+bool CollisionSolverSW::solve_concave(const ShapeSW *p_shape_A, const Transform &p_transform_A, const ShapeSW *p_shape_B, const Transform &p_transform_B, CallbackResult p_result_callback, void *p_userdata, bool p_swap_result, float p_margin_A, float p_margin_B) {
 
 	const ConcaveShapeSW *concave_B = static_cast<const ConcaveShapeSW *>(p_shape_B);
 
@@ -152,21 +152,21 @@ bool CollisionSolverSW::solve_concave(const ShapeSW *p_shape_A, const Transform 
 
 	//quickly compute a local AABB
 
-	Rect3 local_aabb;
+	AABB local_aabb;
 	for (int i = 0; i < 3; i++) {
 
 		Vector3 axis(p_transform_B.basis.get_axis(i));
-		real_t axis_scale = 1.0 / axis.length();
+		float axis_scale = 1.0 / axis.length();
 		axis *= axis_scale;
 
-		real_t smin, smax;
+		float smin, smax;
 		p_shape_A->project_range(axis, rel_transform, smin, smax);
 		smin -= p_margin_A;
 		smax += p_margin_A;
 		smin *= axis_scale;
 		smax *= axis_scale;
 
-		local_aabb.position[i] = smin;
+		local_aabb.pos[i] = smin;
 		local_aabb.size[i] = smax - smin;
 	}
 
@@ -176,7 +176,7 @@ bool CollisionSolverSW::solve_concave(const ShapeSW *p_shape_A, const Transform 
 	return cinfo.collided;
 }
 
-bool CollisionSolverSW::solve_static(const ShapeSW *p_shape_A, const Transform &p_transform_A, const ShapeSW *p_shape_B, const Transform &p_transform_B, CallbackResult p_result_callback, void *p_userdata, Vector3 *r_sep_axis, real_t p_margin_A, real_t p_margin_B) {
+bool CollisionSolverSW::solve_static(const ShapeSW *p_shape_A, const Transform &p_transform_A, const ShapeSW *p_shape_B, const Transform &p_transform_B, CallbackResult p_result_callback, void *p_userdata, Vector3 *r_sep_axis, float p_margin_A, float p_margin_B) {
 
 	PhysicsServer::ShapeType type_A = p_shape_A->get_type();
 	PhysicsServer::ShapeType type_B = p_shape_B->get_type();
@@ -271,7 +271,7 @@ bool CollisionSolverSW::solve_distance_plane(const ShapeSW *p_shape_A, const Tra
 
 	bool collided = false;
 	Vector3 closest;
-	real_t closest_d = 0;
+	float closest_d;
 
 	for (int i = 0; i < support_count; i++) {
 
@@ -291,7 +291,7 @@ bool CollisionSolverSW::solve_distance_plane(const ShapeSW *p_shape_A, const Tra
 	return collided;
 }
 
-bool CollisionSolverSW::solve_distance(const ShapeSW *p_shape_A, const Transform &p_transform_A, const ShapeSW *p_shape_B, const Transform &p_transform_B, Vector3 &r_point_A, Vector3 &r_point_B, const Rect3 &p_concave_hint, Vector3 *r_sep_axis) {
+bool CollisionSolverSW::solve_distance(const ShapeSW *p_shape_A, const Transform &p_transform_A, const ShapeSW *p_shape_B, const Transform &p_transform_B, Vector3 &r_point_A, Vector3 &r_point_B, const AABB &p_concave_hint, Vector3 *r_sep_axis) {
 
 	if (p_shape_A->is_concave())
 		return false;
@@ -328,21 +328,21 @@ bool CollisionSolverSW::solve_distance(const ShapeSW *p_shape_A, const Transform
 
 		//quickly compute a local AABB
 
-		bool use_cc_hint = p_concave_hint != Rect3();
-		Rect3 cc_hint_aabb;
+		bool use_cc_hint = p_concave_hint != AABB();
+		AABB cc_hint_aabb;
 		if (use_cc_hint) {
 			cc_hint_aabb = p_concave_hint;
-			cc_hint_aabb.position -= p_transform_B.origin;
+			cc_hint_aabb.pos -= p_transform_B.origin;
 		}
 
-		Rect3 local_aabb;
+		AABB local_aabb;
 		for (int i = 0; i < 3; i++) {
 
 			Vector3 axis(p_transform_B.basis.get_axis(i));
-			real_t axis_scale = ((real_t)1.0) / axis.length();
+			float axis_scale = 1.0 / axis.length();
 			axis *= axis_scale;
 
-			real_t smin, smax;
+			float smin, smax;
 
 			if (use_cc_hint) {
 				cc_hint_aabb.project_range_in_plane(Plane(axis, 0), smin, smax);
@@ -353,13 +353,13 @@ bool CollisionSolverSW::solve_distance(const ShapeSW *p_shape_A, const Transform
 			smin *= axis_scale;
 			smax *= axis_scale;
 
-			local_aabb.position[i] = smin;
+			local_aabb.pos[i] = smin;
 			local_aabb.size[i] = smax - smin;
 		}
 
 		concave_B->cull(local_aabb, concave_distance_callback, &cinfo);
 		if (!cinfo.collided) {
-			//print_line(itos(cinfo.tested));
+			//			print_line(itos(cinfo.tested));
 			r_point_A = cinfo.close_A;
 			r_point_B = cinfo.close_B;
 		}

@@ -29,8 +29,8 @@
 /*************************************************************************/
 #include "video_stream_theora.h"
 
+#include "globals.h"
 #include "os/os.h"
-#include "project_settings.h"
 
 #include "thirdparty/misc/yuv2rgb.h"
 
@@ -83,10 +83,38 @@ void VideoStreamPlaybackTheora::video_write(void) {
 	th_ycbcr_buffer yuv;
 	th_decode_ycbcr_out(td, yuv);
 
+	/*
+	int y_offset, uv_offset;
+	y_offset=(ti.pic_x&~1)+yuv[0].stride*(ti.pic_y&~1);
+
+	{
+		int pixels = size.x * size.y;
+		frame_data.resize(pixels * 4);
+		DVector<uint8_t>::Write w = frame_data.write();
+		char* dst = (char*)w.ptr();
+		int p = 0;
+		for (int i=0; i<size.y; i++) {
+
+			char *in_y  = (char *)yuv[0].data+y_offset+yuv[0].stride*i;
+			char *out = dst + (int)size.x * 4 * i;
+			for (int j=0;j<size.x;j++) {
+
+				dst[p++] = in_y[j];
+				dst[p++] = in_y[j];
+				dst[p++] = in_y[j];
+				dst[p++] = 255;
+			};
+		}
+		format = Image::FORMAT_RGBA;
+	}
+	//	*/
+
+	//*
+
 	int pitch = 4;
 	frame_data.resize(size.x * size.y * pitch);
 	{
-		PoolVector<uint8_t>::Write w = frame_data.write();
+		DVector<uint8_t>::Write w = frame_data.write();
 		char *dst = (char *)w.ptr();
 
 		//uv_offset=(ti.pic_x/2)+(yuv[1].stride)*(ti.pic_y/2);
@@ -104,12 +132,105 @@ void VideoStreamPlaybackTheora::video_write(void) {
 			yuv420_2_rgb8888((uint8_t *)dst, (uint8_t *)yuv[0].data, (uint8_t *)yuv[2].data, (uint8_t *)yuv[1].data, size.x, size.y, yuv[0].stride, yuv[1].stride, size.x << 2, 0);
 		};
 
-		format = Image::FORMAT_RGBA8;
+		format = Image::FORMAT_RGBA;
 	}
 
-	Ref<Image> img = memnew(Image(size.x, size.y, 0, Image::FORMAT_RGBA8, frame_data)); //zero copy image creation
+	Image img(size.x, size.y, 0, Image::FORMAT_RGBA, frame_data); //zero copy image creation
 
 	texture->set_data(img); //zero copy send to visual server
+
+	/*
+
+	if (px_fmt == TH_PF_444) {
+
+		int pitch = 3;
+		frame_data.resize(size.x * size.y * pitch);
+		DVector<uint8_t>::Write w = frame_data.write();
+		char* dst = (char*)w.ptr();
+
+		for(int i=0;i<size.y;i++) {
+
+			char *in_y  = (char *)yuv[0].data+y_offset+yuv[0].stride*i;
+			char *out = dst + (int)size.x * pitch * i;
+			char *in_u  = (char *)yuv[1].data+uv_offset+yuv[1].stride*i;
+			char *in_v  = (char *)yuv[2].data+uv_offset+yuv[2].stride*i;
+			for (int j=0;j<size.x;j++) {
+
+				out[j*3+0] = in_y[j];
+				out[j*3+1] = in_u[j];
+				out[j*3+2] = in_v[j];
+			};
+		}
+
+		format = Image::FORMAT_YUV_444;
+
+	} else {
+
+		int div;
+		if (px_fmt!=TH_PF_422) {
+			div = 2;
+		}
+
+		bool rgba = true;
+		if (rgba) {
+
+			int pitch = 4;
+			frame_data.resize(size.x * size.y * pitch);
+			DVector<uint8_t>::Write w = frame_data.write();
+			char* dst = (char*)w.ptr();
+
+			uv_offset=(ti.pic_x/2)+(yuv[1].stride)*(ti.pic_y / div);
+			for(int i=0;i<size.y;i++) {
+				char *in_y  = (char *)yuv[0].data+y_offset+yuv[0].stride*i;
+				char *in_u  = (char *)yuv[1].data+uv_offset+yuv[1].stride*(i/div);
+				char *in_v  = (char *)yuv[2].data+uv_offset+yuv[2].stride*(i/div);
+				uint8_t *out = (uint8_t*)dst + (int)size.x * pitch * i;
+				int ofs = 0;
+				for (int j=0;j<size.x;j++) {
+
+					uint8_t y, u, v;
+					y = in_y[j];
+					u = in_u[j/2];
+					v = in_v[j/2];
+
+					int32_t r = Math::fast_ftoi(1.164 * (y - 16) + 1.596 * (v - 128));
+					int32_t g = Math::fast_ftoi(1.164 * (y - 16) - 0.813 * (v - 128) - 0.391 * (u - 128));
+					int32_t b = Math::fast_ftoi(1.164 * (y - 16) + 2.018 * (u - 128));
+
+					out[ofs++] = CLAMP(r, 0, 255);
+					out[ofs++] = CLAMP(g, 0, 255);
+					out[ofs++] = CLAMP(b, 0, 255);
+					out[ofs++] = 255;
+				}
+			}
+
+			format = Image::FORMAT_RGBA;
+
+		} else {
+
+			int pitch = 2;
+			frame_data.resize(size.x * size.y * pitch);
+			DVector<uint8_t>::Write w = frame_data.write();
+			char* dst = (char*)w.ptr();
+
+			uv_offset=(ti.pic_x/2)+(yuv[1].stride)*(ti.pic_y / div);
+			for(int i=0;i<size.y;i++) {
+				char *in_y  = (char *)yuv[0].data+y_offset+yuv[0].stride*i;
+				char *out = dst + (int)size.x * pitch * i;
+				for (int j=0;j<size.x;j++)
+					out[j*2] = in_y[j];
+				char *in_u  = (char *)yuv[1].data+uv_offset+yuv[1].stride*(i/div);
+				char *in_v  = (char *)yuv[2].data+uv_offset+yuv[2].stride*(i/div);
+				for (int j=0;j<(int)size.x>>1;j++) {
+					out[j*4+1] = in_u[j];
+					out[j*4+3] = in_v[j];
+				}
+			}
+
+			format = Image::FORMAT_YUV_422;
+		};
+	};
+	//	*/
 
 	frames_pending = 1;
 }
@@ -327,9 +448,19 @@ void VideoStreamPlaybackTheora::set_file(const String &p_file) {
 					ti.frame_width, ti.frame_height, ti.pic_x, ti.pic_y);
 		th_decode_ctl(td, TH_DECCTL_GET_PPLEVEL_MAX, &pp_level_max,
 				sizeof(pp_level_max));
+		pp_level = pp_level_max;
 		pp_level = 0;
 		th_decode_ctl(td, TH_DECCTL_SET_PPLEVEL, &pp_level, sizeof(pp_level));
 		pp_inc = 0;
+
+		/*{
+		int arg = 0xffff;
+		th_decode_ctl(td,TH_DECCTL_SET_TELEMETRY_MBMODE,&arg,sizeof(arg));
+		th_decode_ctl(td,TH_DECCTL_SET_TELEMETRY_MV,&arg,sizeof(arg));
+		th_decode_ctl(td,TH_DECCTL_SET_TELEMETRY_QI,&arg,sizeof(arg));
+		arg=10;
+		th_decode_ctl(td,TH_DECCTL_SET_TELEMETRY_BITS,&arg,sizeof(arg));
+		}*/
 
 		int w;
 		int h;
@@ -338,7 +469,7 @@ void VideoStreamPlaybackTheora::set_file(const String &p_file) {
 		size.x = w;
 		size.y = h;
 
-		texture->create(w, h, Image::FORMAT_RGBA8, Texture::FLAG_FILTER | Texture::FLAG_VIDEO_SURFACE);
+		texture->create(w, h, Image::FORMAT_RGBA, Texture::FLAG_FILTER | Texture::FLAG_VIDEO_SURFACE);
 
 	} else {
 		/* tear down the partial theora setup */
@@ -369,6 +500,8 @@ void VideoStreamPlaybackTheora::set_file(const String &p_file) {
 
 float VideoStreamPlaybackTheora::get_time() const {
 
+	//print_line("total: "+itos(get_total())+" todo: "+itos(get_todo()));
+	//return MAX(0,time-((get_total())/(float)vi.rate));
 	return time - AudioServer::get_singleton()->get_output_delay() - delay_compensation; //-((get_total())/(float)vi.rate);
 };
 
@@ -390,6 +523,8 @@ void VideoStreamPlaybackTheora::update(float p_delta) {
 #ifdef THEORA_USE_THREAD_STREAMING
 	thread_sem->post();
 #endif
+
+	//double ctime =AudioServer::get_singleton()->get_mix_time();
 
 	//print_line("play "+rtos(p_delta));
 	time += p_delta;
@@ -414,8 +549,7 @@ void VideoStreamPlaybackTheora::update(float p_delta) {
 			bool buffer_full = false;
 
 			/* if there's pending, decoded audio, grab it */
-			ret = vorbis_synthesis_pcmout(&vd, &pcm);
-			if (ret > 0) {
+			if ((ret = vorbis_synthesis_pcmout(&vd, &pcm)) > 0) {
 
 				const int AUXBUF_LEN = 4096;
 				int to_read = ret;
@@ -452,7 +586,7 @@ void VideoStreamPlaybackTheora::update(float p_delta) {
 				int tr = vorbis_synthesis_read(&vd, ret - to_read);
 
 				if (vd.granulepos >= 0) {
-					//print_line("wrote: "+itos(audio_frames_wrote)+" gpos: "+itos(vd.granulepos));
+					//	print_line("wrote: "+itos(audio_frames_wrote)+" gpos: "+itos(vd.granulepos));
 				}
 
 				//print_line("mix audio!");
@@ -527,6 +661,8 @@ void VideoStreamPlaybackTheora::update(float p_delta) {
 			}
 		}
 
+//print_line("no theora: "+itos(no_theora)+" theora eos: "+itos(theora_eos)+" frame done "+itos(frame_done));
+
 #ifdef THEORA_USE_THREAD_STREAMING
 		if (file && thread_eof && no_theora && theora_eos && ring_buffer.data_left() == 0) {
 #else
@@ -536,6 +672,16 @@ void VideoStreamPlaybackTheora::update(float p_delta) {
 			stop();
 			return;
 		};
+#if 0
+		if (!videobuf_ready || audio_todo > 0){
+			/* no data yet for somebody.  Grab another page */
+
+			buffer_data();
+			while(ogg_sync_pageout(&oy,&og)>0){
+				queue_page(&og);
+			}
+		}
+#else
 
 		if (!frame_done || !audio_done) {
 			//what's the point of waiting for audio to grab a page?
@@ -545,7 +691,7 @@ void VideoStreamPlaybackTheora::update(float p_delta) {
 				queue_page(&og);
 			}
 		}
-
+#endif
 		/* If playback has begun, top audio buffer off immediately. */
 		//if(stateflag) audio_write_nonblocking();
 
@@ -579,7 +725,7 @@ void VideoStreamPlaybackTheora::play() {
 	}
 
 	playing = true;
-	delay_compensation = ProjectSettings::get_singleton()->get("audio/video_delay_compensation_ms");
+	delay_compensation = Globals::get_singleton()->get("audio/video_delay_compensation_ms");
 	delay_compensation /= 1000.0;
 };
 
@@ -634,12 +780,12 @@ int VideoStreamPlaybackTheora::get_loop_count() const {
 	return 0;
 };
 
-float VideoStreamPlaybackTheora::get_playback_position() const {
+float VideoStreamPlaybackTheora::get_pos() const {
 
 	return get_time();
 };
 
-void VideoStreamPlaybackTheora::seek(float p_time){
+void VideoStreamPlaybackTheora::seek_pos(float p_time){
 
 	// no
 };
@@ -757,7 +903,7 @@ bool ResourceFormatLoaderVideoStreamTheora::handles_type(const String &p_type) c
 
 String ResourceFormatLoaderVideoStreamTheora::get_resource_type(const String &p_path) const {
 
-	String exl = p_path.get_extension().to_lower();
+	String exl = p_path.extension().to_lower();
 	if (exl == "ogm" || exl == "ogv")
 		return "VideoStreamTheora";
 	return "";

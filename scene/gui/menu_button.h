@@ -37,17 +37,17 @@
 */
 class MenuButton : public Button {
 
-	GDCLASS(MenuButton, Button);
+	OBJ_TYPE(MenuButton, Button);
 
 	bool clicked;
 	PopupMenu *popup;
 	virtual void pressed();
 
-	void _unhandled_key_input(Ref<InputEvent> p_event);
+	void _unhandled_key_input(InputEvent p_event);
 	Array _get_items() const;
 	void _set_items(const Array &p_items);
 
-	void _gui_input(Ref<InputEvent> p_event);
+	void _input_event(InputEvent p_event);
 
 protected:
 	static void _bind_methods();

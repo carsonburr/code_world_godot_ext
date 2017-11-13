@@ -35,20 +35,18 @@
 #include "ring_buffer.h"
 class PacketPeer : public Reference {
 
-	GDCLASS(PacketPeer, Reference);
+	OBJ_TYPE(PacketPeer, Reference);
 
 	Variant _bnd_get_var() const;
 	void _bnd_put_var(const Variant &p_var);
 
 	static void _bind_methods();
 
-	Error _put_packet(const PoolVector<uint8_t> &p_buffer);
-	PoolVector<uint8_t> _get_packet() const;
+	Error _put_packet(const DVector<uint8_t> &p_buffer);
+	DVector<uint8_t> _get_packet() const;
 	Error _get_packet_error() const;
 
 	mutable Error last_get_error;
-
-	bool allow_object_decoding;
 
 public:
 	virtual int get_available_packet_count() const = 0;
@@ -59,14 +57,11 @@ public:
 
 	/* helpers / binders */
 
-	virtual Error get_packet_buffer(PoolVector<uint8_t> &r_buffer) const;
-	virtual Error put_packet_buffer(const PoolVector<uint8_t> &p_buffer);
+	virtual Error get_packet_buffer(DVector<uint8_t> &r_buffer) const;
+	virtual Error put_packet_buffer(const DVector<uint8_t> &p_buffer);
 
 	virtual Error get_var(Variant &r_variant) const;
 	virtual Error put_var(const Variant &p_packet);
-
-	void set_allow_object_decoding(bool p_enable);
-	bool is_object_decoding_allowed() const;
 
 	PacketPeer();
 	~PacketPeer() {}
@@ -74,14 +69,13 @@ public:
 
 class PacketPeerStream : public PacketPeer {
 
-	GDCLASS(PacketPeerStream, PacketPeer);
+	OBJ_TYPE(PacketPeerStream, PacketPeer);
 
 	//the way the buffers work sucks, will change later
 
 	mutable Ref<StreamPeer> peer;
 	mutable RingBuffer<uint8_t> ring_buffer;
-	mutable Vector<uint8_t> input_buffer;
-	mutable Vector<uint8_t> output_buffer;
+	mutable Vector<uint8_t> temp_buffer;
 
 	Error _poll_buffer() const;
 
@@ -98,9 +92,6 @@ public:
 
 	void set_stream_peer(const Ref<StreamPeer> &p_peer);
 	void set_input_buffer_max_size(int p_max_size);
-	int get_input_buffer_max_size() const;
-	void set_output_buffer_max_size(int p_max_size);
-	int get_output_buffer_max_size() const;
 	PacketPeerStream();
 };
 

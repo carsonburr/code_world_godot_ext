@@ -56,11 +56,11 @@ Error jpeg_load_image_from_buffer(Image *p_image, const uint8_t *p_buffer, int p
 
 	const int dst_bpl = image_width * comps;
 
-	PoolVector<uint8_t> data;
+	DVector<uint8_t> data;
 
 	data.resize(dst_bpl * image_height);
 
-	PoolVector<uint8_t>::Write dw = data.write();
+	DVector<uint8_t>::Write dw = data.write();
 
 	jpgd::uint8 *pImage_data = (jpgd::uint8 *)dw.ptr();
 
@@ -79,32 +79,32 @@ Error jpeg_load_image_from_buffer(Image *p_image, const uint8_t *p_buffer, int p
 
 	Image::Format fmt;
 	if (comps == 1)
-		fmt = Image::FORMAT_L8;
+		fmt = Image::FORMAT_GRAYSCALE;
 	else
-		fmt = Image::FORMAT_RGBA8;
+		fmt = Image::FORMAT_RGBA;
 
-	dw = PoolVector<uint8_t>::Write();
+	dw = DVector<uint8_t>::Write();
 	p_image->create(image_width, image_height, 0, fmt, data);
 
 	return OK;
 }
 
-Error ImageLoaderJPG::load_image(Ref<Image> p_image, FileAccess *f, bool p_force_linear, float p_scale) {
+Error ImageLoaderJPG::load_image(Image *p_image, FileAccess *f) {
 
-	PoolVector<uint8_t> src_image;
+	DVector<uint8_t> src_image;
 	int src_image_len = f->get_len();
 	ERR_FAIL_COND_V(src_image_len == 0, ERR_FILE_CORRUPT);
 	src_image.resize(src_image_len);
 
-	PoolVector<uint8_t>::Write w = src_image.write();
+	DVector<uint8_t>::Write w = src_image.write();
 
 	f->get_buffer(&w[0], src_image_len);
 
 	f->close();
 
-	Error err = jpeg_load_image_from_buffer(p_image.ptr(), w.ptr(), src_image_len);
+	Error err = jpeg_load_image_from_buffer(p_image, w.ptr(), src_image_len);
 
-	w = PoolVector<uint8_t>::Write();
+	w = DVector<uint8_t>::Write();
 
 	return err;
 }
@@ -115,11 +115,10 @@ void ImageLoaderJPG::get_recognized_extensions(List<String> *p_extensions) const
 	p_extensions->push_back("jpeg");
 }
 
-static Ref<Image> _jpegd_mem_loader_func(const uint8_t *p_png, int p_size) {
+static Image _jpegd_mem_loader_func(const uint8_t *p_png, int p_size) {
 
-	Ref<Image> img;
-	img.instance();
-	Error err = jpeg_load_image_from_buffer(img.ptr(), p_png, p_size);
+	Image img;
+	Error err = jpeg_load_image_from_buffer(&img, p_png, p_size);
 	if (err)
 		ERR_PRINT("Couldn't initialize ImageLoaderJPG with the given resource.");
 

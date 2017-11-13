@@ -32,7 +32,7 @@
 
 #include "body_sw.h"
 
-class ConstraintSW : public RID_Data {
+class ConstraintSW {
 
 	BodySW **_body_ptr;
 	int _body_count;
@@ -70,8 +70,10 @@ public:
 	_FORCE_INLINE_ void set_priority(int p_priority) { priority = p_priority; }
 	_FORCE_INLINE_ int get_priority() const { return priority; }
 
-	virtual bool setup(real_t p_step) = 0;
-	virtual void solve(real_t p_step) = 0;
+	virtual bool setup(float p_step) = 0;
+	virtual void solve(float p_step) = 0;
+
+	virtual void shift_shape_indices(const CollisionObjectSW *p_object, int p_removed_index) {}
 
 	virtual ~ConstraintSW() {}
 };

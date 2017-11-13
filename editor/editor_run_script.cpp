@@ -28,7 +28,6 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 #include "editor_run_script.h"
-
 #include "editor_node.h"
 
 void EditorScript::add_root_node(Node *p_node) {
@@ -43,12 +42,7 @@ void EditorScript::add_root_node(Node *p_node) {
 		return;
 	}
 
-	//editor->set_edited_scene(p_node);
-}
-
-EditorInterface *EditorScript::get_editor_interface() {
-
-	return EditorInterface::get_singleton();
+	//	editor->set_edited_scene(p_node);
 }
 
 Node *EditorScript::get_scene() {
@@ -86,9 +80,8 @@ void EditorScript::set_editor(EditorNode *p_editor) {
 
 void EditorScript::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("add_root_node", "node"), &EditorScript::add_root_node);
-	ClassDB::bind_method(D_METHOD("get_scene"), &EditorScript::get_scene);
-	ClassDB::bind_method(D_METHOD("get_editor_interface"), &EditorScript::get_editor_interface);
+	ObjectTypeDB::bind_method(_MD("add_root_node", "node"), &EditorScript::add_root_node);
+	ObjectTypeDB::bind_method(_MD("get_scene"), &EditorScript::get_scene);
 	BIND_VMETHOD(MethodInfo("_run"));
 }
 

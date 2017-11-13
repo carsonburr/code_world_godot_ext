@@ -30,10 +30,10 @@
 #ifndef OCTREE_H
 #define OCTREE_H
 
+#include "aabb.h"
 #include "list.h"
 #include "map.h"
 #include "print_string.h"
-#include "rect3.h"
 #include "variant.h"
 #include "vector3.h"
 
@@ -106,7 +106,7 @@ private:
 	struct Octant {
 
 		// cached for FAST plane check
-		Rect3 aabb;
+		AABB aabb;
 
 		uint64_t last_pass;
 		Octant *parent;
@@ -129,10 +129,8 @@ private:
 
 		~Octant() {
 
-			/*
-			for (int i=0;i<8;i++)
-				memdelete_notnull(children[i]);
-			*/
+			//for (int i=0;i<8;i++)
+			//	memdelete_notnull(children[i]);
 		}
 	};
 
@@ -152,8 +150,8 @@ private:
 		OctreeElementID _id;
 		Octant *common_parent;
 
-		Rect3 aabb;
-		Rect3 container_aabb;
+		AABB aabb;
+		AABB container_aabb;
 
 		List<PairData *, AL> pair_list;
 
@@ -252,10 +250,8 @@ private:
 			E->get().eA = p_A->pair_list.push_back(&E->get());
 			E->get().eB = p_B->pair_list.push_back(&E->get());
 
-			/*
-			if (pair_callback)
-				pair_callback(pair_callback_userdata,p_A->userdata,p_B->userdata);
-			*/
+			//			if (pair_callback)
+			//				pair_callback(pair_callback_userdata,p_A->userdata,p_B->userdata);
 		} else {
 
 			E->get().refcount++;
@@ -334,7 +330,7 @@ private:
 	}
 
 	void _insert_element(Element *p_element, Octant *p_octant);
-	void _ensure_valid_root(const Rect3 &p_aabb);
+	void _ensure_valid_root(const AABB &p_aabb);
 	bool _remove_element_from_octant(Element *p_element, Octant *p_octant, Octant *p_limit = NULL);
 	void _remove_element(Element *p_element);
 	void _pair_element(Element *p_element, Octant *p_octant);
@@ -351,7 +347,7 @@ private:
 	};
 
 	void _cull_convex(Octant *p_octant, _CullConvexData *p_cull);
-	void _cull_aabb(Octant *p_octant, const Rect3 &p_aabb, T **p_result_array, int *p_result_idx, int p_result_max, int *p_subindex_array, uint32_t p_mask);
+	void _cull_AABB(Octant *p_octant, const AABB &p_aabb, T **p_result_array, int *p_result_idx, int p_result_max, int *p_subindex_array, uint32_t p_mask);
 	void _cull_segment(Octant *p_octant, const Vector3 &p_from, const Vector3 &p_to, T **p_result_array, int *p_result_idx, int p_result_max, int *p_subindex_array, uint32_t p_mask);
 	void _cull_point(Octant *p_octant, const Vector3 &p_point, T **p_result_array, int *p_result_idx, int p_result_max, int *p_subindex_array, uint32_t p_mask);
 
@@ -370,8 +366,8 @@ private:
 	}
 
 public:
-	OctreeElementID create(T *p_userdata, const Rect3 &p_aabb = Rect3(), int p_subindex = 0, bool p_pairable = false, uint32_t p_pairable_type = 0, uint32_t pairable_mask = 1);
-	void move(OctreeElementID p_id, const Rect3 &p_aabb);
+	OctreeElementID create(T *p_userdata, const AABB &p_aabb = AABB(), int p_subindex = 0, bool p_pairable = false, uint32_t p_pairable_type = 0, uint32_t pairable_mask = 1);
+	void move(OctreeElementID p_id, const AABB &p_aabb);
 	void set_pairable(OctreeElementID p_id, bool p_pairable = false, uint32_t p_pairable_type = 0, uint32_t pairable_mask = 1);
 	void erase(OctreeElementID p_id);
 
@@ -380,7 +376,7 @@ public:
 	int get_subindex(OctreeElementID p_id) const;
 
 	int cull_convex(const Vector<Plane> &p_convex, T **p_result_array, int p_result_max, uint32_t p_mask = 0xFFFFFFFF);
-	int cull_aabb(const Rect3 &p_aabb, T **p_result_array, int p_result_max, int *p_subindex_array = NULL, uint32_t p_mask = 0xFFFFFFFF);
+	int cull_AABB(const AABB &p_aabb, T **p_result_array, int p_result_max, int *p_subindex_array = NULL, uint32_t p_mask = 0xFFFFFFFF);
 	int cull_segment(const Vector3 &p_from, const Vector3 &p_to, T **p_result_array, int p_result_max, int *p_subindex_array = NULL, uint32_t p_mask = 0xFFFFFFFF);
 
 	int cull_point(const Vector3 &p_point, T **p_result_array, int p_result_max, int *p_subindex_array = NULL, uint32_t p_mask = 0xFFFFFFFF);
@@ -424,7 +420,7 @@ int Octree<T, use_pairs, AL>::get_subindex(OctreeElementID p_id) const {
 template <class T, bool use_pairs, class AL>
 void Octree<T, use_pairs, AL>::_insert_element(Element *p_element, Octant *p_octant) {
 
-	real_t element_size = p_element->aabb.get_longest_axis_size() * 1.01; // avoid precision issues
+	float element_size = p_element->aabb.get_longest_axis_size() * 1.01; // avoid precision issues
 
 	if (p_octant->aabb.size.x / OCTREE_DIVISOR < element_size) {
 		//if (p_octant->aabb.size.x*0.5 < element_size) {
@@ -479,15 +475,15 @@ void Octree<T, use_pairs, AL>::_insert_element(Element *p_element, Octant *p_oct
 			} else {
 				/* check againt AABB where child should be */
 
-				Rect3 aabb = p_octant->aabb;
+				AABB aabb = p_octant->aabb;
 				aabb.size *= 0.5;
 
 				if (i & 1)
-					aabb.position.x += aabb.size.x;
+					aabb.pos.x += aabb.size.x;
 				if (i & 2)
-					aabb.position.y += aabb.size.y;
+					aabb.pos.y += aabb.size.y;
 				if (i & 4)
-					aabb.position.z += aabb.size.z;
+					aabb.pos.z += aabb.size.z;
 
 				if (aabb.intersects_inclusive(p_element->aabb)) {
 					/* if actually intersects, create the child */
@@ -535,20 +531,20 @@ void Octree<T, use_pairs, AL>::_insert_element(Element *p_element, Octant *p_oct
 }
 
 template <class T, bool use_pairs, class AL>
-void Octree<T, use_pairs, AL>::_ensure_valid_root(const Rect3 &p_aabb) {
+void Octree<T, use_pairs, AL>::_ensure_valid_root(const AABB &p_aabb) {
 
 	if (!root) {
 		// octre is empty
 
-		Rect3 base(Vector3(), Vector3(1.0, 1.0, 1.0) * unit_size);
+		AABB base(Vector3(), Vector3(1.0, 1.0, 1.0) * unit_size);
 
 		while (!base.encloses(p_aabb)) {
 
-			if (ABS(base.position.x + base.size.x) <= ABS(base.position.x)) {
+			if (ABS(base.pos.x + base.size.x) <= ABS(base.pos.x)) {
 				/* grow towards positive */
 				base.size *= 2.0;
 			} else {
-				base.position -= base.size;
+				base.pos -= base.size;
 				base.size *= 2.0;
 			}
 		}
@@ -563,7 +559,7 @@ void Octree<T, use_pairs, AL>::_ensure_valid_root(const Rect3 &p_aabb) {
 
 	} else {
 
-		Rect3 base = root->aabb;
+		AABB base = root->aabb;
 
 		while (!base.encloses(p_aabb)) {
 
@@ -576,14 +572,14 @@ void Octree<T, use_pairs, AL>::_ensure_valid_root(const Rect3 &p_aabb) {
 			octant_count++;
 			root->parent = gp;
 
-			if (ABS(base.position.x + base.size.x) <= ABS(base.position.x)) {
+			if (ABS(base.pos.x + base.size.x) <= ABS(base.pos.x)) {
 				/* grow towards positive */
 				base.size *= 2.0;
 				gp->aabb = base;
 				gp->children[0] = root;
 				root->parent_index = 0;
 			} else {
-				base.position -= base.size;
+				base.pos -= base.size;
 				base.size *= 2.0;
 				gp->aabb = base;
 				gp->children[(1 << 0) | (1 << 1) | (1 << 2)] = root; // add at all-positive
@@ -793,13 +789,13 @@ void Octree<T, use_pairs, AL>::_remove_element(Element *p_element) {
 }
 
 template <class T, bool use_pairs, class AL>
-OctreeElementID Octree<T, use_pairs, AL>::create(T *p_userdata, const Rect3 &p_aabb, int p_subindex, bool p_pairable, uint32_t p_pairable_type, uint32_t p_pairable_mask) {
+OctreeElementID Octree<T, use_pairs, AL>::create(T *p_userdata, const AABB &p_aabb, int p_subindex, bool p_pairable, uint32_t p_pairable_type, uint32_t p_pairable_mask) {
 
 // check for AABB validity
 #ifdef DEBUG_ENABLED
-	ERR_FAIL_COND_V(p_aabb.position.x > 1e15 || p_aabb.position.x < -1e15, 0);
-	ERR_FAIL_COND_V(p_aabb.position.y > 1e15 || p_aabb.position.y < -1e15, 0);
-	ERR_FAIL_COND_V(p_aabb.position.z > 1e15 || p_aabb.position.z < -1e15, 0);
+	ERR_FAIL_COND_V(p_aabb.pos.x > 1e15 || p_aabb.pos.x < -1e15, 0);
+	ERR_FAIL_COND_V(p_aabb.pos.y > 1e15 || p_aabb.pos.y < -1e15, 0);
+	ERR_FAIL_COND_V(p_aabb.pos.z > 1e15 || p_aabb.pos.z < -1e15, 0);
 	ERR_FAIL_COND_V(p_aabb.size.x > 1e15 || p_aabb.size.x < 0.0, 0);
 	ERR_FAIL_COND_V(p_aabb.size.y > 1e15 || p_aabb.size.y < 0.0, 0);
 	ERR_FAIL_COND_V(p_aabb.size.z > 1e15 || p_aabb.size.z < 0.0, 0);
@@ -833,13 +829,13 @@ OctreeElementID Octree<T, use_pairs, AL>::create(T *p_userdata, const Rect3 &p_a
 }
 
 template <class T, bool use_pairs, class AL>
-void Octree<T, use_pairs, AL>::move(OctreeElementID p_id, const Rect3 &p_aabb) {
+void Octree<T, use_pairs, AL>::move(OctreeElementID p_id, const AABB &p_aabb) {
 
 #ifdef DEBUG_ENABLED
 	// check for AABB validity
-	ERR_FAIL_COND(p_aabb.position.x > 1e15 || p_aabb.position.x < -1e15);
-	ERR_FAIL_COND(p_aabb.position.y > 1e15 || p_aabb.position.y < -1e15);
-	ERR_FAIL_COND(p_aabb.position.z > 1e15 || p_aabb.position.z < -1e15);
+	ERR_FAIL_COND(p_aabb.pos.x > 1e15 || p_aabb.pos.x < -1e15);
+	ERR_FAIL_COND(p_aabb.pos.y > 1e15 || p_aabb.pos.y < -1e15);
+	ERR_FAIL_COND(p_aabb.pos.z > 1e15 || p_aabb.pos.z < -1e15);
 	ERR_FAIL_COND(p_aabb.size.x > 1e15 || p_aabb.size.x < 0.0);
 	ERR_FAIL_COND(p_aabb.size.y > 1e15 || p_aabb.size.y < 0.0);
 	ERR_FAIL_COND(p_aabb.size.z > 1e15 || p_aabb.size.z < 0.0);
@@ -851,6 +847,28 @@ void Octree<T, use_pairs, AL>::move(OctreeElementID p_id, const Rect3 &p_aabb) {
 	ERR_FAIL_COND(!E);
 	Element &e = E->get();
 
+#if 0
+
+	pass++;
+	if (!e.aabb.has_no_surface()) {
+		_remove_element(&e);
+	}
+
+	e.aabb=p_aabb;
+
+	if (!e.aabb.has_no_surface()) {
+		_ensure_valid_root(p_aabb);
+
+		_insert_element(&e,root);
+		if (use_pairs)
+			_element_check_pairs(&e);
+
+	}
+
+	_optimize();
+
+#else
+
 	bool old_has_surf = !e.aabb.has_no_surface();
 	bool new_has_surf = !p_aabb.has_no_surface();
 
@@ -859,7 +877,7 @@ void Octree<T, use_pairs, AL>::move(OctreeElementID p_id, const Rect3 &p_aabb) {
 		if (old_has_surf) {
 			_remove_element(&e); // removing
 			e.common_parent = NULL;
-			e.aabb = Rect3();
+			e.aabb = AABB();
 			_optimize();
 		} else {
 			_ensure_valid_root(p_aabb); // inserting
@@ -886,7 +904,7 @@ void Octree<T, use_pairs, AL>::move(OctreeElementID p_id, const Rect3 &p_aabb) {
 		return;
 	}
 
-	Rect3 combined = e.aabb;
+	AABB combined = e.aabb;
 	combined.merge_with(p_aabb);
 	_ensure_valid_root(combined);
 
@@ -920,10 +938,8 @@ void Octree<T, use_pairs, AL>::move(OctreeElementID p_id, const Rect3 &p_aabb) {
 		Octant *o = E->get().octant;
 		typename List<typename Element::OctantOwner, AL>::Element *N = E->next();
 
-		/*
-		if (!use_pairs)
-			o->elements.erase( E->get().E );
-		*/
+		//		if (!use_pairs)
+		//			o->elements.erase( E->get().E );
 
 		if (use_pairs && e.pairable)
 			o->pairable_elements.erase(E->get().E);
@@ -957,6 +973,7 @@ void Octree<T, use_pairs, AL>::move(OctreeElementID p_id, const Rect3 &p_aabb) {
 	}
 
 	_optimize();
+#endif
 }
 
 template <class T, bool use_pairs, class AL>
@@ -1072,7 +1089,7 @@ void Octree<T, use_pairs, AL>::_cull_convex(Octant *p_octant, _CullConvexData *p
 }
 
 template <class T, bool use_pairs, class AL>
-void Octree<T, use_pairs, AL>::_cull_aabb(Octant *p_octant, const Rect3 &p_aabb, T **p_result_array, int *p_result_idx, int p_result_max, int *p_subindex_array, uint32_t p_mask) {
+void Octree<T, use_pairs, AL>::_cull_AABB(Octant *p_octant, const AABB &p_aabb, T **p_result_array, int *p_result_idx, int p_result_max, int *p_subindex_array, uint32_t p_mask) {
 
 	if (*p_result_idx == p_result_max)
 		return; //pointless
@@ -1137,7 +1154,7 @@ void Octree<T, use_pairs, AL>::_cull_aabb(Octant *p_octant, const Rect3 &p_aabb,
 	for (int i = 0; i < 8; i++) {
 
 		if (p_octant->children[i] && p_octant->children[i]->aabb.intersects_inclusive(p_aabb)) {
-			_cull_aabb(p_octant->children[i], p_aabb, p_result_array, p_result_idx, p_result_max, p_subindex_array, p_mask);
+			_cull_AABB(p_octant->children[i], p_aabb, p_result_array, p_result_idx, p_result_max, p_subindex_array, p_mask);
 		}
 	}
 }
@@ -1313,14 +1330,14 @@ int Octree<T, use_pairs, AL>::cull_convex(const Vector<Plane> &p_convex, T **p_r
 }
 
 template <class T, bool use_pairs, class AL>
-int Octree<T, use_pairs, AL>::cull_aabb(const Rect3 &p_aabb, T **p_result_array, int p_result_max, int *p_subindex_array, uint32_t p_mask) {
+int Octree<T, use_pairs, AL>::cull_AABB(const AABB &p_aabb, T **p_result_array, int p_result_max, int *p_subindex_array, uint32_t p_mask) {
 
 	if (!root)
 		return 0;
 
 	int result_count = 0;
 	pass++;
-	_cull_aabb(root, p_aabb, p_result_array, &result_count, p_result_max, p_subindex_array, p_mask);
+	_cull_AABB(root, p_aabb, p_result_array, &result_count, p_result_max, p_subindex_array, p_mask);
 
 	return result_count;
 }

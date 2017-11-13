@@ -33,7 +33,7 @@
 
 class RayShape : public Shape {
 
-	GDCLASS(RayShape, Shape);
+	OBJ_TYPE(RayShape, Shape);
 	float length;
 
 protected:

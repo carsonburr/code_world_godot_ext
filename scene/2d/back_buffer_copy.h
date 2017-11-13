@@ -33,7 +33,7 @@
 #include "scene/2d/node_2d.h"
 
 class BackBufferCopy : public Node2D {
-	GDCLASS(BackBufferCopy, Node2D);
+	OBJ_TYPE(BackBufferCopy, Node2D);
 
 public:
 	enum CopyMode {

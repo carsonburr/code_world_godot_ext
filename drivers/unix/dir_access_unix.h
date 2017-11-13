@@ -56,7 +56,7 @@ protected:
 	virtual String fix_unicode_name(const char *p_name) const { return String::utf8(p_name); }
 
 public:
-	virtual Error list_dir_begin(); ///< This starts dir listing
+	virtual bool list_dir_begin(); ///< This starts dir listing
 	virtual String get_next();
 	virtual bool current_is_dir() const;
 	virtual bool current_is_hidden() const;
@@ -75,8 +75,8 @@ public:
 
 	virtual uint64_t get_modified_time(String p_file);
 
-	virtual Error rename(String p_path, String p_new_path);
-	virtual Error remove(String p_path);
+	virtual Error rename(String p_from, String p_to);
+	virtual Error remove(String p_name);
 
 	virtual size_t get_space_left();
 

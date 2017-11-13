@@ -27,23 +27,21 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
-#include "editor_name_dialog.h"
 
-#include "class_db.h"
+#include "editor_name_dialog.h"
+#include "object_type_db.h"
 #include "os/keyboard.h"
 
-void EditorNameDialog::_line_gui_input(const Ref<InputEvent> &p_event) {
+void EditorNameDialog::_line_input_event(const InputEvent &p_event) {
 
-	Ref<InputEventKey> k = p_event;
+	if (p_event.type == InputEvent::KEY) {
 
-	if (k.is_valid()) {
-
-		if (!k->is_pressed())
+		if (!p_event.key.pressed)
 			return;
 
-		switch (k->get_scancode()) {
-			case KEY_KP_ENTER:
-			case KEY_ENTER: {
+		switch (p_event.key.scancode) {
+			case KEY_ENTER:
+			case KEY_RETURN: {
 
 				if (get_hide_on_ok())
 					hide();
@@ -75,18 +73,19 @@ void EditorNameDialog::ok_pressed() {
 
 void EditorNameDialog::_bind_methods() {
 
-	ClassDB::bind_method("_line_gui_input", &EditorNameDialog::_line_gui_input);
+	ObjectTypeDB::bind_method("_line_input_event", &EditorNameDialog::_line_input_event);
 
 	ADD_SIGNAL(MethodInfo("name_confirmed", PropertyInfo(Variant::STRING, "name")));
 }
 
 EditorNameDialog::EditorNameDialog() {
 	makevb = memnew(VBoxContainer);
+	makevb->set_margin(MARGIN_TOP, 5);
+	makevb->set_anchor_and_margin(MARGIN_LEFT, ANCHOR_BEGIN, 5);
+	makevb->set_anchor_and_margin(MARGIN_RIGHT, ANCHOR_END, 5);
 	add_child(makevb);
+
 	name = memnew(LineEdit);
 	makevb->add_child(name);
-	name->set_margin(MARGIN_TOP, 5);
-	name->set_anchor_and_margin(MARGIN_LEFT, ANCHOR_BEGIN, 5);
-	name->set_anchor_and_margin(MARGIN_RIGHT, ANCHOR_END, -5);
-	name->connect("gui_input", this, "_line_gui_input");
+	name->connect("input_event", this, "_line_input_event");
 }

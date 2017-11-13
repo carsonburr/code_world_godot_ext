@@ -31,13 +31,13 @@
 #define SHAPE_2D_2DSW_H
 
 #include "servers/physics_2d_server.h"
-#define _SEGMENT_IS_VALID_SUPPORT_THRESHOLD 0.99998
+#define _SEGMENT_IS_VALID_SUPPORT_TRESHOLD 0.99998
 
 /*
 
 SHAPE_LINE, ///< plane:"plane"
-SHAPE_SEGMENT, ///< real_t:"length"
-SHAPE_CIRCLE, ///< real_t:"radius"
+SHAPE_SEGMENT, ///< float:"length"
+SHAPE_CIRCLE, ///< float:"radius"
 SHAPE_RECTANGLE, ///< vec3:"extents"
 SHAPE_CONVEX_POLYGON, ///< array of planes:"planes"
 SHAPE_CONCAVE_POLYGON, ///< Vector2 array:"triangles" , or Dictionary with "indices" (int array) and "triangles" (Vector2 array)
@@ -47,7 +47,7 @@ SHAPE_CUSTOM, ///< Server-Implementation based custom shape, calling shape_creat
 
 class Shape2DSW;
 
-class ShapeOwner2DSW : public RID_Data {
+class ShapeOwner2DSW {
 public:
 	virtual void _shape_changed() = 0;
 	virtual void remove_shape(Shape2DSW *p_shape) = 0;
@@ -55,7 +55,7 @@ public:
 	virtual ~ShapeOwner2DSW() {}
 };
 
-class Shape2DSW : public RID_Data {
+class Shape2DSW {
 
 	RID self;
 	Rect2 aabb;
@@ -80,13 +80,13 @@ public:
 
 	virtual bool contains_point(const Vector2 &p_point) const = 0;
 
-	virtual void project_rangev(const Vector2 &p_normal, const Transform2D &p_transform, real_t &r_min, real_t &r_max) const = 0;
-	virtual void project_range_castv(const Vector2 &p_cast, const Vector2 &p_normal, const Transform2D &p_transform, real_t &r_min, real_t &r_max) const = 0;
+	virtual void project_rangev(const Vector2 &p_normal, const Matrix32 &p_transform, real_t &r_min, real_t &r_max) const = 0;
+	virtual void project_range_castv(const Vector2 &p_cast, const Vector2 &p_normal, const Matrix32 &p_transform, real_t &r_min, real_t &r_max) const = 0;
 	virtual Vector2 get_support(const Vector2 &p_normal) const;
 	virtual void get_supports(const Vector2 &p_normal, Vector2 *r_supports, int &r_amount) const = 0;
 
 	virtual bool intersect_segment(const Vector2 &p_begin, const Vector2 &p_end, Vector2 &r_point, Vector2 &r_normal) const = 0;
-	virtual real_t get_moment_of_inertia(real_t p_mass, const Size2 &p_scale) const = 0;
+	virtual real_t get_moment_of_inertia(float p_mass, const Size2 &p_scale) const = 0;
 	virtual void set_data(const Variant &p_data) = 0;
 	virtual Variant get_data() const = 0;
 
@@ -98,7 +98,7 @@ public:
 	bool is_owner(ShapeOwner2DSW *p_owner) const;
 	const Map<ShapeOwner2DSW *, int> &get_owners() const;
 
-	_FORCE_INLINE_ void get_supports_transformed_cast(const Vector2 &p_cast, const Vector2 &p_normal, const Transform2D &p_xform, Vector2 *r_supports, int &r_amount) const {
+	_FORCE_INLINE_ void get_supports_transformed_cast(const Vector2 &p_cast, const Vector2 &p_normal, const Matrix32 &p_xform, Vector2 *r_supports, int &r_amount) const {
 
 		get_supports(p_xform.basis_xform_inv(p_normal).normalized(), r_supports, r_amount);
 		for (int i = 0; i < r_amount; i++)
@@ -106,7 +106,7 @@ public:
 
 		if (r_amount == 1) {
 
-			if (Math::abs(p_normal.dot(p_cast.normalized())) < (1.0 - _SEGMENT_IS_VALID_SUPPORT_THRESHOLD)) {
+			if (Math::abs(p_normal.dot(p_cast.normalized())) < (1.0 - _SEGMENT_IS_VALID_SUPPORT_TRESHOLD)) {
 				//make line because they are parallel
 				r_amount = 2;
 				r_supports[1] = r_supports[0] + p_cast;
@@ -117,7 +117,7 @@ public:
 
 		} else {
 
-			if (Math::abs(p_normal.dot(p_cast.normalized())) < (1.0 - _SEGMENT_IS_VALID_SUPPORT_THRESHOLD)) {
+			if (Math::abs(p_normal.dot(p_cast.normalized())) < (1.0 - _SEGMENT_IS_VALID_SUPPORT_TRESHOLD)) {
 				//optimize line and make it larger because they are parallel
 				if ((r_supports[1] - r_supports[0]).dot(p_cast) > 0) {
 					//larger towards 1
@@ -139,20 +139,20 @@ public:
 };
 
 //let the optimizer do the magic
-#define DEFAULT_PROJECT_RANGE_CAST                                                                                                                               \
-	virtual void project_range_castv(const Vector2 &p_cast, const Vector2 &p_normal, const Transform2D &p_transform, real_t &r_min, real_t &r_max) const {       \
-		project_range_cast(p_cast, p_normal, p_transform, r_min, r_max);                                                                                         \
-	}                                                                                                                                                            \
-	_FORCE_INLINE_ void project_range_cast(const Vector2 &p_cast, const Vector2 &p_normal, const Transform2D &p_transform, real_t &r_min, real_t &r_max) const { \
-                                                                                                                                                                 \
-		real_t mina, maxa;                                                                                                                                       \
-		real_t minb, maxb;                                                                                                                                       \
-		Transform2D ofsb = p_transform;                                                                                                                          \
-		ofsb.elements[2] += p_cast;                                                                                                                              \
-		project_range(p_normal, p_transform, mina, maxa);                                                                                                        \
-		project_range(p_normal, ofsb, minb, maxb);                                                                                                               \
-		r_min = MIN(mina, minb);                                                                                                                                 \
-		r_max = MAX(maxa, maxb);                                                                                                                                 \
+#define DEFAULT_PROJECT_RANGE_CAST                                                                                                                            \
+	virtual void project_range_castv(const Vector2 &p_cast, const Vector2 &p_normal, const Matrix32 &p_transform, real_t &r_min, real_t &r_max) const {       \
+		project_range_cast(p_cast, p_normal, p_transform, r_min, r_max);                                                                                      \
+	}                                                                                                                                                         \
+	_FORCE_INLINE_ void project_range_cast(const Vector2 &p_cast, const Vector2 &p_normal, const Matrix32 &p_transform, real_t &r_min, real_t &r_max) const { \
+                                                                                                                                                              \
+		real_t mina, maxa;                                                                                                                                    \
+		real_t minb, maxb;                                                                                                                                    \
+		Matrix32 ofsb = p_transform;                                                                                                                          \
+		ofsb.elements[2] += p_cast;                                                                                                                           \
+		project_range(p_normal, p_transform, mina, maxa);                                                                                                     \
+		project_range(p_normal, ofsb, minb, maxb);                                                                                                            \
+		r_min = MIN(mina, minb);                                                                                                                              \
+		r_max = MAX(maxa, maxb);                                                                                                                              \
 	}
 
 class LineShape2DSW : public Shape2DSW {
@@ -166,27 +166,27 @@ public:
 
 	virtual Physics2DServer::ShapeType get_type() const { return Physics2DServer::SHAPE_LINE; }
 
-	virtual void project_rangev(const Vector2 &p_normal, const Transform2D &p_transform, real_t &r_min, real_t &r_max) const { project_range(p_normal, p_transform, r_min, r_max); }
+	virtual void project_rangev(const Vector2 &p_normal, const Matrix32 &p_transform, real_t &r_min, real_t &r_max) const { project_range(p_normal, p_transform, r_min, r_max); }
 	virtual void get_supports(const Vector2 &p_normal, Vector2 *r_supports, int &r_amount) const;
 
 	virtual bool contains_point(const Vector2 &p_point) const;
 	virtual bool intersect_segment(const Vector2 &p_begin, const Vector2 &p_end, Vector2 &r_point, Vector2 &r_normal) const;
-	virtual real_t get_moment_of_inertia(real_t p_mass, const Size2 &p_scale) const;
+	virtual real_t get_moment_of_inertia(float p_mass, const Size2 &p_scale) const;
 
 	virtual void set_data(const Variant &p_data);
 	virtual Variant get_data() const;
 
-	_FORCE_INLINE_ void project_range(const Vector2 &p_normal, const Transform2D &p_transform, real_t &r_min, real_t &r_max) const {
+	_FORCE_INLINE_ void project_range(const Vector2 &p_normal, const Matrix32 &p_transform, real_t &r_min, real_t &r_max) const {
 		//real large
 		r_min = -1e10;
 		r_max = 1e10;
 	}
 
-	virtual void project_range_castv(const Vector2 &p_cast, const Vector2 &p_normal, const Transform2D &p_transform, real_t &r_min, real_t &r_max) const {
+	virtual void project_range_castv(const Vector2 &p_cast, const Vector2 &p_normal, const Matrix32 &p_transform, real_t &r_min, real_t &r_max) const {
 		project_range_cast(p_cast, p_normal, p_transform, r_min, r_max);
 	}
 
-	_FORCE_INLINE_ void project_range_cast(const Vector2 &p_cast, const Vector2 &p_normal, const Transform2D &p_transform, real_t &r_min, real_t &r_max) const {
+	_FORCE_INLINE_ void project_range_cast(const Vector2 &p_cast, const Vector2 &p_normal, const Matrix32 &p_transform, real_t &r_min, real_t &r_max) const {
 		//real large
 		r_min = -1e10;
 		r_max = 1e10;
@@ -202,17 +202,17 @@ public:
 
 	virtual Physics2DServer::ShapeType get_type() const { return Physics2DServer::SHAPE_RAY; }
 
-	virtual void project_rangev(const Vector2 &p_normal, const Transform2D &p_transform, real_t &r_min, real_t &r_max) const { project_range(p_normal, p_transform, r_min, r_max); }
+	virtual void project_rangev(const Vector2 &p_normal, const Matrix32 &p_transform, real_t &r_min, real_t &r_max) const { project_range(p_normal, p_transform, r_min, r_max); }
 	virtual void get_supports(const Vector2 &p_normal, Vector2 *r_supports, int &r_amount) const;
 
 	virtual bool contains_point(const Vector2 &p_point) const;
 	virtual bool intersect_segment(const Vector2 &p_begin, const Vector2 &p_end, Vector2 &r_point, Vector2 &r_normal) const;
-	virtual real_t get_moment_of_inertia(real_t p_mass, const Size2 &p_scale) const;
+	virtual real_t get_moment_of_inertia(float p_mass, const Size2 &p_scale) const;
 
 	virtual void set_data(const Variant &p_data);
 	virtual Variant get_data() const;
 
-	_FORCE_INLINE_ void project_range(const Vector2 &p_normal, const Transform2D &p_transform, real_t &r_min, real_t &r_max) const {
+	_FORCE_INLINE_ void project_range(const Vector2 &p_normal, const Matrix32 &p_transform, real_t &r_min, real_t &r_max) const {
 		//real large
 		r_max = p_normal.dot(p_transform.get_origin());
 		r_min = p_normal.dot(p_transform.xform(Vector2(0, length)));
@@ -241,21 +241,21 @@ public:
 
 	virtual Physics2DServer::ShapeType get_type() const { return Physics2DServer::SHAPE_SEGMENT; }
 
-	_FORCE_INLINE_ Vector2 get_xformed_normal(const Transform2D &p_xform) const {
+	_FORCE_INLINE_ Vector2 get_xformed_normal(const Matrix32 &p_xform) const {
 
 		return (p_xform.xform(b) - p_xform.xform(a)).normalized().tangent();
 	}
-	virtual void project_rangev(const Vector2 &p_normal, const Transform2D &p_transform, real_t &r_min, real_t &r_max) const { project_range(p_normal, p_transform, r_min, r_max); }
+	virtual void project_rangev(const Vector2 &p_normal, const Matrix32 &p_transform, real_t &r_min, real_t &r_max) const { project_range(p_normal, p_transform, r_min, r_max); }
 	virtual void get_supports(const Vector2 &p_normal, Vector2 *r_supports, int &r_amount) const;
 
 	virtual bool contains_point(const Vector2 &p_point) const;
 	virtual bool intersect_segment(const Vector2 &p_begin, const Vector2 &p_end, Vector2 &r_point, Vector2 &r_normal) const;
-	virtual real_t get_moment_of_inertia(real_t p_mass, const Size2 &p_scale) const;
+	virtual real_t get_moment_of_inertia(float p_mass, const Size2 &p_scale) const;
 
 	virtual void set_data(const Variant &p_data);
 	virtual Variant get_data() const;
 
-	_FORCE_INLINE_ void project_range(const Vector2 &p_normal, const Transform2D &p_transform, real_t &r_min, real_t &r_max) const {
+	_FORCE_INLINE_ void project_range(const Vector2 &p_normal, const Matrix32 &p_transform, real_t &r_min, real_t &r_max) const {
 		//real large
 		r_max = p_normal.dot(p_transform.xform(a));
 		r_min = p_normal.dot(p_transform.xform(b));
@@ -284,17 +284,17 @@ public:
 
 	virtual Physics2DServer::ShapeType get_type() const { return Physics2DServer::SHAPE_CIRCLE; }
 
-	virtual void project_rangev(const Vector2 &p_normal, const Transform2D &p_transform, real_t &r_min, real_t &r_max) const { project_range(p_normal, p_transform, r_min, r_max); }
+	virtual void project_rangev(const Vector2 &p_normal, const Matrix32 &p_transform, real_t &r_min, real_t &r_max) const { project_range(p_normal, p_transform, r_min, r_max); }
 	virtual void get_supports(const Vector2 &p_normal, Vector2 *r_supports, int &r_amount) const;
 
 	virtual bool contains_point(const Vector2 &p_point) const;
 	virtual bool intersect_segment(const Vector2 &p_begin, const Vector2 &p_end, Vector2 &r_point, Vector2 &r_normal) const;
-	virtual real_t get_moment_of_inertia(real_t p_mass, const Size2 &p_scale) const;
+	virtual real_t get_moment_of_inertia(float p_mass, const Size2 &p_scale) const;
 
 	virtual void set_data(const Variant &p_data);
 	virtual Variant get_data() const;
 
-	_FORCE_INLINE_ void project_range(const Vector2 &p_normal, const Transform2D &p_transform, real_t &r_min, real_t &r_max) const {
+	_FORCE_INLINE_ void project_range(const Vector2 &p_normal, const Matrix32 &p_transform, real_t &r_min, real_t &r_max) const {
 		//real large
 		real_t d = p_normal.dot(p_transform.get_origin());
 
@@ -318,17 +318,17 @@ public:
 
 	virtual Physics2DServer::ShapeType get_type() const { return Physics2DServer::SHAPE_RECTANGLE; }
 
-	virtual void project_rangev(const Vector2 &p_normal, const Transform2D &p_transform, real_t &r_min, real_t &r_max) const { project_range(p_normal, p_transform, r_min, r_max); }
+	virtual void project_rangev(const Vector2 &p_normal, const Matrix32 &p_transform, real_t &r_min, real_t &r_max) const { project_range(p_normal, p_transform, r_min, r_max); }
 	virtual void get_supports(const Vector2 &p_normal, Vector2 *r_supports, int &r_amount) const;
 
 	virtual bool contains_point(const Vector2 &p_point) const;
 	virtual bool intersect_segment(const Vector2 &p_begin, const Vector2 &p_end, Vector2 &r_point, Vector2 &r_normal) const;
-	virtual real_t get_moment_of_inertia(real_t p_mass, const Size2 &p_scale) const;
+	virtual real_t get_moment_of_inertia(float p_mass, const Size2 &p_scale) const;
 
 	virtual void set_data(const Variant &p_data);
 	virtual Variant get_data() const;
 
-	_FORCE_INLINE_ void project_range(const Vector2 &p_normal, const Transform2D &p_transform, real_t &r_min, real_t &r_max) const {
+	_FORCE_INLINE_ void project_range(const Vector2 &p_normal, const Matrix32 &p_transform, real_t &r_min, real_t &r_max) const {
 		// no matter the angle, the box is mirrored anyway
 		r_max = -1e20;
 		r_min = 1e20;
@@ -343,7 +343,7 @@ public:
 		}
 	}
 
-	_FORCE_INLINE_ Vector2 get_circle_axis(const Transform2D &p_xform, const Transform2D &p_xform_inv, const Vector2 &p_circle) const {
+	_FORCE_INLINE_ Vector2 get_circle_axis(const Matrix32 &p_xform, const Matrix32 &p_xform_inv, const Vector2 &p_circle) const {
 
 		Vector2 local_v = p_xform_inv.xform(p_circle);
 
@@ -354,7 +354,7 @@ public:
 		return (p_xform.xform(he) - p_circle).normalized();
 	}
 
-	_FORCE_INLINE_ Vector2 get_box_axis(const Transform2D &p_xform, const Transform2D &p_xform_inv, const RectangleShape2DSW *p_B, const Transform2D &p_B_xform, const Transform2D &p_B_xform_inv) const {
+	_FORCE_INLINE_ Vector2 get_box_axis(const Matrix32 &p_xform, const Matrix32 &p_xform_inv, const RectangleShape2DSW *p_B, const Matrix32 &p_B_xform, const Matrix32 &p_B_xform_inv) const {
 
 		Vector2 a, b;
 
@@ -394,20 +394,20 @@ public:
 
 	virtual Physics2DServer::ShapeType get_type() const { return Physics2DServer::SHAPE_CAPSULE; }
 
-	virtual void project_rangev(const Vector2 &p_normal, const Transform2D &p_transform, real_t &r_min, real_t &r_max) const { project_range(p_normal, p_transform, r_min, r_max); }
+	virtual void project_rangev(const Vector2 &p_normal, const Matrix32 &p_transform, real_t &r_min, real_t &r_max) const { project_range(p_normal, p_transform, r_min, r_max); }
 	virtual void get_supports(const Vector2 &p_normal, Vector2 *r_supports, int &r_amount) const;
 
 	virtual bool contains_point(const Vector2 &p_point) const;
 	virtual bool intersect_segment(const Vector2 &p_begin, const Vector2 &p_end, Vector2 &r_point, Vector2 &r_normal) const;
-	virtual real_t get_moment_of_inertia(real_t p_mass, const Size2 &p_scale) const;
+	virtual real_t get_moment_of_inertia(float p_mass, const Size2 &p_scale) const;
 
 	virtual void set_data(const Variant &p_data);
 	virtual Variant get_data() const;
 
-	_FORCE_INLINE_ void project_range(const Vector2 &p_normal, const Transform2D &p_transform, real_t &r_min, real_t &r_max) const {
+	_FORCE_INLINE_ void project_range(const Vector2 &p_normal, const Matrix32 &p_transform, real_t &r_min, real_t &r_max) const {
 		// no matter the angle, the box is mirrored anyway
 		Vector2 n = p_transform.basis_xform_inv(p_normal).normalized();
-		real_t h = (n.y > 0) ? height : -height;
+		float h = (n.y > 0) ? height : -height;
 
 		n *= radius;
 		n.y += h * 0.5;
@@ -441,7 +441,7 @@ public:
 	_FORCE_INLINE_ int get_point_count() const { return point_count; }
 	_FORCE_INLINE_ const Vector2 &get_point(int p_idx) const { return points[p_idx].pos; }
 	_FORCE_INLINE_ const Vector2 &get_segment_normal(int p_idx) const { return points[p_idx].normal; }
-	_FORCE_INLINE_ Vector2 get_xformed_segment_normal(const Transform2D &p_xform, int p_idx) const {
+	_FORCE_INLINE_ Vector2 get_xformed_segment_normal(const Matrix32 &p_xform, int p_idx) const {
 
 		Vector2 a = points[p_idx].pos;
 		p_idx++;
@@ -451,23 +451,23 @@ public:
 
 	virtual Physics2DServer::ShapeType get_type() const { return Physics2DServer::SHAPE_CONVEX_POLYGON; }
 
-	virtual void project_rangev(const Vector2 &p_normal, const Transform2D &p_transform, real_t &r_min, real_t &r_max) const { project_range(p_normal, p_transform, r_min, r_max); }
+	virtual void project_rangev(const Vector2 &p_normal, const Matrix32 &p_transform, real_t &r_min, real_t &r_max) const { project_range(p_normal, p_transform, r_min, r_max); }
 	virtual void get_supports(const Vector2 &p_normal, Vector2 *r_supports, int &r_amount) const;
 
 	virtual bool contains_point(const Vector2 &p_point) const;
 	virtual bool intersect_segment(const Vector2 &p_begin, const Vector2 &p_end, Vector2 &r_point, Vector2 &r_normal) const;
-	virtual real_t get_moment_of_inertia(real_t p_mass, const Size2 &p_scale) const;
+	virtual real_t get_moment_of_inertia(float p_mass, const Size2 &p_scale) const;
 
 	virtual void set_data(const Variant &p_data);
 	virtual Variant get_data() const;
 
-	_FORCE_INLINE_ void project_range(const Vector2 &p_normal, const Transform2D &p_transform, real_t &r_min, real_t &r_max) const {
+	_FORCE_INLINE_ void project_range(const Vector2 &p_normal, const Matrix32 &p_transform, real_t &r_min, real_t &r_max) const {
 		// no matter the angle, the box is mirrored anyway
 
 		r_min = r_max = p_normal.dot(p_transform.xform(points[0].pos));
 		for (int i = 1; i < point_count; i++) {
 
-			real_t d = p_normal.dot(p_transform.xform(points[i].pos));
+			float d = p_normal.dot(p_transform.xform(points[i].pos));
 			if (d > r_max)
 				r_max = d;
 			if (d < r_min)
@@ -513,7 +513,7 @@ class ConcavePolygonShape2DSW : public ConcaveShape2DSW {
 
 		_FORCE_INLINE_ bool operator()(const BVH &a, const BVH &b) const {
 
-			return (a.aabb.position.x + a.aabb.size.x * 0.5) < (b.aabb.position.x + b.aabb.size.x * 0.5);
+			return (a.aabb.pos.x + a.aabb.size.x * 0.5) < (b.aabb.pos.x + b.aabb.size.x * 0.5);
 		}
 	};
 
@@ -521,7 +521,7 @@ class ConcavePolygonShape2DSW : public ConcaveShape2DSW {
 
 		_FORCE_INLINE_ bool operator()(const BVH &a, const BVH &b) const {
 
-			return (a.aabb.position.y + a.aabb.size.y * 0.5) < (b.aabb.position.y + b.aabb.size.y * 0.5);
+			return (a.aabb.pos.y + a.aabb.size.y * 0.5) < (b.aabb.pos.y + b.aabb.size.y * 0.5);
 		}
 	};
 
@@ -530,16 +530,16 @@ class ConcavePolygonShape2DSW : public ConcaveShape2DSW {
 public:
 	virtual Physics2DServer::ShapeType get_type() const { return Physics2DServer::SHAPE_CONCAVE_POLYGON; }
 
-	virtual void project_rangev(const Vector2 &p_normal, const Transform2D &p_transform, real_t &r_min, real_t &r_max) const { /*project_range(p_normal,p_transform,r_min,r_max);*/
+	virtual void project_rangev(const Vector2 &p_normal, const Matrix32 &p_transform, real_t &r_min, real_t &r_max) const { /*project_range(p_normal,p_transform,r_min,r_max);*/
 	}
-	virtual void project_range(const Vector2 &p_normal, const Transform2D &p_transform, real_t &r_min, real_t &r_max) const { /*project_range(p_normal,p_transform,r_min,r_max);*/
+	virtual void project_range(const Vector2 &p_normal, const Matrix32 &p_transform, real_t &r_min, real_t &r_max) const { /*project_range(p_normal,p_transform,r_min,r_max);*/
 	}
 	virtual void get_supports(const Vector2 &p_normal, Vector2 *r_supports, int &r_amount) const;
 
 	virtual bool contains_point(const Vector2 &p_point) const;
 	virtual bool intersect_segment(const Vector2 &p_begin, const Vector2 &p_end, Vector2 &r_point, Vector2 &r_normal) const;
 
-	virtual real_t get_moment_of_inertia(real_t p_mass, const Size2 &p_scale) const { return 0; }
+	virtual real_t get_moment_of_inertia(float p_mass, const Size2 &p_scale) const { return 0; }
 
 	virtual void set_data(const Variant &p_data);
 	virtual Variant get_data() const;

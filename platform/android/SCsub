@@ -20,8 +20,7 @@ android_files = [
     'android_native_app_glue.c',
     'java_glue.cpp',
     'cpu-features.c',
-    'java_class_wrapper.cpp',
-#    'power_android.cpp'
+    'java_class_wrapper.cpp'
 ]
 
 # env.Depends('#core/math/vector3.h', 'vector3_psp.h')
@@ -55,7 +54,7 @@ if len(env.android_flat_dirs) > 0:
 
     gradle_maven_flat_text = gradle_maven_flat_text[:-1]
     gradle_maven_flat_text += "\n\t}\n"
- 
+
 gradle_maven_repos_text = ""
 gradle_maven_repos_text += gradle_maven_flat_text
 
@@ -83,7 +82,7 @@ for x in env.android_gradle_plugins:
 gradle_classpath = ""
 for x in env.android_gradle_classpath:
 	gradle_classpath += "\t\tclasspath \"" + x + "\"\n"
-
+	
 gradle_res_dirs_text = ""
 
 for x in env.android_res_dirs:
@@ -103,13 +102,13 @@ gradle_asset_dirs_text = ""
 
 gradle_default_config_text = ""
 
-minSdk = 18
+minSdk = 14
 targetSdk = 23
 
 for x in env.android_default_config:
-    if x.startswith("minSdkVersion") and int(x.split(" ")[-1]) < minSdk:
+    if x.startswith("minSdkVersion") and int(x.split(" ")[-1]) < minSdk: 
         x = "minSdkVersion " + str(minSdk)
-    if x.startswith("targetSdkVersion") and int(x.split(" ")[-1]) > targetSdk:
+    if x.startswith("targetSdkVersion") and int(x.split(" ")[-1]) > targetSdk: 
         x = "targetSdkVersion " + str(targetSdk)
 
     gradle_default_config_text += x + "\n\t\t"
@@ -152,8 +151,6 @@ if env['android_arch'] == 'armv6':
     lib_arch_dir = 'armeabi'
 elif env['android_arch'] == 'armv7':
     lib_arch_dir = 'armeabi-v7a'
-elif env['android_arch'] == 'arm64v8':
-    lib_arch_dir = 'arm64-v8a'
 elif env['android_arch'] == 'x86':
     lib_arch_dir = 'x86'
 else:

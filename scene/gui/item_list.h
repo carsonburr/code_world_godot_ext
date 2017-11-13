@@ -35,7 +35,7 @@
 
 class ItemList : public Control {
 
-	GDCLASS(ItemList, Control);
+	OBJ_TYPE(ItemList, Control);
 
 public:
 	enum IconMode {
@@ -61,7 +61,6 @@ private:
 		bool tooltip_enabled;
 		Variant metadata;
 		String tooltip;
-		Color custom_fg;
 		Color custom_bg;
 
 		Rect2 rect_cache;
@@ -78,9 +77,6 @@ private:
 
 	bool ensure_selected_visible;
 	bool same_column_width;
-
-	bool auto_height;
-	float auto_height_value;
 
 	Vector<Item> items;
 	Vector<int> separators;
@@ -107,11 +103,8 @@ private:
 
 	real_t icon_scale;
 
-	Array _get_items() const;
-	void _set_items(const Array &p_items);
-
 	void _scroll_changed(double);
-	void _gui_input(const Ref<InputEvent> &p_event);
+	void _input_event(const InputEvent &p_event);
 
 protected:
 	void _notification(int p_what);
@@ -151,9 +144,6 @@ public:
 	void set_item_custom_bg_color(int p_idx, const Color &p_custom_bg_color);
 	Color get_item_custom_bg_color(int p_idx) const;
 
-	void set_item_custom_fg_color(int p_idx, const Color &p_custom_fg_color);
-	Color get_item_custom_fg_color(int p_idx) const;
-
 	void select(int p_idx, bool p_single = true);
 	void unselect(int p_idx);
 	bool is_selected(int p_idx) const;
@@ -173,9 +163,9 @@ public:
 	int get_fixed_column_width() const;
 
 	void set_same_column_width(bool p_enable);
-	bool is_same_column_width() const;
+	int is_same_column_width() const;
 
-	void set_max_text_lines(int p_lines);
+	void set_max_text_lines(int p_amount);
 	int get_max_text_lines() const;
 
 	void set_max_columns(int p_amount);
@@ -199,16 +189,10 @@ public:
 	int find_metadata(const Variant &p_metadata) const;
 
 	virtual String get_tooltip(const Point2 &p_pos) const;
-	int get_item_at_position(const Point2 &p_pos, bool p_exact = false) const;
-	bool is_pos_at_end_of_items(const Point2 &p_pos) const;
+	int get_item_at_pos(const Point2 &p_pos, bool p_exact = false) const;
 
 	void set_icon_scale(real_t p_scale);
 	real_t get_icon_scale() const;
-
-	void set_auto_height(bool p_enable);
-	bool has_auto_height() const;
-
-	Size2 get_minimum_size() const;
 
 	VScrollBar *get_v_scroll() { return scroll_bar; }
 

@@ -31,162 +31,34 @@
 
 #ifdef PULSEAUDIO_ENABLED
 
-#include <pulse/pulseaudio.h>
+#include <pulse/error.h>
 
-#include "os/os.h"
-#include "project_settings.h"
-
-void pa_state_cb(pa_context *c, void *userdata) {
-	pa_context_state_t state;
-	int *pa_ready = (int *)userdata;
-
-	state = pa_context_get_state(c);
-	switch (state) {
-		case PA_CONTEXT_FAILED:
-		case PA_CONTEXT_TERMINATED:
-			*pa_ready = 2;
-			break;
-
-		case PA_CONTEXT_READY:
-			*pa_ready = 1;
-			break;
-	}
-}
-
-void sink_info_cb(pa_context *c, const pa_sink_info *l, int eol, void *userdata) {
-	unsigned int *channels = (unsigned int *)userdata;
-
-	// If eol is set to a positive number, you're at the end of the list
-	if (eol > 0) {
-		return;
-	}
-
-	*channels = l->channel_map.channels;
-}
-
-void server_info_cb(pa_context *c, const pa_server_info *i, void *userdata) {
-	char *default_output = (char *)userdata;
-
-	strncpy(default_output, i->default_sink_name, 1024);
-}
-
-static unsigned int detect_channels() {
-
-	pa_mainloop *pa_ml;
-	pa_mainloop_api *pa_mlapi;
-	pa_operation *pa_op;
-	pa_context *pa_ctx;
-
-	int state = 0;
-	int pa_ready = 0;
-
-	char default_output[1024];
-	unsigned int channels = 2;
-
-	pa_ml = pa_mainloop_new();
-	pa_mlapi = pa_mainloop_get_api(pa_ml);
-	pa_ctx = pa_context_new(pa_mlapi, "Godot");
-
-	int ret = pa_context_connect(pa_ctx, NULL, PA_CONTEXT_NOFLAGS, NULL);
-	if (ret < 0) {
-		pa_context_unref(pa_ctx);
-		pa_mainloop_free(pa_ml);
-
-		return 2;
-	}
-
-	pa_context_set_state_callback(pa_ctx, pa_state_cb, &pa_ready);
-
-	// Wait until the pa server is ready
-	while (pa_ready == 0) {
-		pa_mainloop_iterate(pa_ml, 1, NULL);
-	}
-
-	// Check if there was an error connecting to the pa server
-	if (pa_ready == 2) {
-		pa_context_disconnect(pa_ctx);
-		pa_context_unref(pa_ctx);
-		pa_mainloop_free(pa_ml);
-
-		return 2;
-	}
-
-	// Get the default output device name
-	pa_op = pa_context_get_server_info(pa_ctx, &server_info_cb, (void *)default_output);
-	if (pa_op) {
-		while (pa_operation_get_state(pa_op) == PA_OPERATION_RUNNING) {
-			ret = pa_mainloop_iterate(pa_ml, 1, NULL);
-			if (ret < 0) {
-				ERR_PRINT("pa_mainloop_iterate error");
-			}
-		}
-
-		pa_operation_unref(pa_op);
-
-		// Now using the device name get the amount of channels
-		pa_op = pa_context_get_sink_info_by_name(pa_ctx, default_output, &sink_info_cb, (void *)&channels);
-		if (pa_op) {
-			while (pa_operation_get_state(pa_op) == PA_OPERATION_RUNNING) {
-				ret = pa_mainloop_iterate(pa_ml, 1, NULL);
-				if (ret < 0) {
-					ERR_PRINT("pa_mainloop_iterate error");
-				}
-			}
-
-			pa_operation_unref(pa_op);
-		} else {
-			ERR_PRINT("pa_context_get_sink_info_by_name error");
-		}
-	} else {
-		ERR_PRINT("pa_context_get_server_info error");
-	}
-
-	pa_context_disconnect(pa_ctx);
-	pa_context_unref(pa_ctx);
-	pa_mainloop_free(pa_ml);
-
-	return channels;
-}
+#include "globals.h"
 
 Error AudioDriverPulseAudio::init() {
 
 	active = false;
 	thread_exited = false;
 	exit_thread = false;
+	pcm_open = false;
+	samples_in = NULL;
+	samples_out = NULL;
 
-	mix_rate = GLOBAL_DEF("audio/mix_rate", DEFAULT_MIX_RATE);
-	channels = detect_channels();
-
-	switch (channels) {
-		case 2: // Stereo
-		case 4: // Surround 3.1
-		case 6: // Surround 5.1
-		case 8: // Surround 7.1
-			break;
-
-		default:
-			ERR_PRINTS("PulseAudio: Unsupported number of channels: " + itos(channels));
-			ERR_FAIL_V(ERR_CANT_OPEN);
-			break;
-	}
+	mix_rate = GLOBAL_DEF("audio/mix_rate", 44100);
+	output_format = OUTPUT_STEREO;
+	channels = 2;
 
 	pa_sample_spec spec;
 	spec.format = PA_SAMPLE_S16LE;
 	spec.channels = channels;
 	spec.rate = mix_rate;
 
-	int latency = GLOBAL_DEF("audio/output_latency", DEFAULT_OUTPUT_LATENCY);
-	buffer_frames = closest_power_of_2(latency * mix_rate / 1000);
-	buffer_size = buffer_frames * channels;
-
-	if (OS::get_singleton()->is_stdout_verbose()) {
-		print_line("PulseAudio: detected " + itos(channels) + " channels");
-		print_line("PulseAudio: audio buffer frames: " + itos(buffer_frames) + " calculated latency: " + itos(buffer_frames * 1000 / mix_rate) + "ms");
-	}
+	int latency = GLOBAL_DEF("audio/output_latency", 25);
+	buffer_size = closest_power_of_2(latency * mix_rate / 1000);
 
 	pa_buffer_attr attr;
-	// set to appropriate buffer length (in bytes) from global settings
-	attr.tlength = buffer_size * sizeof(int16_t);
+	// set to appropriate buffer size from global settings
+	attr.tlength = buffer_size;
 	// set them to be automatically chosen
 	attr.prebuf = (uint32_t)-1;
 	attr.maxlength = (uint32_t)-1;
@@ -208,8 +80,8 @@ Error AudioDriverPulseAudio::init() {
 		ERR_FAIL_COND_V(pulse == NULL, ERR_CANT_OPEN);
 	}
 
-	samples_in.resize(buffer_size);
-	samples_out.resize(buffer_size);
+	samples_in = memnew_arr(int32_t, buffer_size * channels);
+	samples_out = memnew_arr(int16_t, buffer_size * channels);
 
 	mutex = Mutex::create();
 	thread = Thread::create(AudioDriverPulseAudio::thread_func, this);
@@ -234,18 +106,18 @@ void AudioDriverPulseAudio::thread_func(void *p_udata) {
 
 	while (!ad->exit_thread) {
 		if (!ad->active) {
-			for (unsigned int i = 0; i < ad->buffer_size; i++) {
+			for (unsigned int i = 0; i < ad->buffer_size * ad->channels; i++) {
 				ad->samples_out[i] = 0;
 			}
 
 		} else {
 			ad->lock();
 
-			ad->audio_server_process(ad->buffer_frames, ad->samples_in.ptr());
+			ad->audio_server_process(ad->buffer_size, ad->samples_in);
 
 			ad->unlock();
 
-			for (unsigned int i = 0; i < ad->buffer_size; i++) {
+			for (unsigned int i = 0; i < ad->buffer_size * ad->channels; i++) {
 				ad->samples_out[i] = ad->samples_in[i] >> 16;
 			}
 		}
@@ -253,8 +125,8 @@ void AudioDriverPulseAudio::thread_func(void *p_udata) {
 		// pa_simple_write always consumes the entire buffer
 
 		int error_code;
-		int byte_size = ad->buffer_size * sizeof(int16_t);
-		if (pa_simple_write(ad->pulse, ad->samples_out.ptr(), byte_size, &error_code) < 0) {
+		int byte_size = ad->buffer_size * sizeof(int16_t) * ad->channels;
+		if (pa_simple_write(ad->pulse, ad->samples_out, byte_size, &error_code) < 0) {
 			// can't recover here
 			fprintf(stderr, "PulseAudio failed and can't recover: %s\n", pa_strerror(error_code));
 			ad->active = false;
@@ -276,9 +148,9 @@ int AudioDriverPulseAudio::get_mix_rate() const {
 	return mix_rate;
 }
 
-AudioDriver::SpeakerMode AudioDriverPulseAudio::get_speaker_mode() const {
+AudioDriverSW::OutputFormat AudioDriverPulseAudio::get_output_format() const {
 
-	return get_speaker_mode_by_total_channels(channels);
+	return output_format;
 }
 
 void AudioDriverPulseAudio::lock() {
@@ -303,10 +175,13 @@ void AudioDriverPulseAudio::finish() {
 	exit_thread = true;
 	Thread::wait_to_finish(thread);
 
-	if (pulse) {
+	if (pulse)
 		pa_simple_free(pulse);
-		pulse = NULL;
-	}
+
+	if (samples_in) {
+		memdelete_arr(samples_in);
+		memdelete_arr(samples_out);
+	};
 
 	memdelete(thread);
 	if (mutex) {
@@ -322,22 +197,7 @@ AudioDriverPulseAudio::AudioDriverPulseAudio() {
 	mutex = NULL;
 	thread = NULL;
 	pulse = NULL;
-
-	samples_in.clear();
-	samples_out.clear();
-
-	mix_rate = 0;
-	buffer_size = 0;
-	channels = 0;
-
-	active = false;
-	thread_exited = false;
-	exit_thread = false;
-
 	latency = 0;
-	buffer_frames = 0;
-	buffer_size = 0;
-	channels = 0;
 }
 
 AudioDriverPulseAudio::~AudioDriverPulseAudio() {

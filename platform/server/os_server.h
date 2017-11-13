@@ -30,13 +30,16 @@
 #ifndef OS_SERVER_H
 #define OS_SERVER_H
 
-#include "../x11/power_x11.h"
 #include "drivers/rtaudio/audio_driver_rtaudio.h"
 #include "drivers/unix/os_unix.h"
 #include "main/input_default.h"
-#include "servers/audio_server.h"
+#include "servers/audio/audio_driver_dummy.h"
+#include "servers/audio/audio_server_sw.h"
+#include "servers/audio/sample_manager_sw.h"
 #include "servers/physics_2d/physics_2d_server_sw.h"
 #include "servers/physics_server.h"
+#include "servers/spatial_sound/spatial_sound_server_sw.h"
+#include "servers/spatial_sound_2d/spatial_sound_2d_server_sw.h"
 #include "servers/visual/rasterizer.h"
 #include "servers/visual_server.h"
 
@@ -48,12 +51,13 @@
 
 class OS_Server : public OS_Unix {
 
-	//Rasterizer *rasterizer;
+	Rasterizer *rasterizer;
 	VisualServer *visual_server;
 	VideoMode current_videomode;
 	List<String> args;
 	MainLoop *main_loop;
 
+	AudioDriverDummy driver_dummy;
 	bool grab;
 
 	PhysicsServer *physics_server;
@@ -62,11 +66,14 @@ class OS_Server : public OS_Unix {
 	virtual void delete_main_loop();
 	IP_Unix *ip_unix;
 
+	AudioServerSW *audio_server;
+	SampleManagerMallocSW *sample_manager;
+	SpatialSoundServerSW *spatial_sound_server;
+	SpatialSound2DServerSW *spatial_sound_2d_server;
+
 	bool force_quit;
 
 	InputDefault *input;
-
-	PowerX11 *power_manager;
 
 protected:
 	virtual int get_video_driver_count() const;
@@ -86,7 +93,7 @@ public:
 	virtual void set_mouse_show(bool p_show);
 	virtual void set_mouse_grab(bool p_grab);
 	virtual bool is_mouse_grab_enabled() const;
-	virtual Point2 get_mouse_position() const;
+	virtual Point2 get_mouse_pos() const;
 	virtual int get_mouse_button_state() const;
 	virtual void set_window_title(const String &p_title);
 
@@ -103,10 +110,6 @@ public:
 	virtual void move_window_to_foreground();
 
 	void run();
-
-	virtual OS::PowerState get_power_state();
-	virtual int get_power_seconds_left();
-	virtual int get_power_percent_left();
 
 	OS_Server();
 };

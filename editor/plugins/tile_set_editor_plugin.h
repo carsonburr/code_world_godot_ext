@@ -36,7 +36,7 @@
 
 class TileSetEditor : public Control {
 
-	GDCLASS(TileSetEditor, Control);
+	OBJ_TYPE(TileSetEditor, Control);
 
 	Ref<TileSet> tileset;
 
@@ -74,7 +74,7 @@ public:
 
 class TileSetEditorPlugin : public EditorPlugin {
 
-	GDCLASS(TileSetEditorPlugin, EditorPlugin);
+	OBJ_TYPE(TileSetEditorPlugin, EditorPlugin);
 
 	TileSetEditor *tileset_editor;
 	EditorNode *editor;

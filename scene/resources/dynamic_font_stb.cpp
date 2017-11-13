@@ -1,32 +1,3 @@
-/*************************************************************************/
-/*  dynamic_font_stb.cpp                                                 */
-/*************************************************************************/
-/*                       This file is part of:                           */
-/*                           GODOT ENGINE                                */
-/*                      https://godotengine.org                          */
-/*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
-/*                                                                       */
-/* Permission is hereby granted, free of charge, to any person obtaining */
-/* a copy of this software and associated documentation files (the       */
-/* "Software"), to deal in the Software without restriction, including   */
-/* without limitation the rights to use, copy, modify, merge, publish,   */
-/* distribute, sublicense, and/or sell copies of the Software, and to    */
-/* permit persons to whom the Software is furnished to do so, subject to */
-/* the following conditions:                                             */
-/*                                                                       */
-/* The above copyright notice and this permission notice shall be        */
-/* included in all copies or substantial portions of the Software.       */
-/*                                                                       */
-/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,       */
-/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF    */
-/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.*/
-/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY  */
-/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,  */
-/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
-/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
-/*************************************************************************/
 #include "dynamic_font_stb.h"
 
 #ifndef FREETYPE_ENABLED
@@ -54,10 +25,10 @@ void DynamicFontData::lock() {
 
 void DynamicFontData::unlock() {
 
-	fr = PoolVector<uint8_t>::Read();
+	fr = DVector<uint8_t>::Read();
 }
 
-void DynamicFontData::set_font_data(const PoolVector<uint8_t> &p_font) {
+void DynamicFontData::set_font_data(const DVector<uint8_t> &p_font) {
 	//clear caches and stuff
 	ERR_FAIL_COND(font_data.size());
 	font_data = p_font;
@@ -276,7 +247,7 @@ void DynamicFontAtSize::_update_char(CharType p_char) {
 		break;
 	}
 
-	//print_line("CHAR: "+String::chr(p_char)+" TEX INDEX: "+itos(tex_index)+" X: "+itos(tex_x)+" Y: "+itos(tex_y));
+	//	print_line("CHAR: "+String::chr(p_char)+" TEX INDEX: "+itos(tex_index)+" X: "+itos(tex_x)+" Y: "+itos(tex_y));
 
 	if (tex_index == -1) {
 		//could not find texture to fit, create one
@@ -299,7 +270,7 @@ void DynamicFontAtSize::_update_char(CharType p_char) {
 
 		{
 			//zero texture
-			PoolVector<uint8_t>::Write w = tex.imgdata.write();
+			DVector<uint8_t>::Write w = tex.imgdata.write();
 			ERR_FAIL_COND(texsize * texsize * 2 > tex.imgdata.size());
 			for (int i = 0; i < texsize * texsize * 2; i++) {
 				w[i] = 0;
@@ -318,7 +289,7 @@ void DynamicFontAtSize::_update_char(CharType p_char) {
 	CharTexture &tex = textures[tex_index];
 
 	{
-		PoolVector<uint8_t>::Write wr = tex.imgdata.write();
+		DVector<uint8_t>::Write wr = tex.imgdata.write();
 
 		for (int i = 0; i < h; i++) {
 			for (int j = 0; j < w; j++) {
@@ -334,7 +305,7 @@ void DynamicFontAtSize::_update_char(CharType p_char) {
 	//blit to image and texture
 	{
 
-		Image img(tex.texture_size, tex.texture_size, 0, Image::FORMAT_LA8, tex.imgdata);
+		Image img(tex.texture_size, tex.texture_size, 0, Image::FORMAT_GRAYSCALE_ALPHA, tex.imgdata);
 
 		if (tex.texture.is_null()) {
 			tex.texture.instance();
@@ -386,14 +357,14 @@ DynamicFontAtSize::~DynamicFontAtSize() {
 
 void DynamicFont::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("set_font_data", "data"), &DynamicFont::set_font_data);
-	ClassDB::bind_method(D_METHOD("get_font_data"), &DynamicFont::get_font_data);
+	ObjectTypeDB::bind_method(_MD("set_font_data", "data:DynamicFontData"), &DynamicFont::set_font_data);
+	ObjectTypeDB::bind_method(_MD("get_font_data:DynamicFontData"), &DynamicFont::get_font_data);
 
-	ClassDB::bind_method(D_METHOD("set_size", "data"), &DynamicFont::set_size);
-	ClassDB::bind_method(D_METHOD("get_size"), &DynamicFont::get_size);
+	ObjectTypeDB::bind_method(_MD("set_size", "data"), &DynamicFont::set_size);
+	ObjectTypeDB::bind_method(_MD("get_size"), &DynamicFont::get_size);
 
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "font/size"), "set_size", "get_size");
-	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "font/font", PROPERTY_HINT_RESOURCE_TYPE, "DynamicFontData"), "set_font_data", "get_font_data");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "font/size"), _SCS("set_size"), _SCS("get_size"));
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "font/font", PROPERTY_HINT_RESOURCE_TYPE, "DynamicFontData"), _SCS("set_font_data"), _SCS("get_font_data"));
 }
 
 void DynamicFont::set_font_data(const Ref<DynamicFontData> &p_data) {
@@ -485,14 +456,14 @@ RES ResourceFormatLoaderDynamicFont::load(const String &p_path, const String &p_
 	FileAccess *f = FileAccess::open(p_path, FileAccess::READ);
 	ERR_FAIL_COND_V(!f, RES());
 
-	PoolVector<uint8_t> data;
+	DVector<uint8_t> data;
 
 	data.resize(f->get_len());
 
 	ERR_FAIL_COND_V(data.size() == 0, RES());
 
 	{
-		PoolVector<uint8_t>::Write w = data.write();
+		DVector<uint8_t>::Write w = data.write();
 		f->get_buffer(w.ptr(), data.size());
 	}
 

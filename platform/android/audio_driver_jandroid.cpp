@@ -28,11 +28,9 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 #include "audio_driver_jandroid.h"
-
+#include "globals.h"
 #include "os/os.h"
-#include "project_settings.h"
 #include "thread_jandroid.h"
-
 #ifndef ANDROID_NATIVE_ACTIVITY
 
 AudioDriverAndroid *AudioDriverAndroid::s_ad = NULL;
@@ -72,7 +70,7 @@ Error AudioDriverAndroid::init() {
 	   }
 */
 
-	//Android_JNI_SetupThread();
+	//	Android_JNI_SetupThread();
 
 	//        __android_log_print(ANDROID_LOG_VERBOSE, "SDL", "SDL audio: opening device");
 
@@ -80,7 +78,8 @@ Error AudioDriverAndroid::init() {
 	int mix_rate = GLOBAL_DEF("audio/mix_rate", 44100);
 
 	int latency = GLOBAL_DEF("audio/output_latency", 25);
-	unsigned int buffer_size = next_power_of_2(latency * mix_rate / 1000);
+	latency = 50;
+	unsigned int buffer_size = closest_power_of_2(latency * mix_rate / 1000);
 	if (OS::get_singleton()->is_stdout_verbose()) {
 		print_line("audio buffer size: " + itos(buffer_size));
 	}
@@ -187,9 +186,9 @@ int AudioDriverAndroid::get_mix_rate() const {
 	return mix_rate;
 }
 
-AudioDriver::SpeakerMode AudioDriverAndroid::get_speaker_mode() const {
+AudioDriverSW::OutputFormat AudioDriverAndroid::get_output_format() const {
 
-	return SPEAKER_MODE_STEREO;
+	return OUTPUT_STEREO;
 }
 
 void AudioDriverAndroid::lock() {

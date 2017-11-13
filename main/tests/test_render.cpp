@@ -5,8 +5,7 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2016 Juan Linietsky, Ariel Manzur.                 */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -28,7 +27,6 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 #include "test_render.h"
-
 #include "math_funcs.h"
 #include "os/keyboard.h"
 #include "os/main_loop.h"
@@ -64,9 +62,9 @@ class TestMainLoop : public MainLoop {
 
 protected:
 public:
-	virtual void input_event(const Ref<InputEvent> &p_event) {
+	virtual void input_event(const InputEvent &p_event) {
 
-		if (p_event->is_pressed())
+		if (p_event.type == InputEvent::KEY && p_event.key.pressed)
 			quit = true;
 	}
 
@@ -80,7 +78,7 @@ public:
 		Vector<Vector3> vts;
 
 		/*
-		PoolVector<Plane> sp = Geometry::build_sphere_planes(2,5,5);
+		DVector<Plane> sp = Geometry::build_sphere_planes(2,5,5);
 		Geometry::MeshData md2 = Geometry::build_convex_mesh(sp);
 		vts=md2.vertices;
 */
@@ -88,7 +86,7 @@ public:
 
 		static const int s = 20;
 		for(int i=0;i<s;i++) {
-			Basis rot(Vector3(0,1,0),i*Math_PI/s);
+			Matrix3 rot(Vector3(0,1,0),i*Math_PI/s);
 
 			for(int j=0;j<s;j++) {
 				Vector3 v;
@@ -162,13 +160,10 @@ public:
 		// 		vs->camera_set_perspective( camera, 60.0,0.1, 100.0 );
 
 		viewport = vs->viewport_create();
-		Size2i screen_size = OS::get_singleton()->get_window_size();
-		vs->viewport_set_size(viewport, screen_size.x, screen_size.y);
-		vs->viewport_attach_to_screen(viewport, Rect2(Vector2(), screen_size));
-		vs->viewport_set_active(viewport, true);
+		vs->viewport_attach_to_screen(viewport);
 		vs->viewport_attach_camera(viewport, camera);
 		vs->viewport_set_scenario(viewport, scenario);
-		vs->camera_set_transform(camera, Transform(Basis(), Vector3(0, 3, 30)));
+		vs->camera_set_transform(camera, Transform(Matrix3(), Vector3(0, 3, 30)));
 		vs->camera_set_perspective(camera, 60, 0.1, 1000);
 
 		/*
@@ -180,9 +175,10 @@ public:
 		*/
 		RID lightaux;
 
+		//*
 		lightaux = vs->light_create(VisualServer::LIGHT_DIRECTIONAL);
 		//vs->light_set_color( lightaux, VisualServer::LIGHT_COLOR_AMBIENT, Color(0.0,0.0,0.0) );
-		vs->light_set_color(lightaux, Color(1.0, 1.0, 1.0));
+		vs->light_set_color(lightaux, VisualServer::LIGHT_COLOR_DIFFUSE, Color(1.0, 1.0, 1.0));
 		//vs->light_set_shadow( lightaux, true );
 		light = vs->instance_create2(lightaux, scenario);
 		Transform lla;
@@ -190,14 +186,17 @@ public:
 		lla.set_look_at(Vector3(), Vector3(-0.000000, -0.836026, -0.548690), Vector3(0, 1, 0));
 
 		vs->instance_set_transform(light, lla);
+		//	*/
 
+		//*
 		lightaux = vs->light_create(VisualServer::LIGHT_OMNI);
-		//vs->light_set_color( lightaux, VisualServer::LIGHT_COLOR_AMBIENT, Color(0.0,0.0,1.0) );
-		vs->light_set_color(lightaux, Color(1.0, 1.0, 0.0));
-		vs->light_set_param(lightaux, VisualServer::LIGHT_PARAM_RANGE, 4);
+		//		vs->light_set_color( lightaux, VisualServer::LIGHT_COLOR_AMBIENT, Color(0.0,0.0,1.0) );
+		vs->light_set_color(lightaux, VisualServer::LIGHT_COLOR_DIFFUSE, Color(1.0, 1.0, 0.0));
+		vs->light_set_param(lightaux, VisualServer::LIGHT_PARAM_RADIUS, 4);
 		vs->light_set_param(lightaux, VisualServer::LIGHT_PARAM_ENERGY, 8);
 		//vs->light_set_shadow( lightaux, true );
 		//light = vs->instance_create( lightaux );
+		//	*/
 
 		ofs = 0;
 		quit = false;
@@ -216,7 +215,7 @@ public:
 
 		for (List<InstanceInfo>::Element *E = instances.front(); E; E = E->next()) {
 
-			Transform pre(Basis(E->get().rot_axis, ofs), Vector3());
+			Transform pre(Matrix3(E->get().rot_axis, ofs), Vector3());
 			vs->instance_set_transform(E->get().instance, pre * E->get().base);
 			/*
 			if( !E->next() ) {

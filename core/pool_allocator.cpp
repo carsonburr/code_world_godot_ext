@@ -28,15 +28,12 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 #include "pool_allocator.h"
-
 #include "core/os/os.h"
 #include "error_macros.h"
 #include "os/copymem.h"
 #include "os/memory.h"
 #include "print_string.h"
-
 #include <assert.h>
-
 #define COMPACT_CHUNK(m_entry, m_to_pos)                      \
 	do {                                                      \
 		void *_dst = &((unsigned char *)pool)[m_to_pos];      \
@@ -232,7 +229,7 @@ PoolAllocator::ID PoolAllocator::alloc(int p_size) {
 	Entry &entry = entry_array[entry_indices[new_entry_indices_pos]];
 
 	entry.len = p_size;
-	entry.pos = (new_entry_indices_pos == 0) ? 0 : entry_end(entry_array[entry_indices[new_entry_indices_pos - 1]]); //alloc either at beginning or end of previous
+	entry.pos = (new_entry_indices_pos == 0) ? 0 : entry_end(entry_array[entry_indices[new_entry_indices_pos - 1]]); //alloc either at begining or end of previous
 	entry.lock = 0;
 	entry.check = (check_count++) & CHECK_MASK;
 	free_mem -= size_to_alloc;
@@ -339,9 +336,9 @@ Error PoolAllocator::resize(ID p_mem, int p_new_size) {
 		ERR_FAIL_COND_V(e->lock, ERR_ALREADY_IN_USE);
 	}
 
-	uint32_t alloc_size = aligned(p_new_size);
+	int alloc_size = aligned(p_new_size);
 
-	if ((uint32_t)aligned(e->len) == alloc_size) {
+	if (aligned(e->len) == alloc_size) {
 
 		e->len = p_new_size;
 		mt_unlock();
@@ -374,7 +371,7 @@ Error PoolAllocator::resize(ID p_mem, int p_new_size) {
 	}
 
 	//no need to move stuff around, it fits before the next block
-	uint32_t next_pos;
+	int next_pos;
 	if (entry_indices_pos + 1 == entry_count) {
 		next_pos = pool_size; // - static_area_size;
 	} else {
@@ -481,7 +478,7 @@ const void *PoolAllocator::get(ID p_mem) const {
 		return NULL;
 	}
 
-	if ((int)e->pos >= pool_size) {
+	if (e->pos < 0 || (int)e->pos >= pool_size) {
 
 		mt_unlock();
 		ERR_PRINT("e->pos<0 || e->pos>=pool_size");
@@ -521,7 +518,7 @@ void *PoolAllocator::get(ID p_mem) {
 		return NULL;
 	}
 
-	if ((int)e->pos >= pool_size) {
+	if (e->pos < 0 || (int)e->pos >= pool_size) {
 
 		mt_unlock();
 		ERR_PRINT("e->pos<0 || e->pos>=pool_size");
@@ -581,7 +578,7 @@ void PoolAllocator::create_pool(void *p_mem, int p_size, int p_max_entries) {
 
 PoolAllocator::PoolAllocator(int p_size, bool p_needs_locking, int p_max_entries) {
 
-	mem_ptr = memalloc(p_size);
+	mem_ptr = Memory::alloc_static(p_size, "PoolAllocator()");
 	ERR_FAIL_COND(!mem_ptr);
 	align = 1;
 	create_pool(mem_ptr, p_size, p_max_entries);
@@ -624,7 +621,7 @@ PoolAllocator::PoolAllocator(int p_align, int p_size, bool p_needs_locking, int 
 PoolAllocator::~PoolAllocator() {
 
 	if (mem_ptr)
-		memfree(mem_ptr);
+		Memory::free_static(mem_ptr);
 
 	memdelete_arr(entry_array);
 	memdelete_arr(entry_indices);

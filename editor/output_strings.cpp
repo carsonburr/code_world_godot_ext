@@ -38,15 +38,15 @@ void OutputStrings::update_scrollbars() {
 	v_scroll->set_anchor(MARGIN_RIGHT, ANCHOR_END);
 	v_scroll->set_anchor(MARGIN_BOTTOM, ANCHOR_END);
 
-	v_scroll->set_begin(Point2(-vmin.width, 0));
+	v_scroll->set_begin(Point2(vmin.width, 0));
 	v_scroll->set_end(Point2(0, 0));
 
 	h_scroll->set_anchor(MARGIN_RIGHT, ANCHOR_END);
 	h_scroll->set_anchor(MARGIN_TOP, ANCHOR_END);
 	h_scroll->set_anchor(MARGIN_BOTTOM, ANCHOR_END);
 
-	h_scroll->set_begin(Point2(0, -hmin.y));
-	h_scroll->set_end(Point2(-vmin.x, 0));
+	h_scroll->set_begin(Point2(0, hmin.y));
+	h_scroll->set_end(Point2(vmin.x, 0));
 
 	margin.y = hmin.y;
 	margin.x = vmin.x;
@@ -65,7 +65,7 @@ void OutputStrings::_notification(int p_what) {
 			if (following) {
 
 				updating = true;
-				v_scroll->set_value(v_scroll->get_max() - v_scroll->get_page());
+				v_scroll->set_val(v_scroll->get_max() - v_scroll->get_page());
 				updating = false;
 			}
 
@@ -79,11 +79,11 @@ void OutputStrings::_notification(int p_what) {
 			Ref<Texture> icon_error = get_icon("Error", "EditorIcons");
 			Ref<Texture> icon_warning = get_icon("Warning", "EditorIcons");
 
-			//int lines = (size_height-(int)margin.y) / font_height;
+			//	int lines = (size_height-(int)margin.y) / font_height;
 			Point2 ofs = tree_st->get_offset();
 
-			LineMap::Element *E = line_map.find(v_scroll->get_value());
-			float h_ofs = (int)h_scroll->get_value();
+			LineMap::Element *E = line_map.find(v_scroll->get_val());
+			float h_ofs = (int)h_scroll->get_val();
 			Point2 icon_ofs = Point2(0, (font_height - (int)icon_error->get_height()) / 2);
 
 			while (E && ofs.y < (size_height - (int)margin.y)) {
@@ -184,8 +184,8 @@ void OutputStrings::add_line(const String &p_text, const Variant &p_meta, const 
 
 void OutputStrings::_bind_methods() {
 
-	ClassDB::bind_method("_vscroll_changed", &OutputStrings::_vscroll_changed);
-	ClassDB::bind_method("_hscroll_changed", &OutputStrings::_hscroll_changed);
+	ObjectTypeDB::bind_method("_vscroll_changed", &OutputStrings::_vscroll_changed);
+	ObjectTypeDB::bind_method("_hscroll_changed", &OutputStrings::_hscroll_changed);
 }
 
 OutputStrings::OutputStrings() {

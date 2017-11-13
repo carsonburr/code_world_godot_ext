@@ -35,7 +35,7 @@
 
 class SpriteFrames : public Resource {
 
-	GDCLASS(SpriteFrames, Resource);
+	OBJ_TYPE(SpriteFrames, Resource);
 
 	struct Anim {
 
@@ -47,8 +47,6 @@ class SpriteFrames : public Resource {
 			loop = true;
 			speed = 5;
 		}
-
-		StringName normal_name;
 	};
 
 	Map<StringName, Anim> animations;
@@ -91,20 +89,6 @@ public:
 		return E->get().frames[p_idx];
 	}
 
-	_FORCE_INLINE_ Ref<Texture> get_normal_frame(const StringName &p_anim, int p_idx) const {
-
-		const Map<StringName, Anim>::Element *E = animations.find(p_anim);
-		ERR_FAIL_COND_V(!E, Ref<Texture>());
-		ERR_FAIL_COND_V(p_idx < 0, Ref<Texture>());
-
-		const Map<StringName, Anim>::Element *EN = animations.find(E->get().normal_name);
-
-		if (!EN || p_idx >= EN->get().frames.size())
-			return Ref<Texture>();
-
-		return EN->get().frames[p_idx];
-	}
-
 	void set_frame(const StringName &p_anim, int p_idx, const Ref<Texture> &p_frame) {
 		Map<StringName, Anim>::Element *E = animations.find(p_anim);
 		ERR_FAIL_COND(!E);
@@ -122,7 +106,7 @@ public:
 
 class AnimatedSprite : public Node2D {
 
-	GDCLASS(AnimatedSprite, Node2D);
+	OBJ_TYPE(AnimatedSprite, Node2D);
 
 	Ref<SpriteFrames> frames;
 	bool playing;
@@ -136,6 +120,8 @@ class AnimatedSprite : public Node2D {
 
 	bool hflip;
 	bool vflip;
+
+	Color modulate;
 
 	void _res_changed();
 

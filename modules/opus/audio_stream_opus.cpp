@@ -56,7 +56,7 @@ int AudioStreamPlaybackOpus::_op_seek_func(void *_stream, opus_int64 _offset, in
 			fa->seek(_offset);
 		} break;
 		case SEEK_CUR: {
-			fa->seek(fa->get_position() + _offset);
+			fa->seek(fa->get_pos() + _offset);
 		} break;
 		case SEEK_END: {
 			fa->seek_end(_offset);
@@ -83,7 +83,7 @@ int AudioStreamPlaybackOpus::_op_close_func(void *_stream) {
 
 opus_int64 AudioStreamPlaybackOpus::_op_tell_func(void *_stream) {
 	FileAccess *_fa = (FileAccess *)_stream;
-	return (opus_int64)_fa->get_position();
+	return (opus_int64)_fa->get_pos();
 }
 
 void AudioStreamPlaybackOpus::_clear_stream() {
@@ -247,7 +247,7 @@ void AudioStreamPlaybackOpus::play(float p_from) {
 	frames_mixed = pre_skip;
 	playing = true;
 	if (p_from > 0) {
-		seek(p_from);
+		seek_pos(p_from);
 	}
 }
 
@@ -256,7 +256,7 @@ void AudioStreamPlaybackOpus::stop() {
 	playing = false;
 }
 
-void AudioStreamPlaybackOpus::seek(float p_time) {
+void AudioStreamPlaybackOpus::seek_pos(float p_time) {
 	if (!playing) return;
 	ogg_int64_t pcm_offset = (ogg_int64_t)(p_time * osrate);
 	bool ok = op_pcm_seek(opus_file, pcm_offset) == 0;
@@ -340,7 +340,7 @@ float AudioStreamPlaybackOpus::get_length() const {
 	return length;
 }
 
-float AudioStreamPlaybackOpus::get_playback_position() const {
+float AudioStreamPlaybackOpus::get_pos() const {
 
 	int32_t frames = int32_t(frames_mixed);
 	if (frames < 0)
@@ -371,7 +371,7 @@ void ResourceFormatLoaderAudioStreamOpus::get_recognized_extensions(List<String>
 }
 String ResourceFormatLoaderAudioStreamOpus::get_resource_type(const String &p_path) const {
 
-	if (p_path.get_extension().to_lower() == "opus")
+	if (p_path.extension().to_lower() == "opus")
 		return "AudioStreamOpus";
 	return "";
 }

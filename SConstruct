@@ -134,46 +134,47 @@ opts = Variables(customs, ARGUMENTS)
 
 # Target build options
 opts.Add('arch', "Platform-dependent architecture (arm/arm64/x86/x64/mips/etc)", '')
-opts.Add(EnumVariable('bits', "Target platform bits", 'default', ('default', '32', '64', 'fat')))
+opts.Add('bits', "Target platform bits (default/32/64/fat)", 'default')
 opts.Add('p', "Platform (alias for 'platform')", '')
-opts.Add('platform', "Target platform (%s)" % ('|'.join(platform_list), ), '')
-opts.Add(EnumVariable('target', "Compilation target", 'debug', ('debug', 'release_debug', 'release')))
-opts.Add(BoolVariable('tools', "Build the tools a.k.a. the Godot editor", True))
+opts.Add('platform', "Target platform: any in " + str(platform_list), '')
+opts.Add('target', "Compilation target (debug/release_debug/release)", 'debug')
+opts.Add('tools', "Build the tools a.k.a. the Godot editor (yes/no)", 'yes')
 
 # Components
-opts.Add(BoolVariable('deprecated', "Enable deprecated features", True))
-opts.Add(BoolVariable('gdscript', "Build GDSCript support", True))
-opts.Add(BoolVariable('minizip', "Build minizip archive support", True))
-opts.Add(BoolVariable('xaudio2', "XAudio2 audio driver", False))
-opts.Add(BoolVariable('xml', "XML format support for resources", True))
+opts.Add('deprecated', "Enable deprecated features (yes/no)", 'yes')
+opts.Add('gdscript', "Build GDSCript support (yes/no)", 'yes')
+opts.Add('minizip', "Build minizip archive support (yes/no)", 'yes')
+opts.Add('xml', "XML format support for resources (yes/no)", 'yes')
 
 # Advanced options
-opts.Add(BoolVariable('disable_3d', "Disable 3D nodes for smaller executable", False))
-opts.Add(BoolVariable('disable_advanced_gui', "Disable advance 3D gui nodes and behaviors", False))
+opts.Add('disable_3d', "Disable 3D nodes for smaller executable (yes/no)", 'no')
+opts.Add('disable_advanced_gui', "Disable advance 3D gui nodes and behaviors (yes/no)", 'no')
 opts.Add('extra_suffix', "Custom extra suffix added to the base filename of all generated binary files", '')
 opts.Add('unix_global_settings_path', "UNIX-specific path to system-wide settings. Currently only used for templates", '')
-opts.Add(BoolVariable('verbose', "Enable verbose output for the compilation", False))
-opts.Add(BoolVariable('vsproj', "Generate Visual Studio Project.", False))
-opts.Add(EnumVariable('warnings', "Set the level of warnings emitted during compilation", 'no', ('extra', 'all', 'moderate', 'no')))
-opts.Add(BoolVariable('progress', "Show a progress indicator during build", True))
-opts.Add(BoolVariable('dev', "If yes, alias for verbose=yes warnings=all", False))
+opts.Add('verbose', "Enable verbose output for the compilation (yes/no)", 'no')
+opts.Add('vsproj', "Generate Visual Studio Project. (yes/no)", 'no')
+opts.Add('vsproj_jobs', "Number of parallel builds", '2')
+opts.Add('warnings', "Set the level of warnings emitted during compilation (extra/all/moderate/no)", 'no')
+opts.Add('progress', "Show a progress indicator during build (yes/no)", 'yes')
+opts.Add('dev', "If yes, alias for verbose=yes warnings=all", 'no')
 
 # Thirdparty libraries
-opts.Add(BoolVariable('builtin_enet', "Use the builtin enet library", True))
-opts.Add(BoolVariable('builtin_freetype', "Use the builtin freetype library", True))
-opts.Add(BoolVariable('builtin_libogg', "Use the builtin libogg library", True))
-opts.Add(BoolVariable('builtin_libpng', "Use the builtin libpng library", True))
-opts.Add(BoolVariable('builtin_libtheora', "Use the builtin libtheora library", True))
-opts.Add(BoolVariable('builtin_libvorbis', "Use the builtin libvorbis library", True))
-opts.Add(BoolVariable('builtin_libvpx', "Use the builtin libvpx library", True))
-opts.Add(BoolVariable('builtin_libwebp', "Use the builtin libwebp library", True))
-opts.Add(BoolVariable('builtin_openssl', "Use the builtin openssl library", True))
-opts.Add(BoolVariable('builtin_opus', "Use the builtin opus library", True))
-opts.Add(BoolVariable('builtin_pcre2', "Use the builtin pcre2 library)", True))
-opts.Add(BoolVariable('builtin_recast', "Use the builtin recast library", True))
-opts.Add(BoolVariable('builtin_squish', "Use the builtin squish library", True))
-opts.Add(BoolVariable('builtin_zlib', "Use the builtin zlib library", True))
-opts.Add(BoolVariable('builtin_zstd', "Use the builtin zstd library", True))
+opts.Add('builtin_freetype', "Use the builtin freetype library (yes/no)", 'yes')
+opts.Add('builtin_glew', "Use the builtin glew library (yes/no)", 'yes')
+opts.Add('builtin_libmpcdec', "Use the builtin libmpcdec library (yes/no)", 'yes')
+opts.Add('builtin_libogg', "Use the builtin libogg library (yes/no)", 'yes')
+opts.Add('builtin_libpng', "Use the builtin libpng library (yes/no)", 'yes')
+opts.Add('builtin_libtheora', "Use the builtin libtheora library (yes/no)", 'yes')
+opts.Add('builtin_libvorbis', "Use the builtin libvorbis library (yes/no)", 'yes')
+opts.Add('builtin_libwebp', "Use the builtin libwebp library (yes/no)", 'yes')
+opts.Add('builtin_openssl', "Use the builtin openssl library (yes/no)", 'yes')
+opts.Add('builtin_opus', "Use the builtin opus library (yes/no)", 'yes')
+# (akien) Unbundling would require work in audio_stream_speex.{cpp,h}, but since speex was
+# removed in 3.0+ and this is only to preserve compatibility in 2.1, I haven't worked on it.
+# Patches welcome if anyone cares :)
+opts.Add('builtin_speex', "Use the builtin speex library (yes/no)", 'yes')
+opts.Add('builtin_squish', "Use the builtin squish library (yes/no)", 'yes')
+opts.Add('builtin_zlib', "Use the builtin zlib library (yes/no)", 'yes')
 
 # Environment setup
 opts.Add("CXX", "C++ compiler")
@@ -182,25 +183,15 @@ opts.Add("CCFLAGS", "Custom flags for the C and C++ compilers")
 opts.Add("CFLAGS", "Custom flags for the C compiler")
 opts.Add("LINKFLAGS", "Custom flags for the linker")
 
-
 # add platform specific options
 
 for k in platform_opts.keys():
     opt_list = platform_opts[k]
     for o in opt_list:
-        opts.Add(o)
+        opts.Add(o[0], o[1], o[2])
 
 for x in module_list:
-    module_enabled = True
-    tmppath = "./modules/" + x
-    sys.path.append(tmppath)
-    import config
-    enabled_attr = getattr(config, "is_enabled", None)
-    if (callable(enabled_attr) and not config.is_enabled()):
-        module_enabled = False
-    sys.path.remove(tmppath)
-    sys.modules.pop('config')
-    opts.Add(BoolVariable('module_' + x + '_enabled', "Enable module '%s'" % (x, ), module_enabled))
+    opts.Add('module_' + x + '_enabled', "Enable module '" + x + "' (yes/no)", "yes")
 
 opts.Update(env_base)  # update environment
 Help(opts.GenerateHelpText(env_base))  # generate help
@@ -224,8 +215,8 @@ if (env_base['target'] == 'debug'):
     env_base.Append(CPPFLAGS=['-DDEBUG_MEMORY_ALLOC'])
     env_base.Append(CPPFLAGS=['-DSCI_NAMESPACE'])
 
-if not env_base['deprecated']:
-    env_base.Append(CPPFLAGS=['-DDISABLE_DEPRECATED'])
+if (env_base['deprecated'] != 'no'):
+    env_base.Append(CPPFLAGS=['-DENABLE_DEPRECATED'])
 
 env_base.platforms = {}
 
@@ -248,11 +239,11 @@ if selected_platform in platform_list:
     else:
         env = env_base.Clone()
 
-    if env['dev']:
+    if (env["dev"] == "yes"):
         env["warnings"] = "all"
-        env['verbose'] = True
+        env["verbose"] = "yes"
 
-    if env['vsproj']:
+    if env['vsproj'] == "yes":
         env.vs_incs = []
         env.vs_srcs = []
 
@@ -302,9 +293,7 @@ if selected_platform in platform_list:
     if (env["warnings"] == 'yes'):
         print("WARNING: warnings=yes is deprecated; assuming warnings=all")
 
-    env.msvc = 0
     if (os.name == "nt" and os.getenv("VCINSTALLDIR") and (platform_arg == "windows" or platform_arg == "uwp")): # MSVC, needs to stand out of course
-        env.msvc = 1
         disable_nonessential_warnings = ['/wd4267', '/wd4244', '/wd4305', '/wd4800'] # Truncations, narrowing conversions...
         if (env["warnings"] == 'extra'):
             env.Append(CCFLAGS=['/Wall']) # Implies /W4
@@ -330,19 +319,19 @@ if selected_platform in platform_list:
     suffix = "." + selected_platform
 
     if (env["target"] == "release"):
-        if env["tools"]:
+        if (env["tools"] == "yes"):
             print("Tools can only be built with targets 'debug' and 'release_debug'.")
             sys.exit(255)
         suffix += ".opt"
         env.Append(CCFLAGS=['-DNDEBUG'])
 
     elif (env["target"] == "release_debug"):
-        if env["tools"]:
+        if (env["tools"] == "yes"):
             suffix += ".opt.tools"
         else:
             suffix += ".opt.debug"
     else:
-        if env["tools"]:
+        if (env["tools"] == "yes"):
             suffix += ".tools"
         else:
             suffix += ".debug"
@@ -367,10 +356,9 @@ if selected_platform in platform_list:
     sys.modules.pop('detect')
 
     env.module_list = []
-    env.doc_class_path={}
 
     for x in module_list:
-        if not env['module_' + x + '_enabled']:
+        if env['module_' + x + '_enabled'] != "yes":
             continue
         tmppath = "./modules/" + x
         sys.path.append(tmppath)
@@ -379,15 +367,6 @@ if selected_platform in platform_list:
         if (config.can_build(selected_platform)):
             config.configure(env)
             env.module_list.append(x)
-            try:
-                 doc_classes = config.get_doc_classes()
-                 doc_path = config.get_doc_path()
-                 for c in doc_classes:
-                     env.doc_class_path[c]="modules/"+x+"/"+doc_path
-            except:
-                pass
-
-
         sys.path.remove(tmppath)
         sys.modules.pop('config')
 
@@ -397,26 +376,23 @@ if selected_platform in platform_list:
     # to test 64 bits compiltion
     # env.Append(CPPFLAGS=['-m64'])
 
-    if env['tools']:
+    if (env['tools'] == 'yes'):
         env.Append(CPPFLAGS=['-DTOOLS_ENABLED'])
-    if env['disable_3d']:
+    if (env['disable_3d'] == 'yes'):
         env.Append(CPPFLAGS=['-D_3D_DISABLED'])
-    if env['gdscript']:
+    if (env['gdscript'] == 'yes'):
         env.Append(CPPFLAGS=['-DGDSCRIPT_ENABLED'])
-    if env['disable_advanced_gui']:
+    if (env['disable_advanced_gui'] == 'yes'):
         env.Append(CPPFLAGS=['-DADVANCED_GUI_DISABLED'])
 
-    if env['minizip']:
+    if (env['minizip'] == 'yes'):
         env.Append(CPPFLAGS=['-DMINIZIP_ENABLED'])
 
-    if env['xml']:
+    if (env['xml'] == 'yes'):
         env.Append(CPPFLAGS=['-DXML_ENABLED'])
 
-    if not env['verbose']:
+    if (env['verbose'] == 'no'):
         methods.no_verbose(sys, env)
-
-    if (True): # FIXME: detect GLES3
-        env.Append( BUILDERS = { 'GLES3_GLSL' : env.Builder(action = methods.build_gles3_headers, suffix = 'glsl.gen.h',src_suffix = '.glsl') } )
 
     Export('env')
 
@@ -434,19 +410,9 @@ if selected_platform in platform_list:
     SConscript("platform/" + selected_platform + "/SCsub")  # build selected platform
 
     # Microsoft Visual Studio Project Generation
-    if env['vsproj']:
+    if (env['vsproj']) == "yes":
         env['CPPPATH'] = [Dir(path) for path in env['CPPPATH']]
-        methods.generate_vs_project(env, GetOption("num_jobs"))
-
-    # Check for the existence of headers
-    conf = Configure(env)
-    if ("check_c_headers" in env):
-        for header in env["check_c_headers"]:
-            if (conf.CheckCHeader(header[0])):
-                if (env.msvc):
-                    env.Append(CCFLAGS=['/D' + header[1]])
-                else:
-                    env.Append(CCFLAGS=['-D' + header[1]])
+        methods.generate_vs_project(env, env['vsproj_jobs'])
 
 else:
 
@@ -482,7 +448,7 @@ def progress_finish(target, source, env):
     with open(node_count_fname, 'w') as f:
         f.write('%d\n' % node_count)
 
-if 'env' in locals() and env['progress']:
+if ('env' in locals() and env["progress"] == "yes"):
     try:
         with open(node_count_fname) as f:
             node_count_max = int(f.readline())

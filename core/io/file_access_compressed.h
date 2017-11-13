@@ -37,11 +37,11 @@ class FileAccessCompressed : public FileAccess {
 
 	Compression::Mode cmode;
 	bool writing;
-	uint32_t write_pos;
+	int write_pos;
 	uint8_t *write_ptr;
-	uint32_t write_buffer_size;
-	uint32_t write_max;
-	uint32_t block_size;
+	int write_buffer_size;
+	int write_max;
+	int block_size;
 	mutable bool read_eof;
 	mutable bool at_end;
 
@@ -57,14 +57,14 @@ class FileAccessCompressed : public FileAccess {
 	mutable int read_block_size;
 	mutable int read_pos;
 	Vector<ReadBlock> read_blocks;
-	uint32_t read_total;
+	int read_total;
 
 	String magic;
 	mutable Vector<uint8_t> buffer;
 	FileAccess *f;
 
 public:
-	void configure(const String &p_magic, Compression::Mode p_mode = Compression::MODE_ZSTD, int p_block_size = 4096);
+	void configure(const String &p_magic, Compression::Mode p_mode = Compression::MODE_FASTLZ, int p_block_size = 4096);
 
 	Error open_after_magic(FileAccess *p_base);
 
@@ -74,7 +74,7 @@ public:
 
 	virtual void seek(size_t p_position); ///< seek to a given position
 	virtual void seek_end(int64_t p_position = 0); ///< seek from the end of file
-	virtual size_t get_position() const; ///< get position in the file
+	virtual size_t get_pos() const; ///< get position in the file
 	virtual size_t get_len() const; ///< get size of the file
 
 	virtual bool eof_reached() const; ///< reading passed EOF
@@ -84,7 +84,6 @@ public:
 
 	virtual Error get_error() const; ///< get last error
 
-	virtual void flush();
 	virtual void store_8(uint8_t p_dest); ///< store a byte
 
 	virtual bool file_exists(const String &p_name); ///< return true if a file exists

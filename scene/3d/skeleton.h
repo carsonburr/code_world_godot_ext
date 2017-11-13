@@ -38,7 +38,7 @@
 */
 class Skeleton : public Spatial {
 
-	GDCLASS(Skeleton, Spatial);
+	OBJ_TYPE(Skeleton, Spatial);
 
 	struct Bone {
 
@@ -90,9 +90,11 @@ class Skeleton : public Spatial {
 		return bound;
 	}
 
+	virtual RES _get_gizmo_geometry() const;
+
 protected:
-	bool _get(const StringName &p_path, Variant &r_ret) const;
-	bool _set(const StringName &p_path, const Variant &p_value);
+	bool _get(const StringName &p_name, Variant &r_ret) const;
+	bool _set(const StringName &p_name, const Variant &p_value);
 	void _get_property_list(List<PropertyInfo> *p_list) const;
 	void _notification(int p_what);
 	static void _bind_methods();
@@ -113,7 +115,7 @@ public:
 	void set_bone_parent(int p_bone, int p_parent);
 	int get_bone_parent(int p_bone) const;
 
-	void unparent_bone_and_rest(int p_bone);
+	void unparent_bone_and_rest(int p_idx);
 
 	void set_bone_disable_rest(int p_bone, bool p_disable);
 	bool is_bone_rest_disabled(int p_bone) const;

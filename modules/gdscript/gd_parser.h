@@ -34,7 +34,6 @@
 #include "gd_tokenizer.h"
 #include "map.h"
 #include "object.h"
-#include "script_language.h"
 
 class GDParser {
 public:
@@ -88,7 +87,6 @@ public:
 			StringName getter;
 			int line;
 			Node *expression;
-			ScriptInstance::RPCMode rpc_mode;
 		};
 		struct Constant {
 			StringName identifier;
@@ -124,7 +122,6 @@ public:
 	struct FunctionNode : public Node {
 
 		bool _static;
-		ScriptInstance::RPCMode rpc_mode;
 		StringName name;
 		Vector<StringName> arguments;
 		Vector<Node *> default_values;
@@ -133,7 +130,6 @@ public:
 		FunctionNode() {
 			type = TYPE_FUNCTION;
 			_static = false;
-			rpc_mode = ScriptInstance::RPC_MODE_DISABLED;
 		}
 	};
 
@@ -146,13 +142,10 @@ public:
 		Vector<StringName> variables;
 		Vector<int> variable_lines;
 
-		Node *if_condition; //tiny hack to improve code completion on if () blocks
-
 		//the following is useful for code completion
 		List<BlockNode *> sub_blocks;
 		int end_line;
 		BlockNode() {
-			if_condition = NULL;
 			type = TYPE_BLOCK;
 			end_line = -1;
 			parent_block = NULL;
@@ -219,13 +212,12 @@ public:
 			OP_CALL,
 			OP_PARENT_CALL,
 			OP_YIELD,
-			OP_IS,
+			OP_EXTENDS,
 			//indexing operator
 			OP_INDEX,
 			OP_INDEX_NAMED,
 			//unary operators
 			OP_NEG,
-			OP_POS,
 			OP_NOT,
 			OP_BIT_INVERT,
 			OP_PREINC,
@@ -275,42 +267,6 @@ public:
 		OperatorNode() { type = TYPE_OPERATOR; }
 	};
 
-	struct PatternNode : public Node {
-
-		enum PatternType {
-			PT_CONSTANT,
-			PT_BIND,
-			PT_DICTIONARY,
-			PT_ARRAY,
-			PT_IGNORE_REST,
-			PT_WILDCARD
-		};
-
-		PatternType pt_type;
-
-		Node *constant;
-		StringName bind;
-		Map<ConstantNode *, PatternNode *> dictionary;
-		Vector<PatternNode *> array;
-	};
-
-	struct PatternBranchNode : public Node {
-		Vector<PatternNode *> patterns;
-		BlockNode *body;
-	};
-
-	struct MatchNode : public Node {
-		Node *val_to_match;
-		Vector<PatternBranchNode *> branches;
-
-		struct CompiledPatternBranch {
-			Node *compiled_pattern;
-			BlockNode *body;
-		};
-
-		Vector<CompiledPatternBranch> compiled_pattern_branches;
-	};
-
 	struct ControlFlowNode : public Node {
 		enum CFType {
 			CF_IF,
@@ -319,16 +275,13 @@ public:
 			CF_SWITCH,
 			CF_BREAK,
 			CF_CONTINUE,
-			CF_RETURN,
-			CF_MATCH
+			CF_RETURN
 		};
 
 		CFType cf_type;
 		Vector<Node *> arguments;
 		BlockNode *body;
 		BlockNode *body_else;
-
-		MatchNode *match;
 
 		ControlFlowNode *_else; //used for if
 		ControlFlowNode() {
@@ -434,17 +387,13 @@ public:
 	enum CompletionType {
 		COMPLETION_NONE,
 		COMPLETION_BUILT_IN_TYPE_CONSTANT,
-		COMPLETION_GET_NODE,
 		COMPLETION_FUNCTION,
 		COMPLETION_IDENTIFIER,
 		COMPLETION_PARENT_FUNCTION,
 		COMPLETION_METHOD,
 		COMPLETION_CALL_ARGUMENTS,
-		COMPLETION_RESOURCE_PATH,
 		COMPLETION_INDEX,
-		COMPLETION_VIRTUAL_FUNC,
-		COMPLETION_YIELD,
-		COMPLETION_ASSIGN,
+		COMPLETION_VIRTUAL_FUNC
 	};
 
 private:
@@ -488,11 +437,8 @@ private:
 	int completion_line;
 	int completion_argument;
 	bool completion_found;
-	bool completion_ident_is_call;
 
 	PropertyInfo current_export;
-
-	ScriptInstance::RPCMode rpc_mode;
 
 	void _set_error(const String &p_error, int p_line = -1, int p_column = -1);
 	bool _recover_from_completion();
@@ -503,11 +449,6 @@ private:
 	Node *_parse_expression(Node *p_parent, bool p_static, bool p_allow_assign = false, bool p_parsing_constant = false);
 	Node *_reduce_expression(Node *p_node, bool p_to_const = false);
 	Node *_parse_and_reduce_expression(Node *p_parent, bool p_static, bool p_reduce_const = false, bool p_allow_assign = false);
-
-	PatternNode *_parse_pattern(bool p_static);
-	void _parse_pattern_block(BlockNode *p_block, Vector<PatternBranchNode *> &p_branches, bool p_static);
-	void _transform_match_statment(BlockNode *p_block, MatchNode *p_match_statement);
-	void _generate_pattern(PatternNode *p_pattern, Node *p_node_to_match, Node *&p_resulting_node, Map<StringName, Node *> &p_bindings);
 
 	void _parse_block(BlockNode *p_block, bool p_static);
 	void _parse_extends(ClassNode *p_class);
@@ -537,7 +478,6 @@ public:
 	BlockNode *get_completion_block();
 	FunctionNode *get_completion_function();
 	int get_completion_argument_index();
-	int get_completion_identifier_is_function();
 
 	void clear();
 	GDParser();

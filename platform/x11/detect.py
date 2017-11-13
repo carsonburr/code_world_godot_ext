@@ -1,6 +1,7 @@
+
 import os
-import platform
 import sys
+import platform
 
 
 def is_active():
@@ -13,10 +14,12 @@ def get_name():
 
 def can_build():
 
-    if (os.name != "posix" or sys.platform == "darwin"):
+    if (os.name != "posix"):
         return False
 
-    # Check the minimal dependencies
+    if sys.platform == "darwin":
+        return False  # no x11 on mac for now
+
     x11_error = os.system("pkg-config --version > /dev/null")
     if (x11_error):
         print("pkg-config not found.. x11 disabled.")
@@ -42,211 +45,191 @@ def can_build():
         print("xrandr not found.. x11 disabled.")
         return False
 
-    return True
+    return True  # X11 enabled
+
 
 def get_opts():
-    from SCons.Variables import BoolVariable, EnumVariable
 
     return [
-        BoolVariable('use_llvm', 'Use the LLVM compiler', False),
-        BoolVariable('use_static_cpp', 'Link stdc++ statically', False),
-        BoolVariable('use_sanitizer', 'Use LLVM compiler address sanitizer', False),
-        BoolVariable('use_leak_sanitizer', 'Use LLVM compiler memory leaks sanitizer (implies use_sanitizer)', False),
-        BoolVariable('use_lto', 'Use link time optimization', False),
-        BoolVariable('pulseaudio', 'Detect & use pulseaudio', True),
-        BoolVariable('udev', 'Use udev for gamepad connection callbacks', False),
-        EnumVariable('debug_symbols', 'Add debug symbols to release version', 'yes', ('yes', 'no', 'full')),
+        ('use_llvm', 'Use llvm compiler', 'no'),
+        ('use_static_cpp', 'link stdc++ statically', 'no'),
+        ('use_sanitizer', 'Use llvm compiler sanitize address', 'no'),
+        ('use_leak_sanitizer', 'Use llvm compiler sanitize memory leaks', 'no'),
+        ('use_lto', 'Use link time optimization', 'no'),
+        ('pulseaudio', 'Detect & Use pulseaudio', 'yes'),
+        ('udev', 'Use udev for gamepad connection callbacks', 'no'),
+        ('debug_release', 'Add debug symbols to release version', 'no'),
     ]
 
 
 def get_flags():
 
     return [
-        ('builtin_freetype', False),
-        ('builtin_libpng', False),
-        ('builtin_openssl', False),
-        ('builtin_zlib', False),
+        ('builtin_freetype', 'no'),
+        ('builtin_libpng', 'no'),
+        ('builtin_openssl', 'no'),
+        ('builtin_zlib', 'no'),
     ]
 
 
 def configure(env):
 
-    ## Build type
-
-    if (env["target"] == "release"):
-        # -O3 -ffast-math is identical to -Ofast. We need to split it out so we can selectively disable
-        # -ffast-math in code for which it generates wrong results.
-        env.Prepend(CCFLAGS=['-O3', '-ffast-math'])
-        if (env["debug_symbols"] == "yes"):
-            env.Prepend(CCFLAGS=['-g1'])
-        if (env["debug_symbols"] == "full"):
-            env.Prepend(CCFLAGS=['-g2'])
-
-    elif (env["target"] == "release_debug"):
-        env.Prepend(CCFLAGS=['-O2', '-ffast-math', '-DDEBUG_ENABLED'])
-        if (env["debug_symbols"] == "yes"):
-            env.Prepend(CCFLAGS=['-g1'])
-        if (env["debug_symbols"] == "full"):
-            env.Prepend(CCFLAGS=['-g2'])
-
-    elif (env["target"] == "debug"):
-        env.Prepend(CCFLAGS=['-g3', '-DDEBUG_ENABLED', '-DDEBUG_MEMORY_ENABLED'])
-        env.Append(LINKFLAGS=['-rdynamic'])
-
-    ## Architecture
-
     is64 = sys.maxsize > 2**32
+
     if (env["bits"] == "default"):
-        env["bits"] = "64" if is64 else "32"
+        if (is64):
+            env["bits"] = "64"
+        else:
+            env["bits"] = "32"
 
-    ## Compiler configuration
-
-    if 'CXX' in env and 'clang' in env['CXX']:
-        # Convenience check to enforce the use_llvm overrides when CXX is clang(++)
-        env['use_llvm'] = True
-
-    if env['use_llvm']:
-        if ('clang++' not in env['CXX']):
+    env.Append(CPPPATH=['#platform/x11'])
+    if (env["use_llvm"] == "yes"):
+        if 'clang++' not in env['CXX']:
             env["CC"] = "clang"
             env["CXX"] = "clang++"
             env["LD"] = "clang++"
         env.Append(CPPFLAGS=['-DTYPED_METHOD_BIND'])
-        env.extra_suffix = ".llvm" + env.extra_suffix
+        env.extra_suffix = ".llvm"
+    elif (os.system("gcc --version > /dev/null 2>&1") == 0): # GCC
+        # Hack to prevent building this branch with GCC 6+, which trigger segfaults due to UB when dereferencing pointers in Object::cast_to
+        # This is fixed in the master branch, for 2.1 we just prevent using too recent GCC versions.
+        import subprocess
+        gcc_major = subprocess.check_output(['gcc', '-dumpversion'])[0].split()[0]
+        if (int(gcc_major) > 5):
+            print("Your configured compiler appears to be GCC %s, which triggers issues in release builds for this version of Godot (fixed in Godot 3.0+)." % gcc_major)
+            print("You can use the Clang compiler instead with the `use_llvm=yes` option, or configure another compiler such as GCC 5 using the CC, CXX and LD flags.")
+            print("Aborting..")
+            sys.exit(255)
 
-    # leak sanitizer requires (address) sanitizer
-    if env['use_sanitizer'] or env['use_leak_sanitizer']:
+    if (env["use_sanitizer"] == "yes"):
         env.Append(CCFLAGS=['-fsanitize=address', '-fno-omit-frame-pointer'])
         env.Append(LINKFLAGS=['-fsanitize=address'])
         env.extra_suffix += "s"
-        if env['use_leak_sanitizer']:
-            env.Append(CCFLAGS=['-fsanitize=leak'])
-            env.Append(LINKFLAGS=['-fsanitize=leak'])
 
-    if env['use_lto']:
+    if (env["use_leak_sanitizer"] == "yes"):
+        env.Append(CCFLAGS=['-fsanitize=address', '-fno-omit-frame-pointer'])
+        env.Append(LINKFLAGS=['-fsanitize=address'])
+        env.extra_suffix += "s"
+
+    # if (env["tools"]=="no"):
+    #	#no tools suffix
+    #	env['OBJSUFFIX'] = ".nt"+env['OBJSUFFIX']
+    #	env['LIBSUFFIX'] = ".nt"+env['LIBSUFFIX']
+
+    if (env["use_lto"] == "yes"):
         env.Append(CCFLAGS=['-flto'])
-        if not env['use_llvm'] and env.GetOption("num_jobs") > 1:
-            env.Append(LINKFLAGS=['-flto=' + str(env.GetOption("num_jobs"))])
-        else:
-            env.Append(LINKFLAGS=['-flto'])
-        if not env['use_llvm']:
-            env['RANLIB'] = 'gcc-ranlib'
-            env['AR'] = 'gcc-ar'
+        env.Append(LINKFLAGS=['-flto'])
+
 
     env.Append(CCFLAGS=['-pipe'])
     env.Append(LINKFLAGS=['-pipe'])
 
-    ## Dependencies
+    if (env["target"] == "release"):
+        env.Prepend(CCFLAGS=['-Ofast'])
+        if (env["debug_release"] == "yes"):
+            env.Prepend(CCFLAGS=['-g2'])
+
+    elif (env["target"] == "release_debug"):
+
+        env.Prepend(CCFLAGS=['-O2', '-ffast-math', '-DDEBUG_ENABLED'])
+        if (env["debug_release"] == "yes"):
+            env.Prepend(CCFLAGS=['-g2'])
+
+    elif (env["target"] == "debug"):
+
+        env.Prepend(CCFLAGS=['-g2', '-DDEBUG_ENABLED', '-DDEBUG_MEMORY_ENABLED'])
+        env.Append(LINKFLAGS=['-rdynamic'])
 
     env.ParseConfig('pkg-config x11 --cflags --libs')
-    env.ParseConfig('pkg-config xcursor --cflags --libs')
     env.ParseConfig('pkg-config xinerama --cflags --libs')
+    env.ParseConfig('pkg-config xcursor --cflags --libs')
     env.ParseConfig('pkg-config xrandr --cflags --libs')
 
-    # FIXME: Check for existence of the libs before parsing their flags with pkg-config
-
-    if not env['builtin_openssl']:
+    if (env['builtin_openssl'] == 'no'):
         env.ParseConfig('pkg-config openssl --cflags --libs')
 
-    if not env['builtin_libwebp']:
+    if (env['builtin_libwebp'] == 'no'):
         env.ParseConfig('pkg-config libwebp --cflags --libs')
 
     # freetype depends on libpng and zlib, so bundling one of them while keeping others
     # as shared libraries leads to weird issues
-    if env['builtin_freetype'] or env['builtin_libpng'] or env['builtin_zlib']:
-        env['builtin_freetype'] = True
-        env['builtin_libpng'] = True
-        env['builtin_zlib'] = True
+    if (env['builtin_freetype'] == 'yes' or env['builtin_libpng'] == 'yes' or env['builtin_zlib'] == 'yes'):
+        env['builtin_freetype'] = 'yes'
+        env['builtin_libpng'] = 'yes'
+        env['builtin_zlib'] = 'yes'
 
-    if not env['builtin_freetype']:
+    if (env['builtin_freetype'] == 'no'):
         env.ParseConfig('pkg-config freetype2 --cflags --libs')
 
-    if not env['builtin_libpng']:
+    if (env['builtin_libpng'] == 'no'):
         env.ParseConfig('pkg-config libpng --cflags --libs')
 
-    if not env['builtin_enet']:
-        env.ParseConfig('pkg-config libenet --cflags --libs')
-
-    if not env['builtin_squish'] and env['tools']:
+    if (env['builtin_squish'] == 'no' and env["tools"] == "yes"):
         env.ParseConfig('pkg-config libsquish --cflags --libs')
-
-    if not env['builtin_zstd']:
-        env.ParseConfig('pkg-config libzstd --cflags --libs')
 
     # Sound and video libraries
     # Keep the order as it triggers chained dependencies (ogg needed by others, etc.)
 
-    if not env['builtin_libtheora']:
-        env['builtin_libogg'] = False  # Needed to link against system libtheora
-        env['builtin_libvorbis'] = False  # Needed to link against system libtheora
+    if (env['builtin_libtheora'] == 'no'):
+        env['builtin_libogg'] = 'no'  # Needed to link against system libtheora
+        env['builtin_libvorbis'] = 'no'  # Needed to link against system libtheora
         env.ParseConfig('pkg-config theora theoradec --cflags --libs')
 
-    if not env['builtin_libvpx']:
-        env.ParseConfig('pkg-config vpx --cflags --libs')
-
-    if not env['builtin_libvorbis']:
-        env['builtin_libogg'] = False  # Needed to link against system libvorbis
+    if (env['builtin_libvorbis'] == 'no'):
+        env['builtin_libogg'] = 'no'  # Needed to link against system libvorbis
         env.ParseConfig('pkg-config vorbis vorbisfile --cflags --libs')
 
-    if not env['builtin_opus']:
-        env['builtin_libogg'] = False  # Needed to link against system opus
+    if (env['builtin_opus'] == 'no'):
+        env['builtin_libogg'] = 'no'  # Needed to link against system opus
         env.ParseConfig('pkg-config opus opusfile --cflags --libs')
 
-    if not env['builtin_libogg']:
+    if (env['builtin_libogg'] == 'no'):
         env.ParseConfig('pkg-config ogg --cflags --libs')
 
-    if env['builtin_libtheora']:
-        list_of_x86 = ['x86_64', 'x86', 'i386', 'i586']
-        if any(platform.machine() in s for s in list_of_x86):
-            env["x86_libtheora_opt_gcc"] = True
+    env.Append(CPPFLAGS=['-DOPENGL_ENABLED'])
 
-    # On Linux wchar_t should be 32-bits
-    # 16-bit library shouldn't be required due to compiler optimisations
-    if not env['builtin_pcre2']:
-        env.ParseConfig('pkg-config libpcre2-32 --cflags --libs')
+    if (env['builtin_glew'] == 'no'):
+        env.ParseConfig('pkg-config glew --cflags --libs')
 
-    ## Flags
-
-    if (os.system("pkg-config --exists alsa") == 0): # 0 means found
+    if os.system("pkg-config --exists alsa") == 0:
         print("Enabling ALSA")
         env.Append(CPPFLAGS=["-DALSA_ENABLED"])
         env.ParseConfig('pkg-config alsa --cflags --libs')
     else:
         print("ALSA libraries not found, disabling driver")
 
-    if env['pulseaudio']:
-        if (os.system("pkg-config --exists libpulse-simple") == 0): # 0 means found
+    if (platform.system() == "Linux"):
+        env.Append(CPPFLAGS=["-DJOYDEV_ENABLED"])
+    if (env["udev"] == "yes"):
+        # pkg-config returns 0 when the lib exists...
+        found_udev = not os.system("pkg-config --exists libudev")
+
+        if (found_udev):
+            print("Enabling udev support")
+            env.Append(CPPFLAGS=["-DUDEV_ENABLED"])
+            env.ParseConfig('pkg-config libudev --cflags --libs')
+        else:
+            print("libudev development libraries not found, disabling udev support")
+
+    if (env["pulseaudio"] == "yes"):
+        if not os.system("pkg-config --exists libpulse-simple"):
             print("Enabling PulseAudio")
             env.Append(CPPFLAGS=["-DPULSEAUDIO_ENABLED"])
             env.ParseConfig('pkg-config --cflags --libs libpulse-simple')
         else:
             print("PulseAudio development libraries not found, disabling driver")
 
-    if (platform.system() == "Linux"):
-        env.Append(CPPFLAGS=["-DJOYDEV_ENABLED"])
-
-        if env['udev']:
-            if (os.system("pkg-config --exists libudev") == 0): # 0 means found
-                print("Enabling udev support")
-                env.Append(CPPFLAGS=["-DUDEV_ENABLED"])
-                env.ParseConfig('pkg-config libudev --cflags --libs')
-            else:
-                print("libudev development libraries not found, disabling udev support")
-
-    # Linkflags below this line should typically stay the last ones
-    if not env['builtin_zlib']:
+    if (env['builtin_zlib'] == 'no'):
         env.ParseConfig('pkg-config zlib --cflags --libs')
 
-    env.Append(CPPPATH=['#platform/x11'])
-    env.Append(CPPFLAGS=['-DX11_ENABLED', '-DUNIX_ENABLED', '-DOPENGL_ENABLED', '-DGLES2_ENABLED', '-DGLES_OVER_GL'])
+    env.Append(CPPFLAGS=['-DX11_ENABLED', '-DUNIX_ENABLED', '-DGLES2_ENABLED', '-DGLES_OVER_GL'])
     env.Append(LIBS=['GL', 'pthread'])
 
     if (platform.system() == "Linux"):
         env.Append(LIBS=['dl'])
+    # env.Append(CPPFLAGS=['-DMPC_FIXED_POINT'])
 
-    if (platform.system().find("BSD") >= 0):
-        env.Append(LIBS=['execinfo'])
-
-    ## Cross-compilation
+    # host compiler is default..
 
     if (is64 and env["bits"] == "32"):
         env.Append(CPPFLAGS=['-m32'])
@@ -255,5 +238,16 @@ def configure(env):
         env.Append(CPPFLAGS=['-m64'])
         env.Append(LINKFLAGS=['-m64', '-L/usr/lib/i686-linux-gnu'])
 
-    if env['use_static_cpp']:
+    import methods
+
+    env.Append(BUILDERS={'GLSL120': env.Builder(action=methods.build_legacygl_headers, suffix='glsl.gen.h', src_suffix='.glsl')})
+    env.Append(BUILDERS={'GLSL': env.Builder(action=methods.build_glsl_headers, suffix='glsl.gen.h', src_suffix='.glsl')})
+    env.Append(BUILDERS={'GLSL120GLES': env.Builder(action=methods.build_gles2_headers, suffix='glsl.gen.h', src_suffix='.glsl')})
+    #env.Append( BUILDERS = { 'HLSL9' : env.Builder(action = methods.build_hlsl_dx9_headers, suffix = 'hlsl.gen.h',src_suffix = '.hlsl') } )
+
+    if (env["use_static_cpp"] == "yes"):
         env.Append(LINKFLAGS=['-static-libstdc++'])
+
+    list_of_x86 = ['x86_64', 'x86', 'i386', 'i586']
+    if any(platform.machine() in s for s in list_of_x86):
+        env["x86_libtheora_opt_gcc"] = True

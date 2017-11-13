@@ -234,26 +234,26 @@ Array IP::_get_local_addresses() const {
 
 void IP::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("resolve_hostname", "host", "ip_type"), &IP::resolve_hostname, DEFVAL(IP::TYPE_ANY));
-	ClassDB::bind_method(D_METHOD("resolve_hostname_queue_item", "host", "ip_type"), &IP::resolve_hostname_queue_item, DEFVAL(IP::TYPE_ANY));
-	ClassDB::bind_method(D_METHOD("get_resolve_item_status", "id"), &IP::get_resolve_item_status);
-	ClassDB::bind_method(D_METHOD("get_resolve_item_address", "id"), &IP::get_resolve_item_address);
-	ClassDB::bind_method(D_METHOD("erase_resolve_item", "id"), &IP::erase_resolve_item);
-	ClassDB::bind_method(D_METHOD("get_local_addresses"), &IP::_get_local_addresses);
-	ClassDB::bind_method(D_METHOD("clear_cache", "hostname"), &IP::clear_cache, DEFVAL(""));
+	ObjectTypeDB::bind_method(_MD("resolve_hostname", "host", "ip_type"), &IP::resolve_hostname, DEFVAL(IP::TYPE_ANY));
+	ObjectTypeDB::bind_method(_MD("resolve_hostname_queue_item", "host", "ip_type"), &IP::resolve_hostname_queue_item, DEFVAL(IP::TYPE_ANY));
+	ObjectTypeDB::bind_method(_MD("get_resolve_item_status", "id"), &IP::get_resolve_item_status);
+	ObjectTypeDB::bind_method(_MD("get_resolve_item_address", "id"), &IP::get_resolve_item_address);
+	ObjectTypeDB::bind_method(_MD("erase_resolve_item", "id"), &IP::erase_resolve_item);
+	ObjectTypeDB::bind_method(_MD("get_local_addresses"), &IP::_get_local_addresses);
+	ObjectTypeDB::bind_method(_MD("clear_cache"), &IP::clear_cache, DEFVAL(""));
 
-	BIND_ENUM_CONSTANT(RESOLVER_STATUS_NONE);
-	BIND_ENUM_CONSTANT(RESOLVER_STATUS_WAITING);
-	BIND_ENUM_CONSTANT(RESOLVER_STATUS_DONE);
-	BIND_ENUM_CONSTANT(RESOLVER_STATUS_ERROR);
+	BIND_CONSTANT(RESOLVER_STATUS_NONE);
+	BIND_CONSTANT(RESOLVER_STATUS_WAITING);
+	BIND_CONSTANT(RESOLVER_STATUS_DONE);
+	BIND_CONSTANT(RESOLVER_STATUS_ERROR);
 
 	BIND_CONSTANT(RESOLVER_MAX_QUERIES);
 	BIND_CONSTANT(RESOLVER_INVALID_ID);
 
-	BIND_ENUM_CONSTANT(TYPE_NONE);
-	BIND_ENUM_CONSTANT(TYPE_IPV4);
-	BIND_ENUM_CONSTANT(TYPE_IPV6);
-	BIND_ENUM_CONSTANT(TYPE_ANY);
+	BIND_CONSTANT(TYPE_NONE);
+	BIND_CONSTANT(TYPE_IPV4);
+	BIND_CONSTANT(TYPE_IPV6);
+	BIND_CONSTANT(TYPE_ANY);
 }
 
 IP *IP::singleton = NULL;

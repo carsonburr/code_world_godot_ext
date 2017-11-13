@@ -33,6 +33,7 @@
 #include "editor/editor_node.h"
 #include "editor/editor_plugin.h"
 #include "scene/2d/path_2d.h"
+#include "scene/gui/button_group.h"
 #include "scene/gui/tool_button.h"
 
 /**
@@ -42,7 +43,7 @@ class CanvasItemEditor;
 
 class Path2DEditor : public HBoxContainer {
 
-	GDCLASS(Path2DEditor, HBoxContainer);
+	OBJ_TYPE(Path2DEditor, HBoxContainer);
 
 	UndoRedo *undo_redo;
 
@@ -84,6 +85,7 @@ class Path2DEditor : public HBoxContainer {
 
 	void _mode_selected(int p_mode);
 
+	void _canvas_draw();
 	void _node_visibility_changed();
 	friend class Path2DEditorPlugin;
 
@@ -93,27 +95,25 @@ protected:
 	static void _bind_methods();
 
 public:
-	bool forward_gui_input(const Ref<InputEvent> &p_event);
-	void forward_draw_over_canvas(Control *p_canvas);
+	bool forward_input_event(const InputEvent &p_event);
 	void edit(Node *p_path2d);
 	Path2DEditor(EditorNode *p_editor);
 };
 
 class Path2DEditorPlugin : public EditorPlugin {
 
-	GDCLASS(Path2DEditorPlugin, EditorPlugin);
+	OBJ_TYPE(Path2DEditorPlugin, EditorPlugin);
 
 	Path2DEditor *path2d_editor;
 	EditorNode *editor;
 
 public:
-	virtual bool forward_canvas_gui_input(const Ref<InputEvent> &p_event) { return path2d_editor->forward_gui_input(p_event); }
-	virtual void forward_draw_over_canvas(Control *p_canvas) { return path2d_editor->forward_draw_over_canvas(p_canvas); }
+	virtual bool forward_input_event(const InputEvent &p_event) { return path2d_editor->forward_input_event(p_event); }
 
 	virtual String get_name() const { return "Path2D"; }
 	bool has_main_screen() const { return false; }
-	virtual void edit(Object *p_object);
-	virtual bool handles(Object *p_object) const;
+	virtual void edit(Object *p_node);
+	virtual bool handles(Object *p_node) const;
 	virtual void make_visible(bool p_visible);
 
 	Path2DEditorPlugin(EditorNode *p_node);

@@ -38,7 +38,7 @@
 */
 class LineEdit : public Control {
 
-	GDCLASS(LineEdit, Control);
+	OBJ_TYPE(LineEdit, Control);
 
 public:
 	enum Align {
@@ -70,8 +70,6 @@ private:
 	String text;
 	String placeholder;
 	float placeholder_alpha;
-	String ime_text;
-	Point2 ime_selection;
 
 	PopupMenu *menu;
 
@@ -93,11 +91,6 @@ private:
 	} selection;
 
 	Timer *caret_blink_timer;
-
-	static void _ime_text_callback(void *p_self, String p_text, Point2 p_selection);
-	void _text_changed();
-	bool expand_to_text_length;
-
 	bool caret_blink_enabled;
 	bool draw_caret;
 	bool window_has_focus;
@@ -122,7 +115,7 @@ private:
 	void _editor_settings_changed();
 #endif
 
-	void _gui_input(Ref<InputEvent> p_event);
+	void _input_event(InputEvent p_event);
 	void _notification(int p_what);
 
 protected:
@@ -149,8 +142,8 @@ public:
 	String get_placeholder() const;
 	void set_placeholder_alpha(float p_alpha);
 	float get_placeholder_alpha() const;
-	void set_cursor_position(int p_pos);
-	int get_cursor_position() const;
+	void set_cursor_pos(int p_pos);
+	int get_cursor_pos() const;
 	void set_max_length(int p_max_length);
 	int get_max_length() const;
 	void append_at_cursor(String p_text);
@@ -177,15 +170,11 @@ public:
 
 	virtual Size2 get_minimum_size() const;
 
-	void set_expand_to_text_length(bool p_enabled);
-	bool get_expand_to_text_length() const;
-
 	virtual bool is_text_field() const;
 	LineEdit();
 	~LineEdit();
 };
 
 VARIANT_ENUM_CAST(LineEdit::Align);
-VARIANT_ENUM_CAST(LineEdit::MenuItems);
 
 #endif

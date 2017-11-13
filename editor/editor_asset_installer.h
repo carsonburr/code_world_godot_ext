@@ -34,7 +34,7 @@
 #include "scene/gui/tree.h"
 class EditorAssetInstaller : public ConfirmationDialog {
 
-	GDCLASS(EditorAssetInstaller, ConfirmationDialog);
+	OBJ_TYPE(EditorAssetInstaller, ConfirmationDialog);
 
 	Tree *tree;
 	String package_path;

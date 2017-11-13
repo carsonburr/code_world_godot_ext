@@ -29,9 +29,10 @@
 /*************************************************************************/
 #include "reparent_dialog.h"
 
-#include "print_string.h"
 #include "scene/gui/box_container.h"
 #include "scene/gui/label.h"
+
+#include "print_string.h"
 
 void ReparentDialog::_notification(int p_what) {
 
@@ -73,8 +74,8 @@ void ReparentDialog::set_current(const Set<Node *> &p_selection) {
 
 void ReparentDialog::_bind_methods() {
 
-	ClassDB::bind_method("_reparent", &ReparentDialog::_reparent);
-	ClassDB::bind_method("_cancel", &ReparentDialog::_cancel);
+	ObjectTypeDB::bind_method("_reparent", &ReparentDialog::_reparent);
+	ObjectTypeDB::bind_method("_cancel", &ReparentDialog::_cancel);
 
 	ADD_SIGNAL(MethodInfo("reparent", PropertyInfo(Variant::NODE_PATH, "path"), PropertyInfo(Variant::BOOL, "keep_global_xform")));
 }
@@ -85,7 +86,7 @@ ReparentDialog::ReparentDialog() {
 
 	VBoxContainer *vbc = memnew(VBoxContainer);
 	add_child(vbc);
-	//set_child_rect(vbc);
+	set_child_rect(vbc);
 
 	tree = memnew(SceneTreeEditor(false));
 	tree->set_show_enabled_subscene(true);
@@ -95,7 +96,7 @@ ReparentDialog::ReparentDialog() {
 	tree->get_scene_tree()->connect("item_activated", this, "_reparent");
 
 	//Label *label = memnew( Label );
-	//label->set_position( Point2( 15,8) );
+	//label->set_pos( Point2( 15,8) );
 	//label->set_text("Reparent Location (Select new Parent):");
 
 	keep_transform = memnew(CheckBox);

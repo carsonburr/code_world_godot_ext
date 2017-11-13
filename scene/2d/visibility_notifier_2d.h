@@ -35,7 +35,7 @@
 class Viewport;
 class VisibilityNotifier2D : public Node2D {
 
-	GDCLASS(VisibilityNotifier2D, Node2D);
+	OBJ_TYPE(VisibilityNotifier2D, Node2D);
 
 	Set<Viewport *> viewports;
 
@@ -66,7 +66,7 @@ public:
 
 class VisibilityEnabler2D : public VisibilityNotifier2D {
 
-	GDCLASS(VisibilityEnabler2D, VisibilityNotifier2D);
+	OBJ_TYPE(VisibilityEnabler2D, VisibilityNotifier2D);
 
 public:
 	enum Enabler {
@@ -74,7 +74,7 @@ public:
 		ENABLER_FREEZE_BODIES,
 		ENABLER_PAUSE_PARTICLES,
 		ENABLER_PARENT_PROCESS,
-		ENABLER_PARENT_PHYSICS_PROCESS,
+		ENABLER_PARENT_FIXED_PROCESS,
 		ENABLER_PAUSE_ANIMATED_SPRITES,
 		ENABLER_MAX
 	};

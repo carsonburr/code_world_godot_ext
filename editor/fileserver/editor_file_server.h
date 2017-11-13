@@ -38,7 +38,7 @@
 
 class EditorFileServer : public Object {
 
-	GDCLASS(EditorFileServer, Object);
+	OBJ_TYPE(EditorFileServer, Object);
 
 	enum Command {
 		CMD_NONE,

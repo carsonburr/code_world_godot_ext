@@ -258,7 +258,7 @@ void Theme::set_default_font(const Ref<Font> &p_font) {
 
 void Theme::set_icon(const StringName &p_name, const StringName &p_type, const Ref<Texture> &p_icon) {
 
-	//ERR_FAIL_COND(p_icon.is_null());
+	//	ERR_FAIL_COND(p_icon.is_null());
 
 	bool new_value = !icon_map.has(p_type) || !icon_map[p_type].has(p_name);
 
@@ -353,7 +353,7 @@ void Theme::get_shader_list(const StringName &p_type, List<StringName> *p_list) 
 
 void Theme::set_stylebox(const StringName &p_name, const StringName &p_type, const Ref<StyleBox> &p_style) {
 
-	//ERR_FAIL_COND(p_style.is_null());
+	//	ERR_FAIL_COND(p_style.is_null());
 
 	bool new_value = !style_map.has(p_type) || !style_map[p_type].has(p_name);
 
@@ -411,7 +411,7 @@ void Theme::get_stylebox_types(List<StringName> *p_list) const {
 
 void Theme::set_font(const StringName &p_name, const StringName &p_type, const Ref<Font> &p_font) {
 
-	//ERR_FAIL_COND(p_font.is_null());
+	//	ERR_FAIL_COND(p_font.is_null());
 
 	bool new_value = !font_map.has(p_type) || !font_map[p_type].has(p_name);
 
@@ -629,47 +629,47 @@ void Theme::get_type_list(List<StringName> *p_list) const {
 
 void Theme::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("set_icon", "name", "type", "texture"), &Theme::set_icon);
-	ClassDB::bind_method(D_METHOD("get_icon", "name", "type"), &Theme::get_icon);
-	ClassDB::bind_method(D_METHOD("has_icon", "name", "type"), &Theme::has_icon);
-	ClassDB::bind_method(D_METHOD("clear_icon", "name", "type"), &Theme::clear_icon);
-	ClassDB::bind_method(D_METHOD("get_icon_list", "type"), &Theme::_get_icon_list);
+	ObjectTypeDB::bind_method(_MD("set_icon", "name", "type", "texture:Texture"), &Theme::set_icon);
+	ObjectTypeDB::bind_method(_MD("get_icon:Texture", "name", "type"), &Theme::get_icon);
+	ObjectTypeDB::bind_method(_MD("has_icon", "name", "type"), &Theme::has_icon);
+	ObjectTypeDB::bind_method(_MD("clear_icon", "name", "type"), &Theme::clear_icon);
+	ObjectTypeDB::bind_method(_MD("get_icon_list", "type"), &Theme::_get_icon_list);
 
-	ClassDB::bind_method(D_METHOD("set_stylebox", "name", "type", "texture"), &Theme::set_stylebox);
-	ClassDB::bind_method(D_METHOD("get_stylebox", "name", "type"), &Theme::get_stylebox);
-	ClassDB::bind_method(D_METHOD("has_stylebox", "name", "type"), &Theme::has_stylebox);
-	ClassDB::bind_method(D_METHOD("clear_stylebox", "name", "type"), &Theme::clear_stylebox);
-	ClassDB::bind_method(D_METHOD("get_stylebox_list", "type"), &Theme::_get_stylebox_list);
-	ClassDB::bind_method(D_METHOD("get_stylebox_types"), &Theme::_get_stylebox_types);
+	ObjectTypeDB::bind_method(_MD("set_stylebox", "name", "type", "texture:StyleBox"), &Theme::set_stylebox);
+	ObjectTypeDB::bind_method(_MD("get_stylebox:StyleBox", "name", "type"), &Theme::get_stylebox);
+	ObjectTypeDB::bind_method(_MD("has_stylebox", "name", "type"), &Theme::has_stylebox);
+	ObjectTypeDB::bind_method(_MD("clear_stylebox", "name", "type"), &Theme::clear_stylebox);
+	ObjectTypeDB::bind_method(_MD("get_stylebox_list", "type"), &Theme::_get_stylebox_list);
+	ObjectTypeDB::bind_method(_MD("get_stylebox_types"), &Theme::_get_stylebox_types);
 
-	ClassDB::bind_method(D_METHOD("set_font", "name", "type", "font"), &Theme::set_font);
-	ClassDB::bind_method(D_METHOD("get_font", "name", "type"), &Theme::get_font);
-	ClassDB::bind_method(D_METHOD("has_font", "name", "type"), &Theme::has_font);
-	ClassDB::bind_method(D_METHOD("clear_font", "name", "type"), &Theme::clear_font);
-	ClassDB::bind_method(D_METHOD("get_font_list", "type"), &Theme::_get_font_list);
+	ObjectTypeDB::bind_method(_MD("set_font", "name", "type", "font:Font"), &Theme::set_font);
+	ObjectTypeDB::bind_method(_MD("get_font:Font", "name", "type"), &Theme::get_font);
+	ObjectTypeDB::bind_method(_MD("has_font", "name", "type"), &Theme::has_font);
+	ObjectTypeDB::bind_method(_MD("clear_font", "name", "type"), &Theme::clear_font);
+	ObjectTypeDB::bind_method(_MD("get_font_list", "type"), &Theme::_get_font_list);
 
-	ClassDB::bind_method(D_METHOD("set_color", "name", "type", "color"), &Theme::set_color);
-	ClassDB::bind_method(D_METHOD("get_color", "name", "type"), &Theme::get_color);
-	ClassDB::bind_method(D_METHOD("has_color", "name", "type"), &Theme::has_color);
-	ClassDB::bind_method(D_METHOD("clear_color", "name", "type"), &Theme::clear_color);
-	ClassDB::bind_method(D_METHOD("get_color_list", "type"), &Theme::_get_color_list);
+	ObjectTypeDB::bind_method(_MD("set_color", "name", "type", "color"), &Theme::set_color);
+	ObjectTypeDB::bind_method(_MD("get_color", "name", "type"), &Theme::get_color);
+	ObjectTypeDB::bind_method(_MD("has_color", "name", "type"), &Theme::has_color);
+	ObjectTypeDB::bind_method(_MD("clear_color", "name", "type"), &Theme::clear_color);
+	ObjectTypeDB::bind_method(_MD("get_color_list", "type"), &Theme::_get_color_list);
 
-	ClassDB::bind_method(D_METHOD("set_constant", "name", "type", "constant"), &Theme::set_constant);
-	ClassDB::bind_method(D_METHOD("get_constant", "name", "type"), &Theme::get_constant);
-	ClassDB::bind_method(D_METHOD("has_constant", "name", "type"), &Theme::has_constant);
-	ClassDB::bind_method(D_METHOD("clear_constant", "name", "type"), &Theme::clear_constant);
-	ClassDB::bind_method(D_METHOD("get_constant_list", "type"), &Theme::_get_constant_list);
+	ObjectTypeDB::bind_method(_MD("set_constant", "name", "type", "constant"), &Theme::set_constant);
+	ObjectTypeDB::bind_method(_MD("get_constant", "name", "type"), &Theme::get_constant);
+	ObjectTypeDB::bind_method(_MD("has_constant", "name", "type"), &Theme::has_constant);
+	ObjectTypeDB::bind_method(_MD("clear_constant", "name", "type"), &Theme::clear_constant);
+	ObjectTypeDB::bind_method(_MD("get_constant_list", "type"), &Theme::_get_constant_list);
 
-	ClassDB::bind_method(D_METHOD("set_default_font", "font"), &Theme::set_default_theme_font);
-	ClassDB::bind_method(D_METHOD("get_default_font"), &Theme::get_default_theme_font);
+	ObjectTypeDB::bind_method(_MD("set_default_font", "font"), &Theme::set_default_theme_font);
+	ObjectTypeDB::bind_method(_MD("get_default_font"), &Theme::get_default_theme_font);
 
-	ClassDB::bind_method(D_METHOD("get_type_list", "type"), &Theme::_get_type_list);
+	ObjectTypeDB::bind_method(_MD("get_type_list", "type"), &Theme::_get_type_list);
 
-	ClassDB::bind_method(D_METHOD("_emit_theme_changed"), &Theme::_emit_theme_changed);
+	ObjectTypeDB::bind_method(_MD("_emit_theme_changed"), &Theme::_emit_theme_changed);
 
-	ClassDB::bind_method("copy_default_theme", &Theme::copy_default_theme);
+	ObjectTypeDB::bind_method("copy_default_theme", &Theme::copy_default_theme);
 
-	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "default_font", PROPERTY_HINT_RESOURCE_TYPE, "Font"), "set_default_font", "get_default_font");
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "default_font", PROPERTY_HINT_RESOURCE_TYPE, "Font"), _SCS("set_default_font"), _SCS("get_default_font"));
 }
 
 Theme::Theme() {
@@ -883,7 +883,7 @@ RES ResourceFormatLoaderTheme::load(const String &p_path, const String &p_origin
 					ERR_FAIL_V(RES());
 				}
 
-				sbflat->set_border_width_all(params[0].to_int());
+				sbflat->set_border_size(params[0].to_int());
 
 				if (!params[0].is_valid_integer()) {
 
@@ -929,8 +929,8 @@ RES ResourceFormatLoaderTheme::load(const String &p_path, const String &p_origin
 					dark = Color::html(params[3]);
 				}
 
-				sbflat->set_border_color_all(bright);
-				//				sbflat->set_dark_color(dark);
+				sbflat->set_dark_color(dark);
+				sbflat->set_light_color(bright);
 				sbflat->set_bg_color(normal);
 
 				if (params.size() == ccodes + 5) {
@@ -943,7 +943,7 @@ RES ResourceFormatLoaderTheme::load(const String &p_path, const String &p_origin
 							ERR_FAIL_V(RES());
 						}
 
-						//int margin = params[i+ccodes+1].to_int();
+						//						int margin = params[i+ccodes+1].to_int();
 						//sbflat->set_margin_size(Margin(i),margin);
 					}
 				} else if (params.size() != ccodes + 1) {
@@ -1030,13 +1030,14 @@ RES ResourceFormatLoaderTheme::load(const String &p_path, const String &p_origin
 					ERR_FAIL_V(RES());
 				}
 
-				if (Object::cast_to<StyleBox>(*res)) {
+				if (res->cast_to<StyleBox>()) {
+
 					theme->set_stylebox(item, control, res);
-				} else if (Object::cast_to<Font>(*res)) {
+				} else if (res->cast_to<Font>()) {
 					theme->set_font(item, control, res);
-				} else if (Object::cast_to<Font>(*res)) {
+				} else if (res->cast_to<Font>()) {
 					theme->set_font(item, control, res);
-				} else if (Object::cast_to<Texture>(*res)) {
+				} else if (res->cast_to<Texture>()) {
 					theme->set_icon(item, control, res);
 				} else {
 					memdelete(f);
@@ -1081,7 +1082,7 @@ bool ResourceFormatLoaderTheme::handles_type(const String &p_type) const {
 
 String ResourceFormatLoaderTheme::get_resource_type(const String &p_path) const {
 
-	if (p_path.get_extension().to_lower() == "theme")
+	if (p_path.extension().to_lower() == "theme")
 		return "Theme";
 	return "";
 }

@@ -106,7 +106,7 @@ void FileAccessJAndroid::seek_end(int64_t p_position) {
 	seek(get_len());
 }
 
-size_t FileAccessJAndroid::get_position() const {
+size_t FileAccessJAndroid::get_pos() const {
 
 	JNIEnv *env = ThreadAndroid::get_env();
 	ERR_FAIL_COND_V(!is_open(), 0);
@@ -155,9 +155,6 @@ Error FileAccessJAndroid::get_error() const {
 	if (eof_reached())
 		return ERR_FILE_EOF;
 	return OK;
-}
-
-void FileAccessJAndroid::flush() {
 }
 
 void FileAccessJAndroid::store_8(uint8_t p_dest) {
@@ -225,7 +222,7 @@ void FileAccessJAndroid::setup(jobject p_io) {
 		__android_log_print(ANDROID_LOG_INFO, "godot", "*******GOT METHOD _file_close ok!!");
 	}
 
-	//(*env)->CallVoidMethod(env,obj,aMethodID, myvar);
+	//	(*env)->CallVoidMethod(env,obj,aMethodID, myvar);
 }
 
 FileAccessJAndroid::FileAccessJAndroid() {

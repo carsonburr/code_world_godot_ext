@@ -47,10 +47,10 @@ TCP_Server *TCP_Server::create() {
 
 void TCP_Server::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("listen", "port", "bind_address"), &TCP_Server::listen, DEFVAL("*"));
-	ClassDB::bind_method(D_METHOD("is_connection_available"), &TCP_Server::is_connection_available);
-	ClassDB::bind_method(D_METHOD("take_connection"), &TCP_Server::take_connection);
-	ClassDB::bind_method(D_METHOD("stop"), &TCP_Server::stop);
+	ObjectTypeDB::bind_method(_MD("listen", "port", "bind_address"), &TCP_Server::listen, DEFVAL("*"));
+	ObjectTypeDB::bind_method(_MD("is_connection_available"), &TCP_Server::is_connection_available);
+	ObjectTypeDB::bind_method(_MD("take_connection"), &TCP_Server::take_connection);
+	ObjectTypeDB::bind_method(_MD("stop"), &TCP_Server::stop);
 }
 
 TCP_Server::TCP_Server() {

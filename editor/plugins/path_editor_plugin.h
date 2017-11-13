@@ -32,10 +32,9 @@
 
 #include "editor/spatial_editor_gizmos.h"
 #include "scene/3d/path.h"
-
 class PathSpatialGizmo : public EditorSpatialGizmo {
 
-	GDCLASS(PathSpatialGizmo, EditorSpatialGizmo);
+	OBJ_TYPE(PathSpatialGizmo, EditorSpatialGizmo);
 
 	Path *path;
 	mutable Vector3 original;
@@ -52,7 +51,7 @@ public:
 
 class PathEditorPlugin : public EditorPlugin {
 
-	GDCLASS(PathEditorPlugin, EditorPlugin);
+	OBJ_TYPE(PathEditorPlugin, EditorPlugin);
 
 	Separator *sep;
 	ToolButton *curve_create;
@@ -75,16 +74,16 @@ public:
 	Path *get_edited_path() { return path; }
 
 	static PathEditorPlugin *singleton;
-	Ref<SpatialMaterial> path_material;
-	Ref<SpatialMaterial> path_thin_material;
-	virtual bool forward_spatial_gui_input(Camera *p_camera, const Ref<InputEvent> &p_event);
+	Ref<FixedMaterial> path_material;
+	Ref<FixedMaterial> path_thin_material;
+	virtual bool forward_spatial_input_event(Camera *p_camera, const InputEvent &p_event);
 
-	//virtual bool forward_gui_input(const InputEvent& p_event) { return collision_polygon_editor->forward_gui_input(p_event); }
+	//	virtual bool forward_input_event(const InputEvent& p_event) { return collision_polygon_editor->forward_input_event(p_event); }
 	virtual Ref<SpatialEditorGizmo> create_spatial_gizmo(Spatial *p_spatial);
 	virtual String get_name() const { return "Path"; }
 	bool has_main_screen() const { return false; }
-	virtual void edit(Object *p_object);
-	virtual bool handles(Object *p_object) const;
+	virtual void edit(Object *p_node);
+	virtual bool handles(Object *p_node) const;
 	virtual void make_visible(bool p_visible);
 
 	PathEditorPlugin(EditorNode *p_node);

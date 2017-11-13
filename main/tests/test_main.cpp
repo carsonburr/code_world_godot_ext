@@ -5,8 +5,7 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2016 Juan Linietsky, Ariel Manzur.                 */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -32,17 +31,21 @@
 
 #ifdef DEBUG_ENABLED
 
+#include "test_containers.h"
+#include "test_detailer.h"
 #include "test_gdscript.h"
 #include "test_gui.h"
 #include "test_image.h"
 #include "test_io.h"
 #include "test_math.h"
-#include "test_oa_hash_map.h"
-#include "test_ordered_hash_map.h"
+#include "test_misc.h"
+#include "test_particles.h"
 #include "test_physics.h"
 #include "test_physics_2d.h"
+#include "test_python.h"
 #include "test_render.h"
 #include "test_shader_lang.h"
+#include "test_sound.h"
 #include "test_string.h"
 
 const char **tests_get_names() {
@@ -52,12 +55,12 @@ const char **tests_get_names() {
 		"containers",
 		"math",
 		"render",
+		"particles",
 		"multimesh",
 		"gui",
 		"io",
 		"shaderlang",
 		"physics",
-		"oa_hash_map",
 		NULL
 	};
 
@@ -69,6 +72,11 @@ MainLoop *test_main(String p_test, const List<String> &p_args) {
 	if (p_test == "string") {
 
 		return TestString::test();
+	}
+
+	if (p_test == "containers") {
+
+		return TestContainers::test();
 	}
 
 	if (p_test == "math") {
@@ -86,14 +94,14 @@ MainLoop *test_main(String p_test, const List<String> &p_args) {
 		return TestPhysics2D::test();
 	}
 
+	if (p_test == "misc") {
+
+		return TestMisc::test();
+	}
+
 	if (p_test == "render") {
 
 		return TestRender::test();
-	}
-
-	if (p_test == "oa_hash_map") {
-
-		return TestOAHashMap::test();
 	}
 
 #ifndef _3D_DISABLED
@@ -103,9 +111,24 @@ MainLoop *test_main(String p_test, const List<String> &p_args) {
 	}
 #endif
 
+	if (p_test == "sound") {
+
+		return TestSound::test();
+	}
+
 	if (p_test == "io") {
 
 		return TestIO::test();
+	}
+
+	if (p_test == "particles") {
+
+		return TestParticles::test();
+	}
+
+	if (p_test == "multimesh") {
+
+		return TestMultiMesh::test();
 	}
 
 	if (p_test == "shaderlang") {
@@ -138,10 +161,18 @@ MainLoop *test_main(String p_test, const List<String> &p_args) {
 		return TestImage::test();
 	}
 
-	if (p_test == "ordered_hash_map") {
+	if (p_test == "detailer") {
 
-		return TestOrderedHashMap::test();
+		return TestMultiMesh::test();
 	}
+
+#ifdef PYTHON_ENABLED
+
+	if (p_test == "python") {
+
+		return TestPython::test();
+	}
+#endif
 
 	return NULL;
 }

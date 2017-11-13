@@ -55,14 +55,11 @@
 
 class EditorResourcePreviewGenerator : public Reference {
 
-	GDCLASS(EditorResourcePreviewGenerator, Reference);
-
-protected:
-	static void _bind_methods();
+	OBJ_TYPE(EditorResourcePreviewGenerator, Reference);
 
 public:
-	virtual bool handles(const String &p_type) const;
-	virtual Ref<Texture> generate(const RES &p_from);
+	virtual bool handles(const String &p_type) const = 0;
+	virtual Ref<Texture> generate(const RES &p_from) = 0;
 	virtual Ref<Texture> generate_from_path(const String &p_path);
 
 	EditorResourcePreviewGenerator();
@@ -70,7 +67,7 @@ public:
 
 class EditorResourcePreview : public Node {
 
-	GDCLASS(EditorResourcePreview, Node);
+	OBJ_TYPE(EditorResourcePreview, Node);
 
 	static EditorResourcePreview *singleton;
 
@@ -114,12 +111,11 @@ protected:
 public:
 	static EditorResourcePreview *get_singleton();
 
-	//callback function is callback(String p_path,Ref<Texture> preview,Variant udata) preview null if could not load
-	void queue_resource_preview(const String &p_path, Object *p_receiver, const StringName &p_receiver_func, const Variant &p_userdata);
-	void queue_edited_resource_preview(const Ref<Resource> &p_res, Object *p_receiver, const StringName &p_receiver_func, const Variant &p_userdata);
+	//callback funtion is callback(String p_path,Ref<Texture> preview,Variant udata) preview null if could not load
+	void queue_resource_preview(const String &p_res, Object *p_receiver, const StringName &p_receiver_func, const Variant &p_userdata);
+	void queue_edited_resource_preview(const Ref<Resource> &p_path, Object *p_receiver, const StringName &p_receiver_func, const Variant &p_userdata);
 
 	void add_preview_generator(const Ref<EditorResourcePreviewGenerator> &p_generator);
-	void remove_preview_generator(const Ref<EditorResourcePreviewGenerator> &p_generator);
 	void check_for_invalidation(const String &p_path);
 
 	EditorResourcePreview();

@@ -34,7 +34,7 @@
 
 class CenterContainer : public Container {
 
-	GDCLASS(CenterContainer, Container);
+	OBJ_TYPE(CenterContainer, Container);
 
 	bool use_top_left;
 

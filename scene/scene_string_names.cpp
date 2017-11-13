@@ -44,37 +44,35 @@ SceneStringNames::SceneStringNames() {
 	hide = StaticCString::create("hide");
 	visibility_changed = StaticCString::create("visibility_changed");
 	input_event = StaticCString::create("input_event");
-	shader = StaticCString::create("shader");
+	shader_shader = StaticCString::create("shader/shader");
 	shader_unshaded = StaticCString::create("shader/unshaded");
 	shading_mode = StaticCString::create("shader/shading_mode");
-	tree_entered = StaticCString::create("tree_entered");
-	tree_exited = StaticCString::create("tree_exited");
+	enter_tree = StaticCString::create("enter_tree");
+	exit_tree = StaticCString::create("exit_tree");
 	item_rect_changed = StaticCString::create("item_rect_changed");
 	size_flags_changed = StaticCString::create("size_flags_changed");
 	minimum_size_changed = StaticCString::create("minimum_size_changed");
 	sleeping_state_changed = StaticCString::create("sleeping_state_changed");
 
 	finished = StaticCString::create("finished");
-	emission_finished = StaticCString::create("emission_finished");
-	animation_finished = StaticCString::create("animation_finished");
 	animation_changed = StaticCString::create("animation_changed");
 	animation_started = StaticCString::create("animation_started");
 
-	mouse_entered = StaticCString::create("mouse_entered");
-	mouse_exited = StaticCString::create("mouse_exited");
+	mouse_enter = StaticCString::create("mouse_enter");
+	mouse_exit = StaticCString::create("mouse_exit");
 
-	focus_entered = StaticCString::create("focus_entered");
-	focus_exited = StaticCString::create("focus_exited");
+	focus_enter = StaticCString::create("focus_enter");
+	focus_exit = StaticCString::create("focus_exit");
 
 	sort_children = StaticCString::create("sort_children");
 
-	body_shape_entered = StaticCString::create("body_shape_entered");
-	body_entered = StaticCString::create("body_entered");
-	body_shape_exited = StaticCString::create("body_shape_exited");
-	body_exited = StaticCString::create("body_exited");
+	body_enter_shape = StaticCString::create("body_enter_shape");
+	body_enter = StaticCString::create("body_enter");
+	body_exit_shape = StaticCString::create("body_exit_shape");
+	body_exit = StaticCString::create("body_exit");
 
-	area_shape_entered = StaticCString::create("area_shape_entered");
-	area_shape_exited = StaticCString::create("area_shape_exited");
+	area_enter_shape = StaticCString::create("area_enter_shape");
+	area_exit_shape = StaticCString::create("area_exit_shape");
 
 	_body_inout = StaticCString::create("_body_inout");
 	_area_inout = StaticCString::create("_area_inout");
@@ -87,7 +85,7 @@ SceneStringNames::SceneStringNames() {
 	_get_gizmo_geometry = StaticCString::create("_get_gizmo_geometry");
 	_can_gizmo_scale = StaticCString::create("_can_gizmo_scale");
 
-	_physics_process = StaticCString::create("_physics_process");
+	_fixed_process = StaticCString::create("_fixed_process");
 	_process = StaticCString::create("_process");
 
 	_enter_tree = StaticCString::create("_enter_tree");
@@ -105,14 +103,14 @@ SceneStringNames::SceneStringNames() {
 	grouped = StaticCString::create("grouped");
 	ungrouped = StaticCString::create("ungrouped");
 
-	screen_entered = StaticCString::create("screen_entered");
-	screen_exited = StaticCString::create("screen_exited");
+	enter_screen = StaticCString::create("enter_screen");
+	exit_screen = StaticCString::create("exit_screen");
 
-	viewport_entered = StaticCString::create("viewport_entered");
-	viewport_exited = StaticCString::create("viewport_exited");
+	enter_viewport = StaticCString::create("enter_viewport");
+	exit_viewport = StaticCString::create("exit_viewport");
 
-	camera_entered = StaticCString::create("camera_entered");
-	camera_exited = StaticCString::create("camera_exited");
+	enter_camera = StaticCString::create("enter_camera");
+	exit_camera = StaticCString::create("exit_camera");
 
 	_body_enter_tree = StaticCString::create("_body_enter_tree");
 	_body_exit_tree = StaticCString::create("_body_exit_tree");
@@ -120,14 +118,7 @@ SceneStringNames::SceneStringNames() {
 	_area_enter_tree = StaticCString::create("_area_enter_tree");
 	_area_exit_tree = StaticCString::create("_area_exit_tree");
 
-	_input = StaticCString::create("_input");
 	_input_event = StaticCString::create("_input_event");
-
-	gui_input = StaticCString::create("gui_input");
-	_gui_input = StaticCString::create("_gui_input");
-
-	_unhandled_input = StaticCString::create("_unhandled_input");
-	_unhandled_key_input = StaticCString::create("_unhandled_key_input");
 
 	changed = StaticCString::create("changed");
 	_shader_changed = StaticCString::create("_shader_changed");
@@ -142,21 +133,23 @@ SceneStringNames::SceneStringNames() {
 	h_offset = StaticCString::create("h_offset");
 	v_offset = StaticCString::create("v_offset");
 
-	transform_pos = StaticCString::create("position");
-	transform_rot = StaticCString::create("rotation_deg");
-	transform_scale = StaticCString::create("scale");
+	transform_pos = StaticCString::create("transform/pos");
+	transform_rot = StaticCString::create("transform/rot");
+	transform_scale = StaticCString::create("transform/scale");
 
 	_update_remote = StaticCString::create("_update_remote");
 	_update_pairs = StaticCString::create("_update_pairs");
 
-	_get_minimum_size = StaticCString::create("_get_minimum_size");
+	get_minimum_size = StaticCString::create("get_minimum_size");
 
-	area_entered = StaticCString::create("area_entered");
-	area_exited = StaticCString::create("area_exited");
+	area_enter = StaticCString::create("area_enter");
+	area_exit = StaticCString::create("area_exit");
 
 	has_point = StaticCString::create("has_point");
 
 	line_separation = StaticCString::create("line_separation");
+
+	play_play = StaticCString::create("play/play");
 
 	get_drag_data = StaticCString::create("get_drag_data");
 	drop_data = StaticCString::create("drop_data");

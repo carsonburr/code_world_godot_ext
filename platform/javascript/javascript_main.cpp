@@ -31,48 +31,100 @@
 #include "io/resource_loader.h"
 #include "main/main.h"
 #include "os_javascript.h"
+#include <GL/glut.h>
+#include <string.h>
 
 OS_JavaScript *os = NULL;
 
-static void main_loop() {
+static void _gfx_init(void *ud, bool gl2, int w, int h, bool fs) {
 
-	os->main_loop_iterate();
+	glutInitWindowSize(w, h);
+	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
+	glutCreateWindow("godot");
 }
 
-extern "C" void main_after_fs_sync(char *p_idbfs_err) {
+static void _gfx_idle() {
 
-	String idbfs_err = String::utf8(p_idbfs_err);
-	if (!idbfs_err.empty()) {
-		print_line("IndexedDB not available: " + idbfs_err);
+	glutPostRedisplay();
+}
+
+int start_step = 0;
+
+static void _godot_draw(void) {
+
+	if (start_step == 1) {
+		start_step = 2;
+		Main::start();
+		os->main_loop_begin();
 	}
-	os->set_idbfs_available(idbfs_err.empty());
-	// Ease up compatibility
-	ResourceLoader::set_abort_on_missing_resources(false);
-	Main::start();
-	os->main_loop_begin();
-	emscripten_set_main_loop(main_loop, 0, false);
+
+	if (start_step == 2) {
+		os->main_loop_iterate();
+	}
+
+	glutSwapBuffers();
+}
+
+extern "C" {
+
+void main_after_fs_sync(int value) {
+
+	start_step = 1;
+	printf("FS SYNCHED!\n");
+}
 }
 
 int main(int argc, char *argv[]) {
 
-	printf("let it go dude!\n");
+	/* Initialize the window */
+	printf("let it go!\n");
+	glutInit(&argc, argv);
+	os = new OS_JavaScript(_gfx_init, NULL, NULL);
+#if 0
+	char *args[]={"-test","gui","-v",NULL};
+	Error err  = Main::setup("apk",3,args);
+#else
+	//	char *args[]={"-v",NULL};//
+	//	Error err  = Main::setup("",1,args);
+	Error err = Main::setup("", 0, NULL);
 
-	// sync from persistent state into memory and then
-	// run the 'main_after_fs_sync' function
+#endif
+	ResourceLoader::set_abort_on_missing_resources(false); //ease up compatibility
+
+	/* Set up glut callback functions */
+	glutIdleFunc(_gfx_idle);
+	//   glutReshapeFunc(gears_reshape);
+	glutDisplayFunc(_godot_draw);
+	//glutSpecialFunc(gears_special);
+
+	//mount persistent filesystem
 	/* clang-format off */
-	EM_ASM(
-		Module.noExitRuntime = true;
-		FS.mkdir('/userfs');
-		FS.mount(IDBFS, {}, '/userfs');
-		FS.syncfs(true, function(err) {
-			Module['ccall']('main_after_fs_sync', null, ['string'], [err ? err.message : ""])
-		});
-	);
+	 EM_ASM(
+		 FS.mkdir('/userfs');
+		 FS.mount(IDBFS, {}, '/userfs');
+
+
+
+		 // sync from persisted state into memory and then
+		 // run the 'test' function
+		 FS.syncfs(true, function (err) {
+			 assert(!err);
+			 console.log("done syncinc!");
+			 _after_sync_cb = Module.cwrap('main_after_fs_sync', 'void',['number']);
+			 _after_sync_cb(0);
+
+		 });
+
+	  );
 	/* clang-format on */
 
-	os = new OS_JavaScript(argv[0], NULL);
-	Error err = Main::setup(argv[0], argc - 1, &argv[1]);
+	glutMainLoop();
 
 	return 0;
-	// continued async in main_after_fs_sync() from syncfs() callback
 }
+
+/*
+ *
+ *09] <azakai|2__> reduz: yes, define  TOTAL_MEMORY on Module. for example             var Module = { TOTAL_MEMORY: 12345.. };         before the main
+ *
+ */

@@ -43,7 +43,7 @@
 
 class AnimationTreeEditor : public Control {
 
-	GDCLASS(AnimationTreeEditor, Control);
+	OBJ_TYPE(AnimationTreeEditor, Control);
 
 	static const char *_node_type_names[];
 
@@ -155,18 +155,18 @@ class AnimationTreeEditor : public Control {
 
 protected:
 	void _notification(int p_what);
-	void _gui_input(Ref<InputEvent> p_event);
+	void _input_event(InputEvent p_event);
 	static void _bind_methods();
 
 public:
 	virtual Size2 get_minimum_size() const;
-	void edit(AnimationTreePlayer *p_anim_tree);
+	void edit(AnimationTreePlayer *p_player);
 	AnimationTreeEditor();
 };
 
 class AnimationTreeEditorPlugin : public EditorPlugin {
 
-	GDCLASS(AnimationTreeEditorPlugin, EditorPlugin);
+	OBJ_TYPE(AnimationTreeEditorPlugin, EditorPlugin);
 
 	AnimationTreeEditor *anim_tree_editor;
 	EditorNode *editor;
@@ -175,8 +175,8 @@ class AnimationTreeEditorPlugin : public EditorPlugin {
 public:
 	virtual String get_name() const { return "AnimTree"; }
 	bool has_main_screen() const { return false; }
-	virtual void edit(Object *p_object);
-	virtual bool handles(Object *p_object) const;
+	virtual void edit(Object *p_node);
+	virtual bool handles(Object *p_node) const;
 	virtual void make_visible(bool p_visible);
 
 	AnimationTreeEditorPlugin(EditorNode *p_node);

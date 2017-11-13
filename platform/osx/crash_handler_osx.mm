@@ -72,13 +72,13 @@ static uint32_t load_address() {
 }
 
 static void handle_crash(int sig) {
-	if (OS::get_singleton() == NULL)
+	if (OS::get_singleton() == NULL || Globals::get_singleton() == NULL)
 		return;
 
 	void *bt_buffer[256];
 	size_t size = backtrace(bt_buffer, 256);
 	String _execpath = OS::get_singleton()->get_executable_path();
-	String msg = GLOBAL_GET("debug/settings/crash_handler/message");
+	String msg = Globals::get_singleton()->get("application/crash_handler_message");
 
 	// Dump the backtrace to stderr with a message to the user
 	fprintf(stderr, "%s: Program crashed with signal %d\n", __FUNCTION__, sig);

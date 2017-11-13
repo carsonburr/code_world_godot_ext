@@ -34,27 +34,31 @@
 #include "servers/physics_2d_server.h"
 #include "vset.h"
 
-class KinematicCollision2D;
-
 class PhysicsBody2D : public CollisionObject2D {
 
-	GDCLASS(PhysicsBody2D, CollisionObject2D);
+	OBJ_TYPE(PhysicsBody2D, CollisionObject2D);
 
-	uint32_t collision_layer;
+	uint32_t mask;
 	uint32_t collision_mask;
+	Vector2 one_way_collision_direction;
+	float one_way_collision_max_depth;
 
 	void _set_layers(uint32_t p_mask);
 	uint32_t _get_layers() const;
 
 protected:
+	// So this flag can be set at startup and cached for every body
+	friend void register_scene_types();
+	static bool motion_fix_enabled;
+
 	void _notification(int p_what);
 	PhysicsBody2D(Physics2DServer::BodyMode p_mode);
 
 	static void _bind_methods();
 
 public:
-	void set_collision_layer(uint32_t p_layer);
-	uint32_t get_collision_layer() const;
+	void set_layer_mask(uint32_t p_mask);
+	uint32_t get_layer_mask() const;
 
 	void set_collision_mask(uint32_t p_mask);
 	uint32_t get_collision_mask() const;
@@ -62,18 +66,24 @@ public:
 	void set_collision_mask_bit(int p_bit, bool p_value);
 	bool get_collision_mask_bit(int p_bit) const;
 
-	void set_collision_layer_bit(int p_bit, bool p_value);
-	bool get_collision_layer_bit(int p_bit) const;
+	void set_layer_mask_bit(int p_bit, bool p_value);
+	bool get_layer_mask_bit(int p_bit) const;
 
 	void add_collision_exception_with(Node *p_node); //must be physicsbody
 	void remove_collision_exception_with(Node *p_node);
+
+	void set_one_way_collision_direction(const Vector2 &p_dir);
+	Vector2 get_one_way_collision_direction() const;
+
+	void set_one_way_collision_max_depth(float p_dir);
+	float get_one_way_collision_max_depth() const;
 
 	PhysicsBody2D();
 };
 
 class StaticBody2D : public PhysicsBody2D {
 
-	GDCLASS(StaticBody2D, PhysicsBody2D);
+	OBJ_TYPE(StaticBody2D, PhysicsBody2D);
 
 	Vector2 constant_linear_velocity;
 	real_t constant_angular_velocity;
@@ -103,7 +113,7 @@ public:
 
 class RigidBody2D : public PhysicsBody2D {
 
-	GDCLASS(RigidBody2D, PhysicsBody2D);
+	OBJ_TYPE(RigidBody2D, PhysicsBody2D);
 
 public:
 	enum Mode {
@@ -267,85 +277,60 @@ VARIANT_ENUM_CAST(RigidBody2D::CCDMode);
 
 class KinematicBody2D : public PhysicsBody2D {
 
-	GDCLASS(KinematicBody2D, PhysicsBody2D);
+	OBJ_TYPE(KinematicBody2D, PhysicsBody2D);
 
-public:
-	struct Collision {
-		Vector2 collision;
-		Vector2 normal;
-		Vector2 collider_vel;
-		ObjectID collider;
-		int collider_shape;
-		Variant collider_metadata;
-		Vector2 remainder;
-		Vector2 travel;
-		int local_shape;
-	};
-
-private:
 	float margin;
+	bool colliding;
+	Vector2 collision;
+	Vector2 normal;
+	Vector2 collider_vel;
+	ObjectID collider;
+	int collider_shape;
+	Variant collider_metadata;
+	Vector2 travel;
 
-	Vector2 floor_velocity;
-	bool on_floor;
-	bool on_ceiling;
-	bool on_wall;
-	Vector<Collision> colliders;
-	Vector<Ref<KinematicCollision2D> > slide_colliders;
-	Ref<KinematicCollision2D> motion_cache;
+	Vector2 move_and_slide_floor_velocity;
+	bool move_and_slide_on_floor;
+	bool move_and_slide_on_ceiling;
+	bool move_and_slide_on_wall;
+	Array move_and_slide_colliders;
+
+	Variant _get_collider() const;
 
 	_FORCE_INLINE_ bool _ignores_mode(Physics2DServer::BodyMode) const;
 
-	Ref<KinematicCollision2D> _move(const Vector2 &p_motion);
-	Ref<KinematicCollision2D> _get_slide_collision(int p_bounce);
-
 protected:
 	static void _bind_methods();
 
 public:
-	bool move_and_collide(const Vector2 &p_motion, Collision &r_collision);
-	bool test_move(const Transform2D &p_from, const Vector2 &p_motion);
+	Vector2 move(const Vector2 &p_motion);
+	Vector2 move_to(const Vector2 &p_position);
 
-	void set_safe_margin(float p_margin);
-	float get_safe_margin() const;
+	bool test_move(const Vector2 &p_motion);
+	bool test_move_from(const Matrix32 &p_from, const Vector2 &p_motion);
+	bool is_colliding() const;
 
-	Vector2 move_and_slide(const Vector2 &p_linear_velocity, const Vector2 &p_floor_direction = Vector2(0, 0), float p_slope_stop_min_velocity = 5, int p_max_slides = 4, float p_floor_max_angle = Math::deg2rad((float)45));
-	bool is_on_floor() const;
-	bool is_on_wall() const;
-	bool is_on_ceiling() const;
-	Vector2 get_floor_velocity() const;
+	Vector2 get_travel() const;
+	void revert_motion();
 
-	int get_slide_count() const;
-	Collision get_slide_collision(int p_bounce) const;
+	Vector2 get_collision_pos() const;
+	Vector2 get_collision_normal() const;
+	Vector2 get_collider_velocity() const;
+	ObjectID get_collider() const;
+	int get_collider_shape() const;
+	Variant get_collider_metadata() const;
+
+	void set_collision_margin(float p_margin);
+	float get_collision_margin() const;
+
+	Vector2 move_and_slide(const Vector2 &p_linear_velocity, const Vector2 &p_floor_direction = Vector2(0, 0), float p_slope_stop_min_velocity = 5, int p_max_bounces = 4, float p_floor_max_angle = Math::deg2rad((float)45));
+	bool is_move_and_slide_on_floor() const;
+	bool is_move_and_slide_on_wall() const;
+	bool is_move_and_slide_on_ceiling() const;
+	Array get_move_and_slide_colliders() const;
 
 	KinematicBody2D();
 	~KinematicBody2D();
-};
-
-class KinematicCollision2D : public Reference {
-
-	GDCLASS(KinematicCollision2D, Reference);
-
-	KinematicBody2D *owner;
-	friend class KinematicBody2D;
-	KinematicBody2D::Collision collision;
-
-protected:
-	static void _bind_methods();
-
-public:
-	Vector2 get_position() const;
-	Vector2 get_normal() const;
-	Vector2 get_travel() const;
-	Vector2 get_remainder() const;
-	Object *get_local_shape() const;
-	Object *get_collider() const;
-	ObjectID get_collider_id() const;
-	Object *get_collider_shape() const;
-	int get_collider_shape_index() const;
-	Vector2 get_collider_velocity() const;
-	Variant get_collider_metadata() const;
-
-	KinematicCollision2D();
 };
 
 #endif // PHYSICS_BODY_2D_H

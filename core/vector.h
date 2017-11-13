@@ -33,7 +33,7 @@
 /**
  * @class Vector
  * @author Juan Linietsky
- * Vector container. Regular Vector Container. Use with care and for smaller arrays when possible. Use PoolVector for large arrays.
+ * Vector container. Regular Vector Container. Use with care and for smaller arrays when possible. Use DVector for large arrays.
 */
 #include "error_macros.h"
 #include "os/memory.h"
@@ -47,20 +47,19 @@ class Vector {
 
 	// internal helpers
 
-	_FORCE_INLINE_ uint32_t *_get_refcount() const {
+	_FORCE_INLINE_ SafeRefCount *_get_refcount() const {
 
 		if (!_ptr)
 			return NULL;
 
-		return reinterpret_cast<uint32_t *>(_ptr) - 2;
+		return reinterpret_cast<SafeRefCount *>((uint8_t *)_ptr - sizeof(int) - sizeof(SafeRefCount));
 	}
 
-	_FORCE_INLINE_ uint32_t *_get_size() const {
+	_FORCE_INLINE_ int *_get_size() const {
 
 		if (!_ptr)
 			return NULL;
-
-		return reinterpret_cast<uint32_t *>(_ptr) - 1;
+		return reinterpret_cast<int *>((uint8_t *)_ptr - sizeof(int));
 	}
 	_FORCE_INLINE_ T *_get_data() const {
 
@@ -71,7 +70,7 @@ class Vector {
 
 	_FORCE_INLINE_ size_t _get_alloc_size(size_t p_elements) const {
 		//return nearest_power_of_2_templated(p_elements*sizeof(T)+sizeof(SafeRefCount)+sizeof(int));
-		return next_power_of_2(p_elements * sizeof(T));
+		return next_power_of_2(p_elements * sizeof(T) + sizeof(SafeRefCount) + sizeof(int));
 	}
 
 	_FORCE_INLINE_ bool _get_alloc_size_checked(size_t p_elements, size_t *out) const {
@@ -79,8 +78,8 @@ class Vector {
 		size_t o;
 		size_t p;
 		if (_mul_overflow(p_elements, sizeof(T), &o)) return false;
-		*out = next_power_of_2(o);
-		if (_add_overflow(o, static_cast<size_t>(32), &p)) return false; //no longer allocated here
+		if (_add_overflow(o, sizeof(SafeRefCount) + sizeof(int), &p)) return false;
+		*out = next_power_of_2(p);
 		return true;
 #else
 		// Speed is more important than correctness here, do the operations unchecked
@@ -109,7 +108,7 @@ public:
 	_FORCE_INLINE_ void clear() { resize(0); }
 
 	_FORCE_INLINE_ int size() const {
-		uint32_t *size = (uint32_t *)_get_size();
+		int *size = _get_size();
 		if (size)
 			return *size;
 		else
@@ -117,7 +116,7 @@ public:
 	}
 	_FORCE_INLINE_ bool empty() const { return _ptr == 0; }
 	Error resize(int p_size);
-	bool push_back(const T &p_elem);
+	bool push_back(T p_elem);
 
 	void remove(int p_index);
 	void erase(const T &p_val) {
@@ -129,12 +128,12 @@ public:
 	template <class T_val>
 	int find(const T_val &p_val, int p_from = 0) const;
 
-	void set(int p_index, const T &p_elem);
+	void set(int p_index, T p_elem);
 	T get(int p_index) const;
 
 	inline T &operator[](int p_index) {
 
-		CRASH_BAD_INDEX(p_index, size());
+		PRAY_BAD_INDEX(p_index, size(), T);
 
 		_copy_on_write(); // wants to write, so copy on write.
 
@@ -143,7 +142,7 @@ public:
 
 	inline const T &operator[](int p_index) const {
 
-		CRASH_BAD_INDEX(p_index, size());
+		PRAY_BAD_INDEX(p_index, size(), T);
 
 		// no cow needed, since it's reading
 		return _get_data()[p_index];
@@ -191,22 +190,22 @@ void Vector<T>::_unref(void *p_data) {
 	if (!p_data)
 		return;
 
-	uint32_t *refc = _get_refcount();
+	SafeRefCount *src = reinterpret_cast<SafeRefCount *>((uint8_t *)p_data - sizeof(int) - sizeof(SafeRefCount));
 
-	if (atomic_decrement(refc) > 0)
+	if (!src->unref())
 		return; // still in use
 	// clean up
 
-	uint32_t *count = _get_size();
+	int *count = (int *)(src + 1);
 	T *data = (T *)(count + 1);
 
-	for (uint32_t i = 0; i < *count; i++) {
+	for (int i = 0; i < *count; i++) {
 		// call destructors
 		data[i].~T();
 	}
 
 	// free mem
-	Memory::free_static((uint8_t *)p_data, true);
+	memfree((uint8_t *)p_data - sizeof(int) - sizeof(SafeRefCount));
 }
 
 template <class T>
@@ -215,21 +214,18 @@ void Vector<T>::_copy_on_write() {
 	if (!_ptr)
 		return;
 
-	uint32_t *refc = _get_refcount();
-
-	if (*refc > 1) {
+	if (_get_refcount()->get() > 1) {
 		/* in use by more than me */
-		uint32_t current_size = *_get_size();
+		void *mem_new = memalloc(_get_alloc_size(*_get_size()));
+		SafeRefCount *src_new = (SafeRefCount *)mem_new;
+		src_new->init();
+		int *_size = (int *)(src_new + 1);
+		*_size = *_get_size();
 
-		uint32_t *mem_new = (uint32_t *)Memory::alloc_static(_get_alloc_size(current_size), true);
-
-		*(mem_new - 2) = 1; //refcount
-		*(mem_new - 1) = current_size; //size
-
-		T *_data = (T *)(mem_new);
+		T *_data = (T *)(_size + 1);
 
 		// initialize new elements
-		for (uint32_t i = 0; i < current_size; i++) {
+		for (int i = 0; i < *_size; i++) {
 
 			memnew_placement(&_data[i], T(_get_data()[i]));
 		}
@@ -283,17 +279,16 @@ Error Vector<T>::resize(int p_size) {
 
 		if (size() == 0) {
 			// alloc from scratch
-			uint32_t *ptr = (uint32_t *)Memory::alloc_static(alloc_size, true);
+			void *ptr = memalloc(alloc_size);
 			ERR_FAIL_COND_V(!ptr, ERR_OUT_OF_MEMORY);
-			*(ptr - 1) = 0; //size, currently none
-			*(ptr - 2) = 1; //refcount
-
-			_ptr = (T *)ptr;
+			_ptr = (T *)((uint8_t *)ptr + sizeof(int) + sizeof(SafeRefCount));
+			_get_refcount()->init(); // init refcount
+			*_get_size() = 0; // init size (currently, none)
 
 		} else {
-			void *_ptrnew = (T *)Memory::realloc_static(_ptr, alloc_size, true);
+			void *_ptrnew = (T *)memrealloc((uint8_t *)_ptr - sizeof(int) - sizeof(SafeRefCount), alloc_size);
 			ERR_FAIL_COND_V(!_ptrnew, ERR_OUT_OF_MEMORY);
-			_ptr = (T *)(_ptrnew);
+			_ptr = (T *)((uint8_t *)_ptrnew + sizeof(int) + sizeof(SafeRefCount));
 		}
 
 		// construct the newly created elements
@@ -309,16 +304,16 @@ Error Vector<T>::resize(int p_size) {
 	} else if (p_size < size()) {
 
 		// deinitialize no longer needed elements
-		for (uint32_t i = p_size; i < *_get_size(); i++) {
+		for (int i = p_size; i < *_get_size(); i++) {
 
 			T *t = &_get_data()[i];
 			t->~T();
 		}
 
-		void *_ptrnew = (T *)Memory::realloc_static(_ptr, alloc_size, true);
+		void *_ptrnew = (T *)memrealloc((uint8_t *)_ptr - sizeof(int) - sizeof(SafeRefCount), alloc_size);
 		ERR_FAIL_COND_V(!_ptrnew, ERR_OUT_OF_MEMORY);
 
-		_ptr = (T *)(_ptrnew);
+		_ptr = (T *)((uint8_t *)_ptrnew + sizeof(int) + sizeof(SafeRefCount));
 
 		*_get_size() = p_size;
 	}
@@ -336,7 +331,7 @@ void Vector<T>::invert() {
 }
 
 template <class T>
-void Vector<T>::set(int p_index, const T &p_elem) {
+void Vector<T>::set(int p_index, T p_elem) {
 
 	operator[](p_index) = p_elem;
 }
@@ -348,7 +343,7 @@ T Vector<T>::get(int p_index) const {
 }
 
 template <class T>
-bool Vector<T>::push_back(const T &p_elem) {
+bool Vector<T>::push_back(T p_elem) {
 
 	Error err = resize(size() + 1);
 	ERR_FAIL_COND_V(err, true)
@@ -383,9 +378,8 @@ void Vector<T>::_copy_from(const Vector &p_from) {
 	if (!p_from._ptr)
 		return; //nothing to do
 
-	if (atomic_conditional_increment(p_from._get_refcount()) > 0) { // could reference
+	if (p_from._get_refcount()->ref()) // could reference
 		_ptr = p_from._ptr;
-	}
 }
 
 template <class T>

@@ -38,22 +38,22 @@
 */
 class MeshInstance : public GeometryInstance {
 
-	GDCLASS(MeshInstance, GeometryInstance);
+	OBJ_TYPE(MeshInstance, GeometryInstance);
 
 	Ref<Mesh> mesh;
 	NodePath skeleton_path;
 
-	struct BlendShapeTrack {
+	struct MorphTrack {
 
 		int idx;
 		float value;
-		BlendShapeTrack() {
+		MorphTrack() {
 			idx = 0;
 			value = 0;
 		}
 	};
 
-	Map<StringName, BlendShapeTrack> blend_shape_tracks;
+	Map<StringName, MorphTrack> morph_tracks;
 	Vector<Ref<Material> > materials;
 
 	void _mesh_changed();
@@ -83,10 +83,8 @@ public:
 	Node *create_convex_collision_node();
 	void create_convex_collision();
 
-	void create_debug_tangents();
-
-	virtual Rect3 get_aabb() const;
-	virtual PoolVector<Face3> get_faces(uint32_t p_usage_flags) const;
+	virtual AABB get_aabb() const;
+	virtual DVector<Face3> get_faces(uint32_t p_usage_flags) const;
 
 	MeshInstance();
 	~MeshInstance();

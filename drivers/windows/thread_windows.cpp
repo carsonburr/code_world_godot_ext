@@ -29,11 +29,11 @@
 /*************************************************************************/
 #include "thread_windows.h"
 
-#if defined(WINDOWS_ENABLED) && !defined(UWP_ENABLED)
+#if defined(WINDOWS_ENABLED) && !defined(WINRT_ENABLED)
 
 #include "os/memory.h"
 
-Thread::ID ThreadWindows::get_id() const {
+Thread::ID ThreadWindows::get_ID() const {
 
 	return id;
 }
@@ -72,7 +72,7 @@ Thread *ThreadWindows::create_func_windows(ThreadCreateCallback p_callback, void
 
 	return tr;
 }
-Thread::ID ThreadWindows::get_thread_id_func_windows() {
+Thread::ID ThreadWindows::get_thread_ID_func_windows() {
 
 	return (ID)GetCurrentThreadId(); //must implement
 }
@@ -88,7 +88,7 @@ void ThreadWindows::wait_to_finish_func_windows(Thread *p_thread) {
 void ThreadWindows::make_default() {
 
 	create_func = create_func_windows;
-	get_thread_id_func = get_thread_id_func_windows;
+	get_thread_ID_func = get_thread_ID_func_windows;
 	wait_to_finish_func = wait_to_finish_func_windows;
 }
 

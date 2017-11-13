@@ -73,18 +73,21 @@ struct DDSFormatInfo {
 };
 
 static const DDSFormatInfo dds_format_info[DDS_MAX] = {
-	{ "DXT1", true, false, 4, 8, Image::FORMAT_DXT1 },
-	{ "DXT3", true, false, 4, 16, Image::FORMAT_DXT3 },
-	{ "DXT5", true, false, 4, 16, Image::FORMAT_DXT5 },
-	{ "BGRA8", false, false, 1, 4, Image::FORMAT_RGBA8 },
-	{ "BGR8", false, false, 1, 3, Image::FORMAT_RGB8 },
-	{ "RGBA8", false, false, 1, 4, Image::FORMAT_RGBA8 },
-	{ "RGB8", false, false, 1, 3, Image::FORMAT_RGB8 },
-	{ "BGR5A1", false, false, 1, 2, Image::FORMAT_RGBA8 },
-	{ "BGR565", false, false, 1, 2, Image::FORMAT_RGB8 },
-	{ "BGR10A2", false, false, 1, 4, Image::FORMAT_RGBA8 },
-	{ "GRAYSCALE", false, false, 1, 1, Image::FORMAT_L8 },
-	{ "GRAYSCALE_ALPHA", false, false, 1, 2, Image::FORMAT_LA8 }
+	{ "DXT1", true, false, 4, 8, Image::FORMAT_BC1 },
+	{ "DXT3", true, false, 4, 16, Image::FORMAT_BC2 },
+	{ "DXT5", true, false, 4, 16, Image::FORMAT_BC3 },
+	{ "ATI1", true, false, 4, 8, Image::FORMAT_BC4 },
+	{ "ATI2", true, false, 4, 16, Image::FORMAT_BC5 },
+	{ "BGRA8", false, false, 1, 4, Image::FORMAT_RGBA },
+	{ "BGR8", false, false, 1, 3, Image::FORMAT_RGB },
+	{ "RGBA8", false, false, 1, 4, Image::FORMAT_RGBA },
+	{ "RGB8", false, false, 1, 3, Image::FORMAT_RGB },
+	{ "BGR5A1", false, false, 1, 2, Image::FORMAT_RGBA },
+	{ "BGR565", false, false, 1, 2, Image::FORMAT_RGB },
+	{ "BGR10A2", false, false, 1, 4, Image::FORMAT_RGBA },
+	{ "INDEXED", false, true, 1, 1, Image::FORMAT_INDEXED },
+	{ "GRAYSCALE", false, false, 1, 1, Image::FORMAT_GRAYSCALE },
+	{ "GRAYSCALE_ALPHA", false, false, 1, 2, Image::FORMAT_GRAYSCALE_ALPHA }
 };
 
 RES ResourceFormatDDS::load(const String &p_path, const String &p_original_path, Error *r_error) {
@@ -110,7 +113,7 @@ RES ResourceFormatDDS::load(const String &p_path, const String &p_original_path,
 	uint32_t width = f->get_32();
 	uint32_t height = f->get_32();
 	uint32_t pitch = f->get_32();
-	/* uint32_t depth = */ f->get_32();
+	uint32_t depth = f->get_32();
 	uint32_t mipmaps = f->get_32();
 
 	//skip 11
@@ -125,7 +128,7 @@ RES ResourceFormatDDS::load(const String &p_path, const String &p_original_path,
 		ERR_FAIL_V(RES());
 	}
 
-	/* uint32_t format_size = */ f->get_32();
+	uint32_t format_size = f->get_32();
 	uint32_t format_flags = f->get_32();
 	uint32_t format_fourcc = f->get_32();
 	uint32_t format_rgb_bits = f->get_32();
@@ -134,25 +137,23 @@ RES ResourceFormatDDS::load(const String &p_path, const String &p_original_path,
 	uint32_t format_blue_mask = f->get_32();
 	uint32_t format_alpha_mask = f->get_32();
 
-	/* uint32_t caps_1 = */ f->get_32();
-	/* uint32_t caps_2 = */ f->get_32();
-	/* uint32_t caps_ddsx = */ f->get_32();
+	uint32_t caps_1 = f->get_32();
+	uint32_t caps_2 = f->get_32();
+	uint32_t caps_ddsx = f->get_32();
 
 	//reserved skip
 	f->get_32();
 	f->get_32();
 
-	/*
-	print_line("DDS width: "+itos(width));
+	/*print_line("DDS width: "+itos(width));
 	print_line("DDS height: "+itos(height));
-	print_line("DDS mipmaps: "+itos(mipmaps));
+	print_line("DDS mipmaps: "+itos(mipmaps));*/
 
-	printf("fourcc: %x fflags: %x, rgbbits: %x, fsize: %x\n",format_fourcc,format_flags,format_rgb_bits,format_size);
-	printf("rmask: %x gmask: %x, bmask: %x, amask: %x\n",format_red_mask,format_green_mask,format_blue_mask,format_alpha_mask);
-	*/
+	//printf("fourcc: %x fflags: %x, rgbbits: %x, fsize: %x\n",format_fourcc,format_flags,format_rgb_bits,format_size);
+	//printf("rmask: %x gmask: %x, bmask: %x, amask: %x\n",format_red_mask,format_green_mask,format_blue_mask,format_alpha_mask);
 
 	//must avoid this later
-	while (f->get_position() < 128)
+	while (f->get_pos() < 128)
 		f->get_8();
 
 	DDSFormat dds_format;
@@ -216,9 +217,9 @@ RES ResourceFormatDDS::load(const String &p_path, const String &p_original_path,
 	if (!(flags & DDSD_MIPMAPCOUNT))
 		mipmaps = 1;
 
-	//print_line("found format: "+String(dds_format_info[dds_format].name));
+	//	print_line("found format: "+String(dds_format_info[dds_format].name));
 
-	PoolVector<uint8_t> src_data;
+	DVector<uint8_t> src_data;
 
 	const DDSFormatInfo &info = dds_format_info[dds_format];
 	uint32_t w = width;
@@ -241,9 +242,9 @@ RES ResourceFormatDDS::load(const String &p_path, const String &p_original_path,
 		}
 
 		src_data.resize(size);
-		PoolVector<uint8_t>::Write wb = src_data.write();
+		DVector<uint8_t>::Write wb = src_data.write();
 		f->get_buffer(wb.ptr(), size);
-		wb = PoolVector<uint8_t>::Write();
+		wb = DVector<uint8_t>::Write();
 
 	} else if (info.palette) {
 
@@ -254,13 +255,13 @@ RES ResourceFormatDDS::load(const String &p_path, const String &p_original_path,
 		uint32_t size = pitch * height;
 		ERR_FAIL_COND_V(size != width * height * info.block_size, RES());
 
-		uint8_t palette[256 * 4];
-		f->get_buffer(palette, 256 * 4);
+		uint8_t pallete[256 * 4];
+		f->get_buffer(pallete, 256 * 4);
 
 		int colsize = 3;
 		for (int i = 0; i < 256; i++) {
 
-			if (palette[i * 4 + 3] < 255)
+			if (pallete[i * 4 + 3] < 255)
 				colsize = 4;
 		}
 
@@ -275,21 +276,21 @@ RES ResourceFormatDDS::load(const String &p_path, const String &p_original_path,
 		}
 
 		src_data.resize(size + 256 * colsize);
-		PoolVector<uint8_t>::Write wb = src_data.write();
+		DVector<uint8_t>::Write wb = src_data.write();
 		f->get_buffer(wb.ptr(), size);
 
 		for (int i = 0; i < 256; i++) {
 
 			int dst_ofs = size + i * colsize;
 			int src_ofs = i * 4;
-			wb[dst_ofs + 0] = palette[src_ofs + 2];
-			wb[dst_ofs + 1] = palette[src_ofs + 1];
-			wb[dst_ofs + 2] = palette[src_ofs + 0];
+			wb[dst_ofs + 0] = pallete[src_ofs + 2];
+			wb[dst_ofs + 1] = pallete[src_ofs + 1];
+			wb[dst_ofs + 2] = pallete[src_ofs + 0];
 			if (colsize == 4)
-				wb[dst_ofs + 3] = palette[src_ofs + 3];
+				wb[dst_ofs + 3] = pallete[src_ofs + 3];
 		}
 
-		wb = PoolVector<uint8_t>::Write();
+		wb = DVector<uint8_t>::Write();
 	} else {
 		//uncompressed generic...
 
@@ -308,7 +309,7 @@ RES ResourceFormatDDS::load(const String &p_path, const String &p_original_path,
 			size = size * 2;
 
 		src_data.resize(size);
-		PoolVector<uint8_t>::Write wb = src_data.write();
+		DVector<uint8_t>::Write wb = src_data.write();
 		f->get_buffer(wb.ptr(), size);
 
 		switch (dds_format) {
@@ -436,10 +437,10 @@ RES ResourceFormatDDS::load(const String &p_path, const String &p_original_path,
 			default: {}
 		}
 
-		wb = PoolVector<uint8_t>::Write();
+		wb = DVector<uint8_t>::Write();
 	}
 
-	Ref<Image> img = memnew(Image(width, height, mipmaps - 1, info.format, src_data));
+	Image img(width, height, mipmaps - 1, info.format, src_data);
 
 	Ref<ImageTexture> texture = memnew(ImageTexture);
 	texture->create_from_image(img);
@@ -457,12 +458,12 @@ void ResourceFormatDDS::get_recognized_extensions(List<String> *p_extensions) co
 
 bool ResourceFormatDDS::handles_type(const String &p_type) const {
 
-	return ClassDB::is_parent_class(p_type, "Texture");
+	return ObjectTypeDB::is_type(p_type, "Texture");
 }
 
 String ResourceFormatDDS::get_resource_type(const String &p_path) const {
 
-	if (p_path.get_extension().to_lower() == "dds")
+	if (p_path.extension().to_lower() == "dds")
 		return "ImageTexture";
 	return "";
 }

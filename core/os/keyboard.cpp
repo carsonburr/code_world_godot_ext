@@ -42,8 +42,8 @@ static const _KeyCodeText _keycodes[] = {
 		{KEY_TAB                           ,"Tab"},
 		{KEY_BACKTAB                       ,"BackTab"},
 		{KEY_BACKSPACE                     ,"BackSpace"},
+		{KEY_RETURN                        ,"Return"},
 		{KEY_ENTER                         ,"Enter"},
-		{KEY_KP_ENTER                      ,"Kp Enter"},
 		{KEY_INSERT                        ,"Insert"},
 		{KEY_DELETE                        ,"Delete"},
 		{KEY_PAUSE                         ,"Pause"},
@@ -81,6 +81,7 @@ static const _KeyCodeText _keycodes[] = {
 		{KEY_F14                           ,"F14"},
 		{KEY_F15                           ,"F15"},
 		{KEY_F16                           ,"F16"},
+		{KEY_KP_ENTER                      ,"Kp Enter"},
 		{KEY_KP_MULTIPLY                   ,"Kp Multiply"},
 		{KEY_KP_DIVIDE                     ,"Kp Divide"},
 		{KEY_KP_SUBTRACT                   ,"Kp Subtract"},
@@ -294,8 +295,8 @@ bool keycode_has_unicode(uint32_t p_keycode) {
 		case KEY_TAB:
 		case KEY_BACKTAB:
 		case KEY_BACKSPACE:
+		case KEY_RETURN:
 		case KEY_ENTER:
-		case KEY_KP_ENTER:
 		case KEY_INSERT:
 		case KEY_DELETE:
 		case KEY_PAUSE:
@@ -333,6 +334,7 @@ bool keycode_has_unicode(uint32_t p_keycode) {
 		case KEY_F14:
 		case KEY_F15:
 		case KEY_F16:
+		case KEY_KP_ENTER:
 		case KEY_SUPER_L:
 		case KEY_SUPER_R:
 		case KEY_MENU:
@@ -504,27 +506,6 @@ static const _KeyCodeReplace _keycode_replace_dvorak[] = {
 static const _KeyCodeReplace _keycode_replace_neo[] = {
 	{ 0, 0 }
 };
-
-int keycode_get_count() {
-
-	const _KeyCodeText *kct = &_keycodes[0];
-
-	int count = 0;
-	while (kct->text) {
-
-		count++;
-		kct++;
-	}
-	return count;
-}
-
-int keycode_get_value_by_index(int p_index) {
-	return _keycodes[p_index].code;
-}
-
-const char *keycode_get_name_by_index(int p_index) {
-	return _keycodes[p_index].text;
-}
 
 int latin_keyboard_keycode_convert(int p_keycode) {
 

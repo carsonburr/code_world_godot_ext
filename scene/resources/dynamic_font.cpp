@@ -43,10 +43,10 @@ bool DynamicFontData::CacheID::operator<(CacheID right) const {
 	return false;
 }
 
-Ref<DynamicFontAtSize> DynamicFontData::_get_dynamic_font_at_size(CacheID p_cache_id) {
+Ref<DynamicFontAtSize> DynamicFontData::_get_dynamic_font_at_size(CacheID p_id) {
 
-	if (size_cache.has(p_cache_id)) {
-		return Ref<DynamicFontAtSize>(size_cache[p_cache_id]);
+	if (size_cache.has(p_id)) {
+		return Ref<DynamicFontAtSize>(size_cache[p_id]);
 	}
 
 	Ref<DynamicFontAtSize> dfas;
@@ -55,8 +55,8 @@ Ref<DynamicFontAtSize> DynamicFontData::_get_dynamic_font_at_size(CacheID p_cach
 
 	dfas->font = Ref<DynamicFontData>(this);
 
-	size_cache[p_cache_id] = dfas.ptr();
-	dfas->id = p_cache_id;
+	size_cache[p_id] = dfas.ptr();
+	dfas->id = p_id;
 	dfas->_load();
 
 	return dfas;
@@ -83,10 +83,10 @@ void DynamicFontData::set_force_autohinter(bool p_force) {
 }
 
 void DynamicFontData::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("set_font_path", "path"), &DynamicFontData::set_font_path);
-	ClassDB::bind_method(D_METHOD("get_font_path"), &DynamicFontData::get_font_path);
+	ObjectTypeDB::bind_method(_MD("set_font_path", "path"), &DynamicFontData::set_font_path);
+	ObjectTypeDB::bind_method(_MD("get_font_path"), &DynamicFontData::get_font_path);
 
-	ADD_PROPERTY(PropertyInfo(Variant::STRING, "font_path", PROPERTY_HINT_FILE, "*.ttf,*.otf"), "set_font_path", "get_font_path");
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "font_path", PROPERTY_HINT_FILE, "*.ttf,*.otf"), _SCS("set_font_path"), _SCS("get_font_path"));
 }
 
 DynamicFontData::DynamicFontData() {
@@ -338,7 +338,7 @@ float DynamicFontAtSize::draw_char(RID p_canvas_item, const Point2 &p_pos, CharT
 			cpos.y += ch->v_align;
 			ERR_FAIL_COND_V(ch->texture_idx < -1 || ch->texture_idx >= fb->textures.size(), 0);
 			if (ch->texture_idx != -1)
-				VisualServer::get_singleton()->canvas_item_add_texture_rect_region(p_canvas_item, Rect2(cpos, ch->rect.size), fb->textures[ch->texture_idx].texture->get_rid(), ch->rect, p_modulate, false, RID(), false);
+				VisualServer::get_singleton()->canvas_item_add_texture_rect_region(p_canvas_item, Rect2(cpos, ch->rect.size), fb->textures[ch->texture_idx].texture->get_rid(), ch->rect, p_modulate);
 			advance = ch->advance;
 			used_fallback = true;
 			break;
@@ -360,7 +360,7 @@ float DynamicFontAtSize::draw_char(RID p_canvas_item, const Point2 &p_pos, CharT
 		cpos.y += c->v_align;
 		ERR_FAIL_COND_V(c->texture_idx < -1 || c->texture_idx >= textures.size(), 0);
 		if (c->texture_idx != -1)
-			VisualServer::get_singleton()->canvas_item_add_texture_rect_region(p_canvas_item, Rect2(cpos, c->rect.size), textures[c->texture_idx].texture->get_rid(), c->rect, p_modulate, false, RID(), false);
+			VisualServer::get_singleton()->canvas_item_add_texture_rect_region(p_canvas_item, Rect2(cpos, c->rect.size), textures[c->texture_idx].texture->get_rid(), c->rect, p_modulate);
 		advance = c->advance;
 		//textures[c->texture_idx].texture->draw(p_canvas_item,Vector2());
 	}
@@ -397,7 +397,7 @@ unsigned long DynamicFontAtSize::_ft_stream_io(FT_Stream stream, unsigned long o
 
 	FileAccess *f = (FileAccess *)stream->descriptor.pointer;
 
-	if (f->get_position() != offset) {
+	if (f->get_pos() != offset) {
 		f->seek(offset);
 	}
 
@@ -511,7 +511,7 @@ void DynamicFontAtSize::_update_char(CharType p_char) {
 		break;
 	}
 
-	//print_line("CHAR: "+String::chr(p_char)+" TEX INDEX: "+itos(tex_index)+" X: "+itos(tex_x)+" Y: "+itos(tex_y));
+	//	print_line("CHAR: "+String::chr(p_char)+" TEX INDEX: "+itos(tex_index)+" X: "+itos(tex_x)+" Y: "+itos(tex_y));
 
 	if (tex_index == -1) {
 		//could not find texture to fit, create one
@@ -534,7 +534,7 @@ void DynamicFontAtSize::_update_char(CharType p_char) {
 
 		{
 			//zero texture
-			PoolVector<uint8_t>::Write w = tex.imgdata.write();
+			DVector<uint8_t>::Write w = tex.imgdata.write();
 			ERR_FAIL_COND(texsize * texsize * 2 > tex.imgdata.size());
 			for (int i = 0; i < texsize * texsize * 2; i++) {
 				w[i] = 0;
@@ -553,30 +553,15 @@ void DynamicFontAtSize::_update_char(CharType p_char) {
 	CharTexture &tex = textures[tex_index];
 
 	{
-		PoolVector<uint8_t>::Write wr = tex.imgdata.write();
+		DVector<uint8_t>::Write wr = tex.imgdata.write();
 
 		for (int i = 0; i < h; i++) {
 			for (int j = 0; j < w; j++) {
 
 				int ofs = ((i + tex_y + rect_margin) * tex.texture_size + j + tex_x + rect_margin) * 2;
 				ERR_FAIL_COND(ofs >= tex.imgdata.size());
-				switch (slot->bitmap.pixel_mode) {
-					case FT_PIXEL_MODE_MONO: {
-						int byte = i * slot->bitmap.pitch + (j >> 3);
-						int bit = 1 << (7 - (j % 8));
-						wr[ofs + 0] = 255; //grayscale as 1
-						wr[ofs + 1] = slot->bitmap.buffer[byte] & bit ? 255 : 0;
-					} break;
-					case FT_PIXEL_MODE_GRAY:
-						wr[ofs + 0] = 255; //grayscale as 1
-						wr[ofs + 1] = slot->bitmap.buffer[i * slot->bitmap.pitch + j];
-						break;
-						// TODO: FT_PIXEL_MODE_LCD, FT_PIXEL_MODE_BGRA
-					default:
-						ERR_EXPLAIN("Font uses unsupported pixel format: " + itos(slot->bitmap.pixel_mode));
-						ERR_FAIL();
-						break;
-				}
+				wr[ofs + 0] = 255; //grayscale as 1
+				wr[ofs + 1] = slot->bitmap.buffer[i * slot->bitmap.width + j];
 			}
 		}
 	}
@@ -584,7 +569,7 @@ void DynamicFontAtSize::_update_char(CharType p_char) {
 	//blit to image and texture
 	{
 
-		Ref<Image> img = memnew(Image(tex.texture_size, tex.texture_size, 0, Image::FORMAT_LA8, tex.imgdata));
+		Image img(tex.texture_size, tex.texture_size, 0, Image::FORMAT_GRAYSCALE_ALPHA, tex.imgdata);
 
 		if (tex.texture.is_null()) {
 			tex.texture.instance();
@@ -876,41 +861,38 @@ void DynamicFont::_get_property_list(List<PropertyInfo> *p_list) const {
 
 void DynamicFont::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("set_font_data", "data"), &DynamicFont::set_font_data);
-	ClassDB::bind_method(D_METHOD("get_font_data"), &DynamicFont::get_font_data);
+	ObjectTypeDB::bind_method(_MD("set_font_data", "data:DynamicFontData"), &DynamicFont::set_font_data);
+	ObjectTypeDB::bind_method(_MD("get_font_data:DynamicFontData"), &DynamicFont::get_font_data);
 
-	ClassDB::bind_method(D_METHOD("set_size", "data"), &DynamicFont::set_size);
-	ClassDB::bind_method(D_METHOD("get_size"), &DynamicFont::get_size);
+	ObjectTypeDB::bind_method(_MD("set_size", "data"), &DynamicFont::set_size);
+	ObjectTypeDB::bind_method(_MD("get_size"), &DynamicFont::get_size);
 
-	ClassDB::bind_method(D_METHOD("set_use_mipmaps", "enable"), &DynamicFont::set_use_mipmaps);
-	ClassDB::bind_method(D_METHOD("get_use_mipmaps"), &DynamicFont::get_use_mipmaps);
-	ClassDB::bind_method(D_METHOD("set_use_filter", "enable"), &DynamicFont::set_use_filter);
-	ClassDB::bind_method(D_METHOD("get_use_filter"), &DynamicFont::get_use_filter);
-	ClassDB::bind_method(D_METHOD("set_spacing", "type", "value"), &DynamicFont::set_spacing);
-	ClassDB::bind_method(D_METHOD("get_spacing", "type"), &DynamicFont::get_spacing);
+	ObjectTypeDB::bind_method(_MD("set_use_mipmaps", "enable"), &DynamicFont::set_use_mipmaps);
+	ObjectTypeDB::bind_method(_MD("get_use_mipmaps"), &DynamicFont::get_use_mipmaps);
+	ObjectTypeDB::bind_method(_MD("set_use_filter", "enable"), &DynamicFont::set_use_filter);
+	ObjectTypeDB::bind_method(_MD("get_use_filter"), &DynamicFont::get_use_filter);
+	ObjectTypeDB::bind_method(_MD("set_spacing", "type", "value"), &DynamicFont::set_spacing);
+	ObjectTypeDB::bind_method(_MD("get_spacing", "type"), &DynamicFont::get_spacing);
 
-	ClassDB::bind_method(D_METHOD("add_fallback", "data"), &DynamicFont::add_fallback);
-	ClassDB::bind_method(D_METHOD("set_fallback", "idx", "data"), &DynamicFont::set_fallback);
-	ClassDB::bind_method(D_METHOD("get_fallback", "idx"), &DynamicFont::get_fallback);
-	ClassDB::bind_method(D_METHOD("remove_fallback", "idx"), &DynamicFont::remove_fallback);
-	ClassDB::bind_method(D_METHOD("get_fallback_count"), &DynamicFont::get_fallback_count);
+	ObjectTypeDB::bind_method(_MD("add_fallback", "data:DynamicFontData"), &DynamicFont::add_fallback);
+	ObjectTypeDB::bind_method(_MD("set_fallback", "idx", "data:DynamicFontData"), &DynamicFont::set_fallback);
+	ObjectTypeDB::bind_method(_MD("get_fallback:DynamicFontData", "idx"), &DynamicFont::get_fallback);
+	ObjectTypeDB::bind_method(_MD("remove_fallback", "idx"), &DynamicFont::remove_fallback);
+	ObjectTypeDB::bind_method(_MD("get_fallback_count"), &DynamicFont::get_fallback_count);
 
-	ADD_GROUP("Settings", "");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "size"), "set_size", "get_size");
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "use_mipmaps"), "set_use_mipmaps", "get_use_mipmaps");
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "use_filter"), "set_use_filter", "get_use_filter");
-	ADD_GROUP("Extra Spacing", "extra_spacing");
-	ADD_PROPERTYINZ(PropertyInfo(Variant::INT, "extra_spacing_top"), "set_spacing", "get_spacing", SPACING_TOP);
-	ADD_PROPERTYINZ(PropertyInfo(Variant::INT, "extra_spacing_bottom"), "set_spacing", "get_spacing", SPACING_BOTTOM);
-	ADD_PROPERTYINZ(PropertyInfo(Variant::INT, "extra_spacing_char"), "set_spacing", "get_spacing", SPACING_CHAR);
-	ADD_PROPERTYINZ(PropertyInfo(Variant::INT, "extra_spacing_space"), "set_spacing", "get_spacing", SPACING_SPACE);
-	ADD_GROUP("Font", "");
-	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "font_data", PROPERTY_HINT_RESOURCE_TYPE, "DynamicFontData"), "set_font_data", "get_font_data");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "font/size"), _SCS("set_size"), _SCS("get_size"));
+	ADD_PROPERTYINZ(PropertyInfo(Variant::INT, "extra_spacing/top"), _SCS("set_spacing"), _SCS("get_spacing"), SPACING_TOP);
+	ADD_PROPERTYINZ(PropertyInfo(Variant::INT, "extra_spacing/bottom"), _SCS("set_spacing"), _SCS("get_spacing"), SPACING_BOTTOM);
+	ADD_PROPERTYINZ(PropertyInfo(Variant::INT, "extra_spacing/char"), _SCS("set_spacing"), _SCS("get_spacing"), SPACING_CHAR);
+	ADD_PROPERTYINZ(PropertyInfo(Variant::INT, "extra_spacing/space"), _SCS("set_spacing"), _SCS("get_spacing"), SPACING_SPACE);
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "font/use_mipmaps"), _SCS("set_use_mipmaps"), _SCS("get_use_mipmaps"));
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "font/use_filter"), _SCS("set_use_filter"), _SCS("get_use_filter"));
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "font/font", PROPERTY_HINT_RESOURCE_TYPE, "DynamicFontData"), _SCS("set_font_data"), _SCS("get_font_data"));
 
-	BIND_ENUM_CONSTANT(SPACING_TOP);
-	BIND_ENUM_CONSTANT(SPACING_BOTTOM);
-	BIND_ENUM_CONSTANT(SPACING_CHAR);
-	BIND_ENUM_CONSTANT(SPACING_SPACE);
+	BIND_CONSTANT(SPACING_TOP);
+	BIND_CONSTANT(SPACING_BOTTOM);
+	BIND_CONSTANT(SPACING_CHAR);
+	BIND_CONSTANT(SPACING_SPACE);
 }
 
 DynamicFont::DynamicFont() {
@@ -954,7 +936,7 @@ bool ResourceFormatLoaderDynamicFont::handles_type(const String &p_type) const {
 
 String ResourceFormatLoaderDynamicFont::get_resource_type(const String &p_path) const {
 
-	String el = p_path.get_extension().to_lower();
+	String el = p_path.extension().to_lower();
 	if (el == "ttf" || el == "otf")
 		return "DynamicFontData";
 	return "";

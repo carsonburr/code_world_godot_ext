@@ -30,17 +30,17 @@
 #include "multimesh.h"
 #include "servers/visual_server.h"
 
-void MultiMesh::_set_transform_array(const PoolVector<Vector3> &p_array) {
+void MultiMesh::_set_transform_array(const DVector<Vector3> &p_array) {
 
 	int instance_count = get_instance_count();
 
-	PoolVector<Vector3> xforms = p_array;
+	DVector<Vector3> xforms = p_array;
 	int len = xforms.size();
 	ERR_FAIL_COND((len / 4) != instance_count);
 	if (len == 0)
 		return;
 
-	PoolVector<Vector3>::Read r = xforms.read();
+	DVector<Vector3>::Read r = xforms.read();
 
 	for (int i = 0; i < len / 4; i++) {
 
@@ -54,17 +54,17 @@ void MultiMesh::_set_transform_array(const PoolVector<Vector3> &p_array) {
 	}
 }
 
-PoolVector<Vector3> MultiMesh::_get_transform_array() const {
+DVector<Vector3> MultiMesh::_get_transform_array() const {
 
 	int instance_count = get_instance_count();
 
 	if (instance_count == 0)
-		return PoolVector<Vector3>();
+		return DVector<Vector3>();
 
-	PoolVector<Vector3> xforms;
+	DVector<Vector3> xforms;
 	xforms.resize(instance_count * 4);
 
-	PoolVector<Vector3>::Write w = xforms.write();
+	DVector<Vector3>::Write w = xforms.write();
 
 	for (int i = 0; i < instance_count; i++) {
 
@@ -78,17 +78,17 @@ PoolVector<Vector3> MultiMesh::_get_transform_array() const {
 	return xforms;
 }
 
-void MultiMesh::_set_color_array(const PoolVector<Color> &p_array) {
+void MultiMesh::_set_color_array(const DVector<Color> &p_array) {
 
 	int instance_count = get_instance_count();
 
-	PoolVector<Color> colors = p_array;
+	DVector<Color> colors = p_array;
 	int len = colors.size();
 	ERR_FAIL_COND(len != instance_count);
 	if (len == 0)
 		return;
 
-	PoolVector<Color>::Read r = colors.read();
+	DVector<Color>::Read r = colors.read();
 
 	for (int i = 0; i < len; i++) {
 
@@ -96,14 +96,14 @@ void MultiMesh::_set_color_array(const PoolVector<Color> &p_array) {
 	}
 }
 
-PoolVector<Color> MultiMesh::_get_color_array() const {
+DVector<Color> MultiMesh::_get_color_array() const {
 
 	int instance_count = get_instance_count();
 
 	if (instance_count == 0)
-		return PoolVector<Color>();
+		return DVector<Color>();
 
-	PoolVector<Color> colors;
+	DVector<Color> colors;
 	colors.resize(instance_count);
 
 	for (int i = 0; i < instance_count; i++) {
@@ -130,7 +130,7 @@ Ref<Mesh> MultiMesh::get_mesh() const {
 
 void MultiMesh::set_instance_count(int p_count) {
 
-	VisualServer::get_singleton()->multimesh_allocate(multimesh, p_count, VS::MultimeshTransformFormat(transform_format), VS::MultimeshColorFormat(color_format));
+	VisualServer::get_singleton()->multimesh_set_instance_count(multimesh, p_count);
 }
 int MultiMesh::get_instance_count() const {
 
@@ -155,9 +155,36 @@ Color MultiMesh::get_instance_color(int p_instance) const {
 	return VisualServer::get_singleton()->multimesh_instance_get_color(multimesh, p_instance);
 }
 
-Rect3 MultiMesh::get_aabb() const {
+void MultiMesh::set_aabb(const AABB &p_aabb) {
 
-	return VisualServer::get_singleton()->multimesh_get_aabb(multimesh);
+	aabb = p_aabb;
+	VisualServer::get_singleton()->multimesh_set_aabb(multimesh, p_aabb);
+}
+AABB MultiMesh::get_aabb() const {
+
+	return aabb;
+}
+
+void MultiMesh::generate_aabb() {
+
+	ERR_EXPLAIN("Cannot generate AABB if mesh is null.");
+	ERR_FAIL_COND(mesh.is_null());
+
+	AABB base_aabb = mesh->get_aabb();
+
+	aabb = AABB();
+
+	int instance_count = get_instance_count();
+	for (int i = 0; i < instance_count; i++) {
+
+		Transform xform = get_instance_transform(i);
+		if (i == 0)
+			aabb = xform.xform(base_aabb);
+		else
+			aabb.merge_with(xform.xform(base_aabb));
+	}
+
+	set_aabb(aabb);
 }
 
 RID MultiMesh::get_rid() const {
@@ -165,67 +192,36 @@ RID MultiMesh::get_rid() const {
 	return multimesh;
 }
 
-void MultiMesh::set_color_format(ColorFormat p_color_format) {
-
-	color_format = p_color_format;
-}
-
-MultiMesh::ColorFormat MultiMesh::get_color_format() const {
-
-	return color_format;
-}
-
-void MultiMesh::set_transform_format(TransformFormat p_transform_format) {
-
-	transform_format = p_transform_format;
-}
-MultiMesh::TransformFormat MultiMesh::get_transform_format() const {
-
-	return transform_format;
-}
-
 void MultiMesh::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("set_mesh", "mesh"), &MultiMesh::set_mesh);
-	ClassDB::bind_method(D_METHOD("get_mesh"), &MultiMesh::get_mesh);
-	ClassDB::bind_method(D_METHOD("set_color_format", "format"), &MultiMesh::set_color_format);
-	ClassDB::bind_method(D_METHOD("get_color_format"), &MultiMesh::get_color_format);
-	ClassDB::bind_method(D_METHOD("set_transform_format", "format"), &MultiMesh::set_transform_format);
-	ClassDB::bind_method(D_METHOD("get_transform_format"), &MultiMesh::get_transform_format);
+	ObjectTypeDB::bind_method(_MD("set_mesh", "mesh:Mesh"), &MultiMesh::set_mesh);
+	ObjectTypeDB::bind_method(_MD("get_mesh:Mesh"), &MultiMesh::get_mesh);
+	ObjectTypeDB::bind_method(_MD("set_instance_count", "count"), &MultiMesh::set_instance_count);
+	ObjectTypeDB::bind_method(_MD("get_instance_count"), &MultiMesh::get_instance_count);
+	ObjectTypeDB::bind_method(_MD("set_instance_transform", "instance", "transform"), &MultiMesh::set_instance_transform);
+	ObjectTypeDB::bind_method(_MD("get_instance_transform", "instance"), &MultiMesh::get_instance_transform);
+	ObjectTypeDB::bind_method(_MD("set_instance_color", "instance", "color"), &MultiMesh::set_instance_color);
+	ObjectTypeDB::bind_method(_MD("get_instance_color", "instance"), &MultiMesh::get_instance_color);
+	ObjectTypeDB::bind_method(_MD("set_aabb", "visibility_aabb"), &MultiMesh::set_aabb);
+	ObjectTypeDB::bind_method(_MD("get_aabb"), &MultiMesh::get_aabb);
 
-	ClassDB::bind_method(D_METHOD("set_instance_count", "count"), &MultiMesh::set_instance_count);
-	ClassDB::bind_method(D_METHOD("get_instance_count"), &MultiMesh::get_instance_count);
-	ClassDB::bind_method(D_METHOD("set_instance_transform", "instance", "transform"), &MultiMesh::set_instance_transform);
-	ClassDB::bind_method(D_METHOD("get_instance_transform", "instance"), &MultiMesh::get_instance_transform);
-	ClassDB::bind_method(D_METHOD("set_instance_color", "instance", "color"), &MultiMesh::set_instance_color);
-	ClassDB::bind_method(D_METHOD("get_instance_color", "instance"), &MultiMesh::get_instance_color);
-	ClassDB::bind_method(D_METHOD("get_aabb"), &MultiMesh::get_aabb);
+	ObjectTypeDB::bind_method(_MD("generate_aabb"), &MultiMesh::generate_aabb);
 
-	ClassDB::bind_method(D_METHOD("_set_transform_array"), &MultiMesh::_set_transform_array);
-	ClassDB::bind_method(D_METHOD("_get_transform_array"), &MultiMesh::_get_transform_array);
-	ClassDB::bind_method(D_METHOD("_set_color_array"), &MultiMesh::_set_color_array);
-	ClassDB::bind_method(D_METHOD("_get_color_array"), &MultiMesh::_get_color_array);
+	ObjectTypeDB::bind_method(_MD("_set_transform_array"), &MultiMesh::_set_transform_array);
+	ObjectTypeDB::bind_method(_MD("_get_transform_array"), &MultiMesh::_get_transform_array);
+	ObjectTypeDB::bind_method(_MD("_set_color_array"), &MultiMesh::_set_color_array);
+	ObjectTypeDB::bind_method(_MD("_get_color_array"), &MultiMesh::_get_color_array);
 
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "color_format", PROPERTY_HINT_ENUM, "None,Byte,Float"), "set_color_format", "get_color_format");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "transform_format", PROPERTY_HINT_ENUM, "2D,3D"), "set_transform_format", "get_transform_format");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "instance_count", PROPERTY_HINT_RANGE, "0,16384,1"), "set_instance_count", "get_instance_count");
-	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "mesh", PROPERTY_HINT_RESOURCE_TYPE, "Mesh"), "set_mesh", "get_mesh");
-	ADD_PROPERTY(PropertyInfo(Variant::POOL_VECTOR3_ARRAY, "transform_array", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR), "_set_transform_array", "_get_transform_array");
-	ADD_PROPERTY(PropertyInfo(Variant::POOL_COLOR_ARRAY, "color_array", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR), "_set_color_array", "_get_color_array");
-
-	BIND_ENUM_CONSTANT(TRANSFORM_2D);
-	BIND_ENUM_CONSTANT(TRANSFORM_3D);
-
-	BIND_ENUM_CONSTANT(COLOR_NONE);
-	BIND_ENUM_CONSTANT(COLOR_8BIT);
-	BIND_ENUM_CONSTANT(COLOR_FLOAT);
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "instance_count", PROPERTY_HINT_RANGE, "0,16384,1"), _SCS("set_instance_count"), _SCS("get_instance_count"));
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "mesh", PROPERTY_HINT_RESOURCE_TYPE, "Mesh"), _SCS("set_mesh"), _SCS("get_mesh"));
+	ADD_PROPERTY(PropertyInfo(Variant::_AABB, "aabb"), _SCS("set_aabb"), _SCS("get_aabb"));
+	ADD_PROPERTY(PropertyInfo(Variant::VECTOR3_ARRAY, "transform_array", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR), _SCS("_set_transform_array"), _SCS("_get_transform_array"));
+	ADD_PROPERTY(PropertyInfo(Variant::COLOR_ARRAY, "color_array", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR), _SCS("_set_color_array"), _SCS("_get_color_array"));
 }
 
 MultiMesh::MultiMesh() {
 
 	multimesh = VisualServer::get_singleton()->multimesh_create();
-	color_format = COLOR_NONE;
-	transform_format = TRANSFORM_2D;
 }
 
 MultiMesh::~MultiMesh() {

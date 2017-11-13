@@ -34,7 +34,7 @@
 
 class ConcavePolygonShape : public Shape {
 
-	GDCLASS(ConcavePolygonShape, Shape);
+	OBJ_TYPE(ConcavePolygonShape, Shape);
 
 	struct DrawEdge {
 
@@ -66,8 +66,8 @@ protected:
 	virtual Vector<Vector3> _gen_debug_mesh_lines();
 
 public:
-	void set_faces(const PoolVector<Vector3> &p_faces);
-	PoolVector<Vector3> get_faces() const;
+	void set_faces(const DVector<Vector3> &p_faces);
+	DVector<Vector3> get_faces() const;
 
 	ConcavePolygonShape();
 };

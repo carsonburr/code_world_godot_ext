@@ -37,12 +37,12 @@
 
 class AnimationTreePlayer : public Node {
 
-	GDCLASS(AnimationTreePlayer, Node);
+	OBJ_TYPE(AnimationTreePlayer, Node);
 	OBJ_CATEGORY("Animation Nodes");
 
 public:
 	enum AnimationProcessMode {
-		ANIMATION_PROCESS_PHYSICS,
+		ANIMATION_PROCESS_FIXED,
 		ANIMATION_PROCESS_IDLE,
 	};
 
@@ -312,7 +312,7 @@ private:
 	Map<StringName, NodeBase *> node_map;
 
 	// return time left to finish animation
-	float _process_node(const StringName &p_node, AnimationNode **r_prev_anim, float p_time, bool p_seek = false, float p_fallback_weight = 1.0, HashMap<NodePath, float> *p_weights = NULL);
+	float _process_node(const StringName &p_node, AnimationNode **r_prev_anim, float p_step, bool p_seek = false, float p_fallback_weight = 1.0, HashMap<NodePath, float> *p_weights = NULL);
 	void _process_animation(float p_delta);
 	bool reset_request;
 
@@ -321,7 +321,7 @@ private:
 	Track *_find_track(const NodePath &p_path);
 	void _recompute_caches();
 	void _recompute_caches(const StringName &p_node);
-	PoolVector<String> _get_node_list();
+	DVector<String> _get_node_list();
 
 	void _compute_weights(float *p_fallback_weight, HashMap<NodePath, float> *p_weights, float p_coeff, const HashMap<NodePath, bool> *p_filter = NULL, float p_filtered_coeff = 0);
 
@@ -347,7 +347,7 @@ public:
 	void animation_node_set_master_animation(const StringName &p_node, const String &p_master_animation);
 	String animation_node_get_master_animation(const StringName &p_node) const;
 
-	void animation_node_set_filter_path(const StringName &p_node, const NodePath &p_track_path, bool p_filter);
+	void animation_node_set_filter_path(const StringName &p_node, const NodePath &p_filter, bool p_enable);
 	void animation_node_set_get_filtered_paths(const StringName &p_node, List<NodePath> *r_paths) const;
 	bool animation_node_is_path_filtered(const StringName &p_node, const NodePath &p_path) const;
 
@@ -367,7 +367,7 @@ public:
 	float oneshot_node_get_autorestart_delay(const StringName &p_node) const;
 	float oneshot_node_get_autorestart_random_delay(const StringName &p_node) const;
 
-	void oneshot_node_set_mix_mode(const StringName &p_node, bool p_mix);
+	void oneshot_node_set_mix_mode(const StringName &p_node, bool p_enabled);
 	bool oneshot_node_get_mix_mode(const StringName &p_node) const;
 
 	void oneshot_node_start(const StringName &p_node);
@@ -417,19 +417,19 @@ public:
 	void transition_node_set_current(const StringName &p_node, int p_current);
 	int transition_node_get_current(const StringName &p_node) const;
 
-	void node_set_position(const StringName &p_node, const Vector2 &p_pos); //for display
+	void node_set_pos(const StringName &p_node, const Vector2 &p_pos); //for display
 
 	/* GETS */
-	Point2 node_get_position(const StringName &p_node) const; //for display
+	Point2 node_get_pos(const StringName &p_node) const; //for display
 
 	NodeType node_get_type(const StringName &p_node) const;
 
 	void get_node_list(List<StringName> *p_node_list) const;
 	void remove_node(const StringName &p_node);
 
-	Error connect_nodes(const StringName &p_src_node, const StringName &p_dst_node, int p_dst_input);
-	bool are_nodes_connected(const StringName &p_src_node, const StringName &p_dst_node, int p_dst_input) const;
-	void disconnect_nodes(const StringName &p_node, int p_input);
+	Error connect(const StringName &p_src_node, const StringName &p_dst_node, int p_dst_input);
+	bool is_connected(const StringName &p_src_node, const StringName &p_dst_node, int p_input) const;
+	void disconnect(const StringName &p_src_node, int p_input);
 
 	void set_base_path(const NodePath &p_path);
 	NodePath get_base_path() const;

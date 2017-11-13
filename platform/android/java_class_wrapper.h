@@ -38,7 +38,7 @@ class JavaObject;
 
 class JavaClass : public Reference {
 
-	GDCLASS(JavaClass, Reference);
+	OBJ_TYPE(JavaClass, Reference);
 
 	enum ArgumentType {
 
@@ -69,9 +69,9 @@ class JavaClass : public Reference {
 		jmethodID method;
 	};
 
-	_FORCE_INLINE_ static void _convert_to_variant_type(int p_sig, Variant::Type &r_type, float &likelihood) {
+	_FORCE_INLINE_ static void _convert_to_variant_type(int p_sig, Variant::Type &r_type, float &likelyhood) {
 
-		likelihood = 1.0;
+		likelyhood = 1.0;
 		r_type = Variant::NIL;
 
 		switch (p_sig) {
@@ -82,71 +82,71 @@ class JavaClass : public Reference {
 			case ARG_TYPE_BYTE | ARG_NUMBER_CLASS_BIT:
 			case ARG_TYPE_BYTE:
 				r_type = Variant::INT;
-				likelihood = 0.1;
+				likelyhood = 0.1;
 				break;
 			case ARG_TYPE_CHAR | ARG_NUMBER_CLASS_BIT:
 			case ARG_TYPE_CHAR:
 				r_type = Variant::INT;
-				likelihood = 0.2;
+				likelyhood = 0.2;
 				break;
 			case ARG_TYPE_SHORT | ARG_NUMBER_CLASS_BIT:
 			case ARG_TYPE_SHORT:
 				r_type = Variant::INT;
-				likelihood = 0.3;
+				likelyhood = 0.3;
 				break;
 			case ARG_TYPE_INT | ARG_NUMBER_CLASS_BIT:
 			case ARG_TYPE_INT:
 				r_type = Variant::INT;
-				likelihood = 1.0;
+				likelyhood = 1.0;
 				break;
 			case ARG_TYPE_LONG | ARG_NUMBER_CLASS_BIT:
 			case ARG_TYPE_LONG:
 				r_type = Variant::INT;
-				likelihood = 0.5;
+				likelyhood = 0.5;
 				break;
 			case ARG_TYPE_FLOAT | ARG_NUMBER_CLASS_BIT:
 			case ARG_TYPE_FLOAT:
 				r_type = Variant::REAL;
-				likelihood = 1.0;
+				likelyhood = 1.0;
 				break;
 			case ARG_TYPE_DOUBLE | ARG_NUMBER_CLASS_BIT:
 			case ARG_TYPE_DOUBLE:
 				r_type = Variant::REAL;
-				likelihood = 0.5;
+				likelyhood = 0.5;
 				break;
 			case ARG_TYPE_STRING: r_type = Variant::STRING; break;
 			case ARG_TYPE_CLASS: r_type = Variant::OBJECT; break;
 			case ARG_ARRAY_BIT | ARG_TYPE_VOID: r_type = Variant::NIL; break;
 			case ARG_ARRAY_BIT | ARG_TYPE_BOOLEAN: r_type = Variant::ARRAY; break;
 			case ARG_ARRAY_BIT | ARG_TYPE_BYTE:
-				r_type = Variant::POOL_BYTE_ARRAY;
-				likelihood = 1.0;
+				r_type = Variant::RAW_ARRAY;
+				likelyhood = 1.0;
 				break;
 			case ARG_ARRAY_BIT | ARG_TYPE_CHAR:
-				r_type = Variant::POOL_BYTE_ARRAY;
-				likelihood = 0.5;
+				r_type = Variant::RAW_ARRAY;
+				likelyhood = 0.5;
 				break;
 			case ARG_ARRAY_BIT | ARG_TYPE_SHORT:
-				r_type = Variant::POOL_INT_ARRAY;
-				likelihood = 0.3;
+				r_type = Variant::INT_ARRAY;
+				likelyhood = 0.3;
 				break;
 			case ARG_ARRAY_BIT | ARG_TYPE_INT:
-				r_type = Variant::POOL_INT_ARRAY;
-				likelihood = 1.0;
+				r_type = Variant::INT_ARRAY;
+				likelyhood = 1.0;
 				break;
 			case ARG_ARRAY_BIT | ARG_TYPE_LONG:
-				r_type = Variant::POOL_INT_ARRAY;
-				likelihood = 0.5;
+				r_type = Variant::INT_ARRAY;
+				likelyhood = 0.5;
 				break;
 			case ARG_ARRAY_BIT | ARG_TYPE_FLOAT:
-				r_type = Variant::POOL_REAL_ARRAY;
-				likelihood = 1.0;
+				r_type = Variant::REAL_ARRAY;
+				likelyhood = 1.0;
 				break;
 			case ARG_ARRAY_BIT | ARG_TYPE_DOUBLE:
-				r_type = Variant::POOL_REAL_ARRAY;
-				likelihood = 0.5;
+				r_type = Variant::REAL_ARRAY;
+				likelyhood = 0.5;
 				break;
-			case ARG_ARRAY_BIT | ARG_TYPE_STRING: r_type = Variant::POOL_STRING_ARRAY; break;
+			case ARG_ARRAY_BIT | ARG_TYPE_STRING: r_type = Variant::STRING_ARRAY; break;
 			case ARG_ARRAY_BIT | ARG_TYPE_CLASS: r_type = Variant::ARRAY; break;
 		}
 	}
@@ -167,7 +167,7 @@ public:
 
 class JavaObject : public Reference {
 
-	GDCLASS(JavaObject, Reference);
+	OBJ_TYPE(JavaObject, Reference);
 
 	Ref<JavaClass> base_class;
 	friend class JavaClass;
@@ -183,7 +183,7 @@ public:
 
 class JavaClassWrapper : public Object {
 
-	GDCLASS(JavaClassWrapper, Object);
+	OBJ_TYPE(JavaClassWrapper, Object);
 
 	Map<String, Ref<JavaClass> > class_cache;
 	friend class JavaClass;

@@ -42,7 +42,7 @@ void Panel::_notification(int p_what) {
 
 Panel::Panel() {
 
-	set_mouse_filter(MOUSE_FILTER_STOP);
+	set_stop_mouse(true);
 }
 
 Panel::~Panel() {

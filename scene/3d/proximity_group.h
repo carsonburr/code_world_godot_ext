@@ -34,7 +34,7 @@
 
 class ProximityGroup : public Spatial {
 
-	GDCLASS(ProximityGroup, Spatial);
+	OBJ_TYPE(ProximityGroup, Spatial);
 	OBJ_CATEGORY("3D");
 
 public:

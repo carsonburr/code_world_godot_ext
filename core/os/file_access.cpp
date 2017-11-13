@@ -31,8 +31,8 @@
 
 #include "core/io/file_access_pack.h"
 #include "core/io/marshalls.h"
+#include "globals.h"
 #include "os/os.h"
-#include "project_settings.h"
 
 #include "thirdparty/misc/md5.h"
 #include "thirdparty/misc/sha256.h"
@@ -55,7 +55,7 @@ FileAccess *FileAccess::create(AccessType p_access) {
 
 bool FileAccess::exists(const String &p_name) {
 
-	if (PackedData::get_singleton() && PackedData::get_singleton()->has_path(p_name))
+	if (PackedData::get_singleton()->has_path(p_name))
 		return true;
 
 	FileAccess *f = open(p_name, READ);
@@ -135,10 +135,10 @@ String FileAccess::fix_path(const String &p_path) const {
 
 		case ACCESS_RESOURCES: {
 
-			if (ProjectSettings::get_singleton()) {
+			if (Globals::get_singleton()) {
 				if (r_path.begins_with("res://")) {
 
-					String resource_path = ProjectSettings::get_singleton()->get_resource_path();
+					String resource_path = Globals::get_singleton()->get_resource_path();
 					if (resource_path != "") {
 
 						return r_path.replace("res:/", resource_path);
@@ -251,27 +251,6 @@ double FileAccess::get_double() const {
 	m.l = get_64();
 	return m.d;
 };
-
-String FileAccess::get_token() const {
-
-	CharString token;
-
-	CharType c = get_8();
-
-	while (!eof_reached()) {
-
-		if (c <= ' ') {
-			if (!token.empty())
-				break;
-		} else {
-			token.push_back(c);
-		}
-		c = get_8();
-	}
-
-	token.push_back(0);
-	return String::utf8(token.get_data());
-}
 
 String FileAccess::get_line() const {
 
@@ -475,9 +454,9 @@ void FileAccess::store_buffer(const uint8_t *p_src, int p_length) {
 		store_8(p_src[i]);
 }
 
-Vector<uint8_t> FileAccess::get_file_as_array(const String &p_path) {
+Vector<uint8_t> FileAccess::get_file_as_array(const String &p_file) {
 
-	FileAccess *f = FileAccess::open(p_path, READ);
+	FileAccess *f = FileAccess::open(p_file, READ);
 	ERR_FAIL_COND_V(!f, Vector<uint8_t>());
 	Vector<uint8_t> data;
 	data.resize(f->get_len());

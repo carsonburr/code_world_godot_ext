@@ -37,7 +37,7 @@ void register_theora_types() {
 
 	theora_stream_loader = memnew(ResourceFormatLoaderVideoStreamTheora);
 	ResourceLoader::add_resource_format_loader(theora_stream_loader);
-	ClassDB::register_class<VideoStreamTheora>();
+	ObjectTypeDB::register_type<VideoStreamTheora>();
 }
 
 void unregister_theora_types() {

@@ -35,7 +35,7 @@
 
 class UndoRedo : public Object {
 
-	GDCLASS(UndoRedo, Object);
+	OBJ_TYPE(UndoRedo, Object);
 	OBJ_SAVE_TYPE(UndoRedo);
 
 public:
@@ -72,7 +72,6 @@ private:
 		String name;
 		List<Operation> do_ops;
 		List<Operation> undo_ops;
-		uint64_t last_tick;
 	};
 
 	Vector<Action> actions;

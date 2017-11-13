@@ -34,7 +34,7 @@
 
 class SphereShape : public Shape {
 
-	GDCLASS(SphereShape, Shape);
+	OBJ_TYPE(SphereShape, Shape);
 	float radius;
 
 protected:

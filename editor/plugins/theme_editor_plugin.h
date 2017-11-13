@@ -30,18 +30,19 @@
 #ifndef THEME_EDITOR_PLUGIN_H
 #define THEME_EDITOR_PLUGIN_H
 
+#include "scene/gui/button_group.h"
 #include "scene/gui/check_box.h"
 #include "scene/gui/file_dialog.h"
 #include "scene/gui/option_button.h"
 #include "scene/gui/scroll_container.h"
-#include "scene/gui/texture_rect.h"
+#include "scene/gui/texture_frame.h"
 #include "scene/resources/theme.h"
 
 #include "editor/editor_node.h"
 
 class ThemeEditor : public Control {
 
-	GDCLASS(ThemeEditor, Control);
+	OBJ_TYPE(ThemeEditor, Control);
 
 	ScrollContainer *scroll;
 	VBoxContainer *main_vb;
@@ -53,15 +54,14 @@ class ThemeEditor : public Control {
 
 	MenuButton *theme_menu;
 	ConfirmationDialog *add_del_dialog;
-	HBoxContainer *type_hbc;
 	MenuButton *type_menu;
 	LineEdit *type_edit;
-	HBoxContainer *name_hbc;
 	MenuButton *name_menu;
 	LineEdit *name_edit;
 	OptionButton *type_select;
 	Label *type_select_label;
 	Label *name_select_label;
+	Label *dtype_select_label;
 
 	enum PopupMode {
 		POPUP_ADD,
@@ -97,7 +97,7 @@ public:
 
 class ThemeEditorPlugin : public EditorPlugin {
 
-	GDCLASS(ThemeEditorPlugin, EditorPlugin);
+	OBJ_TYPE(ThemeEditorPlugin, EditorPlugin);
 
 	ThemeEditor *theme_editor;
 	EditorNode *editor;

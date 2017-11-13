@@ -36,7 +36,7 @@
 
 class SpinBox : public Range {
 
-	GDCLASS(SpinBox, Range);
+	OBJ_TYPE(SpinBox, Range);
 
 	LineEdit *line_edit;
 	int last_w;
@@ -49,7 +49,7 @@ class SpinBox : public Range {
 	String prefix;
 	String suffix;
 
-	void _line_edit_input(const Ref<InputEvent> &p_event);
+	void _line_edit_input(const InputEvent &p_event);
 
 	struct Drag {
 		float base_val;
@@ -62,7 +62,7 @@ class SpinBox : public Range {
 	void _line_edit_focus_exit();
 
 protected:
-	void _gui_input(const Ref<InputEvent> &p_event);
+	void _input_event(const InputEvent &p_event);
 
 	void _notification(int p_what);
 

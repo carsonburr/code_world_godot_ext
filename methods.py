@@ -123,7 +123,7 @@ def build_glsl_header(filename):
                 uline = line[:line.lower().find("//")]
                 uline = uline[uline.find("uniform") + len("uniform"):]
                 uline = uline.replace(";", "")
-                uline = uline.replace("{", "").strip()
+                uline = uline.replace("{", "")
                 lines = uline.split(",")
                 for x in lines:
 
@@ -201,12 +201,12 @@ def build_glsl_header(filename):
     out_file_base = out_file
     out_file_base = out_file_base[out_file_base.rfind("/") + 1:]
     out_file_base = out_file_base[out_file_base.rfind("\\") + 1:]
-#	print("out file "+out_file+" base " +out_file_base)
+#   print("out file "+out_file+" base " +out_file_base)
     out_file_ifdef = out_file_base.replace(".", "_").upper()
     fd.write("#ifndef " + out_file_ifdef + "\n")
     fd.write("#define " + out_file_ifdef + "\n")
 
-    out_file_class = out_file_base.replace(".glsl.h", "").title().replace("_", "").replace(".", "") + "ShaderGL"
+    out_file_class = out_file_base.replace(".glsl.gen.h", "").title().replace("_", "").replace(".", "") + "ShaderGL"
     fd.write("\n\n")
     fd.write("#include \"drivers/opengl/shader_gl.h\"\n\n\n")
     fd.write("class " + out_file_class + " : public ShaderGL {\n\n")
@@ -229,7 +229,6 @@ def build_glsl_header(filename):
 
         fd.write("\t_FORCE_INLINE_ void set_conditional(Conditionals p_conditional,bool p_enable)  {  _set_conditional(p_conditional,p_enable); }\n\n")
     fd.write("\t#define _FU if (get_uniform(p_uniform)<0) return; ERR_FAIL_COND( get_active()!=this );\n\n ")
-    fd.write("\t_FORCE_INLINE_ void set_uniform(Uniforms p_uniform, bool p_value) { _FU glUniform1i(get_uniform(p_uniform),p_value?1:0); }\n\n")
     fd.write("\t_FORCE_INLINE_ void set_uniform(Uniforms p_uniform, float p_value) { _FU glUniform1f(get_uniform(p_uniform),p_value); }\n\n")
     fd.write("\t_FORCE_INLINE_ void set_uniform(Uniforms p_uniform, double p_value) { _FU glUniform1f(get_uniform(p_uniform),p_value); }\n\n")
     fd.write("\t_FORCE_INLINE_ void set_uniform(Uniforms p_uniform, uint8_t p_value) { _FU glUniform1i(get_uniform(p_uniform),p_value); }\n\n")
@@ -245,86 +244,85 @@ def build_glsl_header(filename):
     fd.write("\t_FORCE_INLINE_ void set_uniform(Uniforms p_uniform, const Color& p_color) { _FU GLfloat col[4]={p_color.r,p_color.g,p_color.b,p_color.a}; glUniform4fv(get_uniform(p_uniform),1,col); }\n\n")
     fd.write("\t_FORCE_INLINE_ void set_uniform(Uniforms p_uniform, const Vector2& p_vec2) { _FU GLfloat vec2[2]={p_vec2.x,p_vec2.y}; glUniform2fv(get_uniform(p_uniform),1,vec2); }\n\n")
     fd.write("\t_FORCE_INLINE_ void set_uniform(Uniforms p_uniform, const Vector3& p_vec3) { _FU GLfloat vec3[3]={p_vec3.x,p_vec3.y,p_vec3.z}; glUniform3fv(get_uniform(p_uniform),1,vec3); }\n\n")
-    fd.write("\t_FORCE_INLINE_ void set_uniform(Uniforms p_uniform, const Plane& p_plane) { _FU GLfloat plane[4]={p_plane.normal.x,p_plane.normal.y,p_plane.normal.z,p_plane.d}; glUniform4fv(get_uniform(p_uniform),1,plane); }\n\n")
     fd.write("\t_FORCE_INLINE_ void set_uniform(Uniforms p_uniform, float p_a, float p_b) { _FU glUniform2f(get_uniform(p_uniform),p_a,p_b); }\n\n")
     fd.write("\t_FORCE_INLINE_ void set_uniform(Uniforms p_uniform, float p_a, float p_b, float p_c) { _FU glUniform3f(get_uniform(p_uniform),p_a,p_b,p_c); }\n\n")
     fd.write("\t_FORCE_INLINE_ void set_uniform(Uniforms p_uniform, float p_a, float p_b, float p_c, float p_d) { _FU glUniform4f(get_uniform(p_uniform),p_a,p_b,p_c,p_d); }\n\n")
 
     fd.write("""\t_FORCE_INLINE_ void set_uniform(Uniforms p_uniform, const Transform& p_transform) {  _FU
 
-		const Transform &tr = p_transform;
+        const Transform &tr = p_transform;
 
-		GLfloat matrix[16]={ /* build a 16x16 matrix */
-			tr.basis.elements[0][0],
-			tr.basis.elements[1][0],
-			tr.basis.elements[2][0],
-			0,
-			tr.basis.elements[0][1],
-			tr.basis.elements[1][1],
-			tr.basis.elements[2][1],
-			0,
-			tr.basis.elements[0][2],
-			tr.basis.elements[1][2],
-			tr.basis.elements[2][2],
-			0,
-			tr.origin.x,
-			tr.origin.y,
-			tr.origin.z,
-			1
-		};
-
-
-	glUniformMatrix4fv(get_uniform(p_uniform),1,false,matrix);
+        GLfloat matrix[16]={ /* build a 16x16 matrix */
+            tr.basis.elements[0][0],
+            tr.basis.elements[1][0],
+            tr.basis.elements[2][0],
+            0,
+            tr.basis.elements[0][1],
+            tr.basis.elements[1][1],
+            tr.basis.elements[2][1],
+            0,
+            tr.basis.elements[0][2],
+            tr.basis.elements[1][2],
+            tr.basis.elements[2][2],
+            0,
+            tr.origin.x,
+            tr.origin.y,
+            tr.origin.z,
+            1
+        };
 
 
-	}
-
-	""")
-
-    fd.write("""\t_FORCE_INLINE_ void set_uniform(Uniforms p_uniform, const Transform2D& p_transform) {  _FU
-
-		const Transform2D &tr = p_transform;
-
-		GLfloat matrix[16]={ /* build a 16x16 matrix */
-			tr.elements[0][0],
-			tr.elements[0][1],
-			0,
-			0,
-			tr.elements[1][0],
-			tr.elements[1][1],
-			0,
-			0,
-			0,
-			0,
-			1,
-			0,
-			tr.elements[2][0],
-			tr.elements[2][1],
-			0,
-			1
-		};
+    glUniformMatrix4fv(get_uniform(p_uniform),1,false,matrix);
 
 
-	glUniformMatrix4fv(get_uniform(p_uniform),1,false,matrix);
+    }
+
+    """)
+
+    fd.write("""\t_FORCE_INLINE_ void set_uniform(Uniforms p_uniform, const Matrix32& p_transform) {  _FU
+
+        const Matrix32 &tr = p_transform;
+
+        GLfloat matrix[16]={ /* build a 16x16 matrix */
+            tr.elements[0][0],
+            tr.elements[0][1],
+            0,
+            0,
+            tr.elements[1][0],
+            tr.elements[1][1],
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            tr.elements[2][0],
+            tr.elements[2][1],
+            0,
+            1
+        };
 
 
-	}
+    glUniformMatrix4fv(get_uniform(p_uniform),1,false,matrix);
 
-	""")
+
+    }
+
+    """)
 
     fd.write("""\t_FORCE_INLINE_ void set_uniform(Uniforms p_uniform, const CameraMatrix& p_matrix) {  _FU
 
-		GLfloat matrix[16];
+        GLfloat matrix[16];
 
-		for (int i=0;i<4;i++) {
-			for (int j=0;j<4;j++) {
+        for (int i=0;i<4;i++) {
+            for (int j=0;j<4;j++) {
 
-				matrix[i*4+j]=p_matrix.matrix[i][j];
-			}
-		}
+                matrix[i*4+j]=p_matrix.matrix[i][j];
+            }
+        }
 
-		glUniformMatrix4fv(get_uniform(p_uniform),1,false,matrix);
-	}; """)
+        glUniformMatrix4fv(get_uniform(p_uniform),1,false,matrix);
+    }; """)
 
     fd.write("\n\n#undef _FU\n\n\n")
 
@@ -496,7 +494,7 @@ def build_hlsl_dx9_header(filename):
     out_file_base = out_file
     out_file_base = out_file_base[out_file_base.rfind("/") + 1:]
     out_file_base = out_file_base[out_file_base.rfind("\\") + 1:]
-#	print("out file "+out_file+" base " +out_file_base)
+#   print("out file "+out_file+" base " +out_file_base)
     out_file_ifdef = out_file_base.replace(".", "_").upper()
     fd.write("#ifndef " + out_file_ifdef + "\n")
     fd.write("#define " + out_file_ifdef + "\n")
@@ -545,46 +543,46 @@ def build_hlsl_dx9_header(filename):
 
     fd.write("""\t_FORCE_INLINE_ void set_uniform(Uniforms p_uniform, const Transform& p_transform) {  _FU
 
-		const Transform &tr = p_transform;
+        const Transform &tr = p_transform;
 
-		float matrix[16]={ /* build a 16x16 matrix */
-			tr.basis.elements[0][0],
-			tr.basis.elements[0][1],
-			tr.basis.elements[0][2],
-			tr.origin.x,
-			tr.basis.elements[1][0],
-			tr.basis.elements[1][1],
-			tr.basis.elements[1][2],
-			tr.origin.y,
-			tr.basis.elements[2][0],
-			tr.basis.elements[2][1],
-			tr.basis.elements[2][2],
-			tr.origin.z,
-			0,
-			0,
-			0,
-			1
-		};
+        float matrix[16]={ /* build a 16x16 matrix */
+            tr.basis.elements[0][0],
+            tr.basis.elements[0][1],
+            tr.basis.elements[0][2],
+            tr.origin.x,
+            tr.basis.elements[1][0],
+            tr.basis.elements[1][1],
+            tr.basis.elements[1][2],
+            tr.origin.y,
+            tr.basis.elements[2][0],
+            tr.basis.elements[2][1],
+            tr.basis.elements[2][2],
+            tr.origin.z,
+            0,
+            0,
+            0,
+            1
+        };
 
-		set_uniformfv(p_uniform,&matrix[0],4);
+        set_uniformfv(p_uniform,&matrix[0],4);
 
-	}
+    }
 
-	""")
+    """)
 
     fd.write("""\t_FORCE_INLINE_ void set_uniform(Uniforms p_uniform, const CameraMatrix& p_matrix) {  _FU
 
-		float matrix[16];
+        float matrix[16];
 
-		for (int i=0;i<4;i++) {
-			for (int j=0;j<4;j++) {
+        for (int i=0;i<4;i++) {
+            for (int j=0;j<4;j++) {
 
-				matrix[i*4+j]=p_matrix.matrix[j][i];
-			}
-		}
+                matrix[i*4+j]=p_matrix.matrix[j][i];
+            }
+        }
 
-		set_uniformfv(p_uniform,&matrix[0],4);
-	}; """)
+        set_uniformfv(p_uniform,&matrix[0],4);
+    }; """)
 
     fd.write("\n\n#undef _FU\n\n\n")
 
@@ -658,7 +656,6 @@ class LegacyGLHeaderStruct:
         self.fragment_lines = []
         self.uniforms = []
         self.attributes = []
-        self.feedbacks = []
         self.fbos = []
         self.conditionals = []
         self.enums = {}
@@ -724,7 +721,7 @@ def include_file_in_legacygl_header(filename, header_data, depth):
                 enumbase = ifdefline[:ifdefline.find("_EN_")]
                 ifdefline = ifdefline.replace("_EN_", "_")
                 line = line.replace("_EN_", "_")
-#				print(enumbase+":"+ifdefline);
+#               print(enumbase+":"+ifdefline);
                 if (enumbase not in header_data.enums):
                     header_data.enums[enumbase] = []
                 if (ifdefline not in header_data.enums[enumbase]):
@@ -757,29 +754,7 @@ def include_file_in_legacygl_header(filename, header_data, depth):
                     header_data.texunits += [(x, texunit)]
                     header_data.texunit_names += [x]
 
-        elif (line.find("uniform") != -1 and line.lower().find("ubo:") != -1):
-            # uniform buffer object
-            ubostr = line[line.find(":") + 1:].strip()
-            ubo = str(int(ubostr))
-            uline = line[:line.lower().find("//")]
-            uline = uline[uline.find("uniform") + len("uniform"):]
-            uline = uline.replace("highp", "")
-            uline = uline.replace(";", "")
-            uline = uline.replace("{", "").strip()
-            lines = uline.split(",")
-            for x in lines:
-
-                x = x.strip()
-                x = x[x.rfind(" ") + 1:]
-                if (x.find("[") != -1):
-                    # unfiorm array
-                    x = x[:x.find("[")]
-
-                if (not x in header_data.ubo_names):
-                    header_data.ubos += [(x, ubo)]
-                    header_data.ubo_names += [x]
-
-        elif (line.find("uniform") != -1 and line.find("{") == -1 and line.find(";") != -1):
+        elif (line.find("uniform") != -1):
             uline = line.replace("uniform", "")
             uline = uline.replace(";", "")
             lines = uline.split(",")
@@ -794,7 +769,7 @@ def include_file_in_legacygl_header(filename, header_data, depth):
                 if (not x in header_data.uniforms):
                     header_data.uniforms += [x]
 
-        if (line.strip().find("attribute ") == 0 and line.find("attrib:") != -1):
+        if ((line.strip().find("in ") == 0 or line.strip().find("attribute ") == 0) and line.find("attrib:") != -1):
             uline = line.replace("in ", "")
             uline = uline.replace("attribute ", "")
             uline = uline.replace("highp ", "")
@@ -807,19 +782,6 @@ def include_file_in_legacygl_header(filename, header_data, depth):
                     name = name.strip()
                     bind = bind.replace("attrib:", "").strip()
                     header_data.attributes += [(name, bind)]
-
-        if (line.strip().find("out ") == 0 and line.find("tfb:") != -1):
-            uline = line.replace("out ", "")
-            uline = uline.replace("highp ", "")
-            uline = uline.replace(";", "")
-            uline = uline[uline.find(" "):].strip()
-
-            if (uline.find("//") != -1):
-                name, bind = uline.split("//")
-                if (bind.find("tfb:") != -1):
-                    name = name.strip()
-                    bind = bind.replace("tfb:", "").strip()
-                    header_data.feedbacks += [(name, bind)]
 
         line = line.replace("\r", "")
         line = line.replace("\n", "")
@@ -855,7 +817,7 @@ def build_legacygl_header(filename, include, class_suffix, output_attribs):
     out_file_base = out_file
     out_file_base = out_file_base[out_file_base.rfind("/") + 1:]
     out_file_base = out_file_base[out_file_base.rfind("\\") + 1:]
-#	print("out file "+out_file+" base " +out_file_base)
+#   print("out file "+out_file+" base " +out_file_base)
     out_file_ifdef = out_file_base.replace(".", "_").upper()
     fd.write("#ifndef " + out_file_ifdef + class_suffix + "_120\n")
     fd.write("#define " + out_file_ifdef + class_suffix + "_120\n")
@@ -906,79 +868,79 @@ def build_legacygl_header(filename, include, class_suffix, output_attribs):
 
     fd.write("""\t_FORCE_INLINE_ void set_uniform(Uniforms p_uniform, const Transform& p_transform) {  _FU
 
-		const Transform &tr = p_transform;
+        const Transform &tr = p_transform;
 
-		GLfloat matrix[16]={ /* build a 16x16 matrix */
-			tr.basis.elements[0][0],
-			tr.basis.elements[1][0],
-			tr.basis.elements[2][0],
-			0,
-			tr.basis.elements[0][1],
-			tr.basis.elements[1][1],
-			tr.basis.elements[2][1],
-			0,
-			tr.basis.elements[0][2],
-			tr.basis.elements[1][2],
-			tr.basis.elements[2][2],
-			0,
-			tr.origin.x,
-			tr.origin.y,
-			tr.origin.z,
-			1
-		};
-
-
-	glUniformMatrix4fv(get_uniform(p_uniform),1,false,matrix);
+        GLfloat matrix[16]={ /* build a 16x16 matrix */
+            tr.basis.elements[0][0],
+            tr.basis.elements[1][0],
+            tr.basis.elements[2][0],
+            0,
+            tr.basis.elements[0][1],
+            tr.basis.elements[1][1],
+            tr.basis.elements[2][1],
+            0,
+            tr.basis.elements[0][2],
+            tr.basis.elements[1][2],
+            tr.basis.elements[2][2],
+            0,
+            tr.origin.x,
+            tr.origin.y,
+            tr.origin.z,
+            1
+        };
 
 
-	}
-
-	""")
-
-    fd.write("""\t_FORCE_INLINE_ void set_uniform(Uniforms p_uniform, const Transform2D& p_transform) {  _FU
-
-		const Transform2D &tr = p_transform;
-
-		GLfloat matrix[16]={ /* build a 16x16 matrix */
-			tr.elements[0][0],
-			tr.elements[0][1],
-			0,
-			0,
-			tr.elements[1][0],
-			tr.elements[1][1],
-			0,
-			0,
-			0,
-			0,
-			1,
-			0,
-			tr.elements[2][0],
-			tr.elements[2][1],
-			0,
-			1
-		};
+    glUniformMatrix4fv(get_uniform(p_uniform),1,false,matrix);
 
 
-	glUniformMatrix4fv(get_uniform(p_uniform),1,false,matrix);
+    }
+
+    """)
+
+    fd.write("""\t_FORCE_INLINE_ void set_uniform(Uniforms p_uniform, const Matrix32& p_transform) {  _FU
+
+        const Matrix32 &tr = p_transform;
+
+        GLfloat matrix[16]={ /* build a 16x16 matrix */
+            tr.elements[0][0],
+            tr.elements[0][1],
+            0,
+            0,
+            tr.elements[1][0],
+            tr.elements[1][1],
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            tr.elements[2][0],
+            tr.elements[2][1],
+            0,
+            1
+        };
 
 
-	}
+    glUniformMatrix4fv(get_uniform(p_uniform),1,false,matrix);
 
-	""")
+
+    }
+
+    """)
 
     fd.write("""\t_FORCE_INLINE_ void set_uniform(Uniforms p_uniform, const CameraMatrix& p_matrix) {  _FU
 
-		GLfloat matrix[16];
+        GLfloat matrix[16];
 
-		for (int i=0;i<4;i++) {
-			for (int j=0;j<4;j++) {
+        for (int i=0;i<4;i++) {
+            for (int j=0;j<4;j++) {
 
-				matrix[i*4+j]=p_matrix.matrix[i][j];
-			}
-		}
+                matrix[i*4+j]=p_matrix.matrix[i][j];
+            }
+        }
 
-		glUniformMatrix4fv(get_uniform(p_uniform),1,false,matrix);
-	}; """)
+        glUniformMatrix4fv(get_uniform(p_uniform),1,false,matrix);
+    }; """)
 
     fd.write("\n\n#undef _FU\n\n\n")
 
@@ -998,10 +960,10 @@ def build_legacygl_header(filename, include, class_suffix, output_attribs):
             x = header_data.enums[xv]
             bits = 1
             amt = len(x)
-#			print(x)
+#           print(x)
             while(2**bits < amt):
                 bits += 1
-#			print("amount: "+str(amt)+" bits "+str(bits));
+#           print("amount: "+str(amt)+" bits "+str(bits));
             strs = "{"
             for i in range(amt):
                 strs += "\"#define " + x[i] + "\\n\","
@@ -1026,15 +988,16 @@ def build_legacygl_header(filename, include, class_suffix, output_attribs):
             fd.write("\t\t\t{" + x["set_mask"] + "," + x["clear_mask"] + "},\n")
 
         fd.write("\t\t};\n\n")
+    else:
+        fd.write("\t\tstatic const Enum *_enums=NULL;\n")
+        fd.write("\t\tstatic const EnumValue *_enum_values=NULL;\n")
 
-    conditionals_found = []
     if (len(header_data.conditionals)):
 
         fd.write("\t\tstatic const char* _conditional_strings[]={\n")
         if (len(header_data.conditionals)):
             for x in header_data.conditionals:
                 fd.write("\t\t\t\"#define " + x + "\\n\",\n")
-                conditionals_found.append(x)
         fd.write("\t\t};\n\n")
     else:
         fd.write("\t\tstatic const char **_conditional_strings=NULL;\n")
@@ -1059,25 +1022,6 @@ def build_legacygl_header(filename, include, class_suffix, output_attribs):
         else:
             fd.write("\t\tstatic AttributePair *_attribute_pairs=NULL;\n")
 
-    feedback_count = 0
-
-    if (len(header_data.feedbacks)):
-
-        fd.write("\t\tstatic const Feedback _feedbacks[]={\n")
-        for x in header_data.feedbacks:
-            name = x[0]
-            cond = x[1]
-            if (cond in conditionals_found):
-                fd.write("\t\t\t{\"" + name + "\"," + str(conditionals_found.index(cond)) + "},\n")
-            else:
-                fd.write("\t\t\t{\"" + name + "\",-1},\n")
-
-            feedback_count += 1
-
-        fd.write("\t\t};\n\n")
-    else:
-        fd.write("\t\tstatic const Feedback* _feedbacks=NULL;\n")
-
     if (len(header_data.texunits)):
         fd.write("\t\tstatic TexUnitPair _texunit_pairs[]={\n")
         for x in header_data.texunits:
@@ -1085,14 +1029,6 @@ def build_legacygl_header(filename, include, class_suffix, output_attribs):
         fd.write("\t\t};\n\n")
     else:
         fd.write("\t\tstatic TexUnitPair *_texunit_pairs=NULL;\n")
-
-    if (len(header_data.ubos)):
-        fd.write("\t\tstatic UBOPair _ubo_pairs[]={\n")
-        for x in header_data.ubos:
-            fd.write("\t\t\t{\"" + x[0] + "\"," + x[1] + "},\n")
-        fd.write("\t\t};\n\n")
-    else:
-        fd.write("\t\tstatic UBOPair *_ubo_pairs=NULL;\n")
 
     fd.write("\t\tstatic const char _vertex_code[]={\n")
     for x in header_data.vertex_lines:
@@ -1115,9 +1051,9 @@ def build_legacygl_header(filename, include, class_suffix, output_attribs):
     fd.write("\t\tstatic const int _fragment_code_start=" + str(header_data.fragment_offset) + ";\n")
 
     if output_attribs:
-        fd.write("\t\tsetup(_conditional_strings," + str(len(header_data.conditionals)) + ",_uniform_strings," + str(len(header_data.uniforms)) + ",_attribute_pairs," + str(len(header_data.attributes)) + ", _texunit_pairs," + str(len(header_data.texunits)) + ",_ubo_pairs," + str(len(header_data.ubos)) + ",_feedbacks," + str(feedback_count) + ",_vertex_code,_fragment_code,_vertex_code_start,_fragment_code_start);\n")
+        fd.write("\t\tsetup(_conditional_strings," + str(len(header_data.conditionals)) + ",_uniform_strings," + str(len(header_data.uniforms)) + ",_attribute_pairs," + str(len(header_data.attributes)) + ", _texunit_pairs," + str(len(header_data.texunits)) + ",_vertex_code,_fragment_code,_vertex_code_start,_fragment_code_start);\n")
     else:
-        fd.write("\t\tsetup(_conditional_strings," + str(len(header_data.conditionals)) + ",_uniform_strings," + str(len(header_data.uniforms)) + ",_texunit_pairs," + str(len(header_data.texunits)) + ",_enums," + str(len(header_data.enums)) + ",_enum_values," + str(enum_value_count) + ",_ubo_pairs," + str(len(header_data.ubos)) + ",_feedbacks," + str(feedback_count) + ",_vertex_code,_fragment_code,_vertex_code_start,_fragment_code_start);\n")
+        fd.write("\t\tsetup(_conditional_strings," + str(len(header_data.conditionals)) + ",_uniform_strings," + str(len(header_data.uniforms)) + ",_texunit_pairs," + str(len(header_data.texunits)) + ",_enums," + str(len(header_data.enums)) + ",_enum_values," + str(enum_value_count) + ",_vertex_code,_fragment_code,_vertex_code_start,_fragment_code_start);\n")
 
     fd.write("\t};\n\n")
 
@@ -1143,10 +1079,10 @@ def build_legacygl_headers(target, source, env):
     return 0
 
 
-def build_gles3_headers(target, source, env):
+def build_gles2_headers(target, source, env):
 
     for x in source:
-        build_legacygl_header(str(x), include="drivers/gles3/shader_gles3.h", class_suffix="GLES3", output_attribs=True)
+        build_legacygl_header(str(x), include="drivers/gles2/shader_gles2.h", class_suffix="GLES2", output_attribs=True)
 
 
 def update_version():
@@ -1169,20 +1105,6 @@ def update_version():
     f.write("#define VERSION_STATUS " + str(version.status) + "\n")
     import datetime
     f.write("#define VERSION_YEAR " + str(datetime.datetime.now().year) + "\n")
-    f.close()
-
-    fhash = open("core/version_hash.gen.h", "w")
-    githash = ""
-    if os.path.isfile(".git/HEAD"):
-        head = open(".git/HEAD", "r").readline().strip()
-        if head.startswith("ref: "):
-            head = ".git/" + head[5:]
-            if os.path.isfile(head):
-                githash = open(head, "r").readline().strip()
-        else:
-            githash = head
-    fhash.write("#define VERSION_HASH \"" + githash + "\"")
-    fhash.close()
 
 
 def parse_cg_file(fname, uniforms, sizes, conditionals):
@@ -1265,9 +1187,7 @@ def detect_modules():
     register_cpp = ""
     unregister_cpp = ""
 
-    files = glob.glob("modules/*")
-    files.sort()  # so register_module_types does not change that often, and also plugins are registered in alphabetic order
-    for x in files:
+    for x in glob.glob("modules/*"):
         if (not os.path.isdir(x)):
             continue
         x = x.replace("modules/", "")  # rest of world
@@ -1333,31 +1253,31 @@ def win32_spawn(sh, escape, cmd, args, env):
 
 """
 def win32_spawn(sh, escape, cmd, args, spawnenv):
-	import win32file
-	import win32event
-	import win32process
-	import win32security
-	for var in spawnenv:
-		spawnenv[var] = spawnenv[var].encode('ascii', 'replace')
+    import win32file
+    import win32event
+    import win32process
+    import win32security
+    for var in spawnenv:
+        spawnenv[var] = spawnenv[var].encode('ascii', 'replace')
 
-	sAttrs = win32security.SECURITY_ATTRIBUTES()
-	StartupInfo = win32process.STARTUPINFO()
-	newargs = ' '.join(map(escape, args[1:]))
-	cmdline = cmd + " " + newargs
+    sAttrs = win32security.SECURITY_ATTRIBUTES()
+    StartupInfo = win32process.STARTUPINFO()
+    newargs = ' '.join(map(escape, args[1:]))
+    cmdline = cmd + " " + newargs
 
-	# check for any special operating system commands
-	if cmd == 'del':
-		for arg in args[1:]:
-			win32file.DeleteFile(arg)
-		exit_code = 0
-	else:
-		# otherwise execute the command.
-		hProcess, hThread, dwPid, dwTid = win32process.CreateProcess(None, cmdline, None, None, 1, 0, spawnenv, None, StartupInfo)
-		win32event.WaitForSingleObject(hProcess, win32event.INFINITE)
-		exit_code = win32process.GetExitCodeProcess(hProcess)
-		win32file.CloseHandle(hProcess);
-		win32file.CloseHandle(hThread);
-	return exit_code
+    # check for any special operating system commands
+    if cmd == 'del':
+        for arg in args[1:]:
+            win32file.DeleteFile(arg)
+        exit_code = 0
+    else:
+        # otherwise execute the command.
+        hProcess, hThread, dwPid, dwTid = win32process.CreateProcess(None, cmdline, None, None, 1, 0, spawnenv, None, StartupInfo)
+        win32event.WaitForSingleObject(hProcess, win32event.INFINITE)
+        exit_code = win32process.GetExitCodeProcess(hProcess)
+        win32file.CloseHandle(hProcess);
+        win32file.CloseHandle(hThread);
+    return exit_code
 """
 
 def android_add_flat_dir(self, dir):
@@ -1524,26 +1444,23 @@ def split_lib(self, libname):
 def save_active_platforms(apnames, ap):
 
     for x in ap:
-        names = ['logo']
-        if os.path.isfile(x + "/run_icon.png"):
-            names.append('run_icon')
-
-        for name in names:
-            pngf = open(x + "/" + name + ".png", "rb")
+        pth = x + "/logo.png"
+#       print("open path: "+pth)
+        pngf = open(pth, "rb")
+        b = pngf.read(1)
+        str = " /* AUTOGENERATED FILE, DO NOT EDIT */ \n"
+        str += " static const unsigned char _" + x[9:] + "_logo[]={"
+        while(len(b) == 1):
+            str += hex(ord(b))
             b = pngf.read(1)
-            str = " /* AUTOGENERATED FILE, DO NOT EDIT */ \n"
-            str += " static const unsigned char _" + x[9:] + "_" + name + "[]={"
-            while(len(b) == 1):
-                str += hex(ord(b))
-                b = pngf.read(1)
-                if (len(b) == 1):
-                    str += ","
+            if (len(b) == 1):
+                str += ","
 
-            str += "};\n"
+        str += "};\n"
 
-            wf = x + "/" + name + ".gen.h"
-            pngw = open(wf, "w")
-            pngw.write(str)
+        wf = x + "/logo.gen.h"
+        logow = open(wf, "w")
+        logow.write(str)
 
 
 def no_verbose(sys, env):
@@ -1580,7 +1497,6 @@ def no_verbose(sys, env):
     env.Append(LINKCOMSTR=[link_program_message])
     env.Append(JARCOMSTR=[java_library_message])
     env.Append(JAVACCOMSTR=[java_compile_source_message])
-
 
 def detect_visual_c_compiler_version(tools_env):
     # tools_env is the variable scons uses to call tools that execute tasks, SCons's env['ENV'] that executes tasks...
@@ -1688,7 +1604,6 @@ def find_visual_c_batch_file(env):
     (host_platform, target_platform,req_target_platform) = get_host_target(env)
     return find_batch_file(env, version, host_platform, target_platform)[0]
 
-
 def generate_vs_project(env, num_jobs):
     batch_file = find_visual_c_batch_file(env)
     if batch_file:
@@ -1710,9 +1625,9 @@ def generate_vs_project(env, num_jobs):
         env.AddToVSProject(env.servers_sources)
         env.AddToVSProject(env.editor_sources)
 
-        env['MSVSBUILDCOM'] = build_commandline('scons --directory="$(ProjectDir)" platform=windows target=$(Configuration) tools=!tools! -j' + str(num_jobs))
-        env['MSVSREBUILDCOM'] = build_commandline('scons --directory="$(ProjectDir)" platform=windows target=$(Configuration) tools=!tools! vsproj=yes -j' + str(num_jobs))
-        env['MSVSCLEANCOM'] = build_commandline('scons --directory="$(ProjectDir)" --clean platform=windows target=$(Configuration) tools=!tools! -j' + str(num_jobs))
+        env['MSVSBUILDCOM'] = build_commandline('scons --directory=$(ProjectDir) platform=windows target=$(Configuration) tools=!tools! -j' + str(num_jobs))
+        env['MSVSREBUILDCOM'] = build_commandline('scons --directory=$(ProjectDir) platform=windows target=$(Configuration) tools=!tools! vsproj=yes -j' + str(num_jobs))
+        env['MSVSCLEANCOM'] = build_commandline('scons --directory=$(ProjectDir) --clean platform=windows target=$(Configuration) tools=!tools! -j' + str(num_jobs))
 
         # This version information (Win32, x64, Debug, Release, Release_Debug seems to be
         # required for Visual Studio to understand that it needs to generate an NMAKE

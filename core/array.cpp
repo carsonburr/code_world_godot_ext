@@ -28,7 +28,6 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 #include "array.h"
-
 #include "hashfuncs.h"
 #include "object.h"
 #include "variant.h"
@@ -38,6 +37,7 @@ struct ArrayPrivate {
 
 	SafeRefCount refcount;
 	Vector<Variant> array;
+	bool shared;
 };
 
 void Array::_ref(const Array &p_from) const {
@@ -47,15 +47,28 @@ void Array::_ref(const Array &p_from) const {
 	ERR_FAIL_COND(!_fp); // should NOT happen.
 
 	if (_fp == _p)
-		return; // whatever it is, nothing to do here move along
+		return; //wathever it is, nothing to do here move along
 
 	bool success = _fp->refcount.ref();
 
-	ERR_FAIL_COND(!success); // should really not happen either
+	ERR_FAIL_COND(!success); //should really not happen either
 
 	_unref();
 
-	_p = p_from._p;
+	if (_fp->shared) {
+
+		_p = p_from._p;
+
+	} else {
+
+		_p = memnew(ArrayPrivate);
+		_p->shared = false;
+		_p->refcount.init();
+		_p->array = _fp->array;
+
+		if (_fp->refcount.unref())
+			memdelete(_fp);
+	}
 }
 
 void Array::_unref() const {
@@ -90,6 +103,11 @@ bool Array::empty() const {
 void Array::clear() {
 
 	_p->array.clear();
+}
+
+bool Array::is_shared() const {
+
+	return _p->shared;
 }
 
 bool Array::operator==(const Array &p_array) const {
@@ -210,17 +228,6 @@ const Variant &Array::get(int p_idx) const {
 	return operator[](p_idx);
 }
 
-Array Array::duplicate() const {
-
-	Array new_arr;
-	int element_count = size();
-	new_arr.resize(element_count);
-	for (int i = 0; i < element_count; i++) {
-		new_arr[i] = get(i);
-	}
-
-	return new_arr;
-}
 struct _ArrayVariantSort {
 
 	_FORCE_INLINE_ bool operator()(const Variant &p_l, const Variant &p_r) const {
@@ -233,10 +240,9 @@ struct _ArrayVariantSort {
 	}
 };
 
-Array &Array::sort() {
+void Array::sort() {
 
 	_p->array.sort_custom<_ArrayVariantSort>();
-	return *this;
 }
 
 struct _ArrayVariantSortCustom {
@@ -254,21 +260,19 @@ struct _ArrayVariantSortCustom {
 		return res;
 	}
 };
-Array &Array::sort_custom(Object *p_obj, const StringName &p_function) {
+void Array::sort_custom(Object *p_obj, const StringName &p_function) {
 
-	ERR_FAIL_NULL_V(p_obj, *this);
+	ERR_FAIL_NULL(p_obj);
 
 	SortArray<Variant, _ArrayVariantSortCustom> avs;
 	avs.compare.obj = p_obj;
 	avs.compare.func = p_function;
 	avs.sort(_p->array.ptr(), _p->array.size());
-	return *this;
 }
 
-Array &Array::invert() {
+void Array::invert() {
 
 	_p->array.invert();
-	return *this;
 }
 
 void Array::push_front(const Variant &p_value) {
@@ -276,25 +280,15 @@ void Array::push_front(const Variant &p_value) {
 	_p->array.insert(0, p_value);
 }
 
-Variant Array::pop_back() {
+void Array::pop_back() {
 
-	if (!_p->array.empty()) {
-		int n = _p->array.size() - 1;
-		Variant ret = _p->array.get(n);
-		_p->array.resize(n);
-		return ret;
-	}
-	return Variant();
+	if (!_p->array.empty())
+		_p->array.resize(_p->array.size() - 1);
 }
+void Array::pop_front() {
 
-Variant Array::pop_front() {
-
-	if (!_p->array.empty()) {
-		Variant ret = _p->array.get(0);
+	if (!_p->array.empty())
 		_p->array.remove(0);
-		return ret;
-	}
-	return Variant();
 }
 
 Array::Array(const Array &p_from) {
@@ -302,10 +296,11 @@ Array::Array(const Array &p_from) {
 	_p = NULL;
 	_ref(p_from);
 }
-Array::Array() {
+Array::Array(bool p_shared) {
 
 	_p = memnew(ArrayPrivate);
 	_p->refcount.init();
+	_p->shared = p_shared;
 }
 Array::~Array() {
 

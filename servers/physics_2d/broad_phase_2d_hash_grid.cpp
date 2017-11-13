@@ -28,7 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 #include "broad_phase_2d_hash_grid.h"
-#include "project_settings.h"
+#include "globals.h"
 
 #define LARGE_ELEMENT_FI 1.01239812
 
@@ -116,8 +116,8 @@ void BroadPhase2DHashGrid::_enter_grid(Element *p_elem, const Rect2 &p_rect, boo
 		return;
 	}
 
-	Point2i from = (p_rect.position / cell_size).floor();
-	Point2i to = ((p_rect.position + p_rect.size) / cell_size).floor();
+	Point2i from = (p_rect.pos / cell_size).floor();
+	Point2i to = ((p_rect.pos + p_rect.size) / cell_size).floor();
 
 	for (int i = from.x; i <= to.x; i++) {
 
@@ -216,8 +216,8 @@ void BroadPhase2DHashGrid::_exit_grid(Element *p_elem, const Rect2 &p_rect, bool
 		return;
 	}
 
-	Point2i from = (p_rect.position / cell_size).floor();
-	Point2i to = ((p_rect.position + p_rect.size) / cell_size).floor();
+	Point2i from = (p_rect.pos / cell_size).floor();
+	Point2i to = ((p_rect.pos + p_rect.size) / cell_size).floor();
 
 	for (int i = from.x; i <= to.x; i++) {
 
@@ -498,14 +498,14 @@ int BroadPhase2DHashGrid::cull_segment(const Vector2 &p_from, const Vector2 &p_t
 	Vector2 max;
 
 	if (dir.x < 0)
-		max.x = (Math::floor((double)pos.x) * cell_size - p_from.x) / dir.x;
+		max.x = (Math::floor(pos.x) * cell_size - p_from.x) / dir.x;
 	else
-		max.x = (Math::floor((double)pos.x + 1) * cell_size - p_from.x) / dir.x;
+		max.x = (Math::floor(pos.x + 1) * cell_size - p_from.x) / dir.x;
 
 	if (dir.y < 0)
-		max.y = (Math::floor((double)pos.y) * cell_size - p_from.y) / dir.y;
+		max.y = (Math::floor(pos.y) * cell_size - p_from.y) / dir.y;
 	else
-		max.y = (Math::floor((double)pos.y + 1) * cell_size - p_from.y) / dir.y;
+		max.y = (Math::floor(pos.y + 1) * cell_size - p_from.y) / dir.y;
 
 	int cullcount = 0;
 	_cull<false, true>(pos, Rect2(), p_from, p_to, p_results, p_max_results, p_result_indices, cullcount);
@@ -556,10 +556,8 @@ int BroadPhase2DHashGrid::cull_segment(const Vector2 &p_from, const Vector2 &p_t
 
 		E->key()->pass = pass;
 
-		/*
-		if (use_aabb && !p_aabb.intersects(E->key()->aabb))
-			continue;
-		*/
+		//		if (use_aabb && !p_aabb.intersects(E->key()->aabb))
+		//			continue;
 
 		if (!E->key()->aabb.intersects_segment(p_from, p_to))
 			continue;
@@ -576,8 +574,8 @@ int BroadPhase2DHashGrid::cull_aabb(const Rect2 &p_aabb, CollisionObject2DSW **p
 
 	pass++;
 
-	Point2i from = (p_aabb.position / cell_size).floor();
-	Point2i to = ((p_aabb.position + p_aabb.size) / cell_size).floor();
+	Point2i from = (p_aabb.pos / cell_size).floor();
+	Point2i to = ((p_aabb.pos + p_aabb.size) / cell_size).floor();
 	int cullcount = 0;
 
 	for (int i = from.x; i <= to.x; i++) {
@@ -600,10 +598,8 @@ int BroadPhase2DHashGrid::cull_aabb(const Rect2 &p_aabb, CollisionObject2DSW **p
 		if (!p_aabb.intersects(E->key()->aabb))
 			continue;
 
-		/*
-		if (!E->key()->aabb.intersects_segment(p_from,p_to))
-			continue;
-		*/
+		//		if (!E->key()->aabb.intersects_segment(p_from,p_to))
+		//			continue;
 
 		p_results[cullcount] = E->key()->owner;
 		p_result_indices[cullcount] = E->key()->subindex;
@@ -633,14 +629,14 @@ BroadPhase2DSW *BroadPhase2DHashGrid::_create() {
 
 BroadPhase2DHashGrid::BroadPhase2DHashGrid() {
 
-	hash_table_size = GLOBAL_DEF("physics/2d/bp_hash_table_size", 4096);
+	hash_table_size = GLOBAL_DEF("physics_2d/bp_hash_table_size", 4096);
 	hash_table_size = Math::larger_prime(hash_table_size);
 	hash_table = memnew_arr(PosBin *, hash_table_size);
 
-	cell_size = GLOBAL_DEF("physics/2d/cell_size", 128);
-	large_object_min_surface = GLOBAL_DEF("physics/2d/large_object_surface_threshold_in_cells", 512);
+	cell_size = GLOBAL_DEF("physics_2d/cell_size", 128);
+	large_object_min_surface = GLOBAL_DEF("physics_2d/large_object_surface_treshold_in_cells", 512);
 
-	for (uint32_t i = 0; i < hash_table_size; i++)
+	for (int i = 0; i < hash_table_size; i++)
 		hash_table[i] = NULL;
 	pass = 1;
 
@@ -649,7 +645,7 @@ BroadPhase2DHashGrid::BroadPhase2DHashGrid() {
 
 BroadPhase2DHashGrid::~BroadPhase2DHashGrid() {
 
-	for (uint32_t i = 0; i < hash_table_size; i++) {
+	for (int i = 0; i < hash_table_size; i++) {
 		while (hash_table[i]) {
 			PosBin *pb = hash_table[i];
 			hash_table[i] = pb->next;

@@ -28,10 +28,9 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 #include "object.h"
-
-#include "class_db.h"
 #include "core_string_names.h"
 #include "message_queue.h"
+#include "object_type_db.h"
 #include "os/os.h"
 #include "print_string.h"
 #include "resource.h"
@@ -61,274 +60,149 @@ struct _ObjectDebugLock {
 
 #endif
 
-PropertyInfo::operator Dictionary() const {
-
-	Dictionary d;
-	d["name"] = name;
-	d["class_name"] = class_name;
-	d["type"] = type;
-	d["hint"] = hint;
-	d["hint_string"] = hint_string;
-	d["usage"] = usage;
-	return d;
-}
-
-PropertyInfo PropertyInfo::from_dict(const Dictionary &p_dict) {
-
-	PropertyInfo pi;
-
-	if (p_dict.has("type"))
-		pi.type = Variant::Type(int(p_dict["type"]));
-
-	if (p_dict.has("name"))
-		pi.name = p_dict["name"];
-
-	if (p_dict.has("class_name"))
-		pi.class_name = p_dict["class_name"];
-
-	if (p_dict.has("hint"))
-		pi.hint = PropertyHint(int(p_dict["hint"]));
-
-	if (p_dict.has("hint_string"))
-
-		pi.hint_string = p_dict["hint_string"];
-
-	if (p_dict.has("usage"))
-		pi.usage = p_dict["usage"];
-
-	return pi;
-}
-
 Array convert_property_list(const List<PropertyInfo> *p_list) {
 
 	Array va;
 	for (const List<PropertyInfo>::Element *E = p_list->front(); E; E = E->next()) {
 
-		va.push_back(Dictionary(E->get()));
+		const PropertyInfo &pi = E->get();
+		Dictionary d;
+		d["name"] = pi.name;
+		d["type"] = pi.type;
+		d["hint"] = pi.hint;
+		d["hint_string"] = pi.hint_string;
+		d["usage"] = pi.usage;
+		va.push_back(d);
 	}
 
 	return va;
 }
 
-MethodInfo::operator Dictionary() const {
+MethodInfo::MethodInfo() {
 
-	Dictionary d;
-	d["name"] = name;
-	d["args"] = convert_property_list(&arguments);
-	Array da;
-	for (int i = 0; i < default_arguments.size(); i++)
-		da.push_back(default_arguments[i]);
-	d["default_args"] = da;
-	d["flags"] = flags;
-	d["id"] = id;
-	Dictionary r = return_val;
-	d["return"] = r;
-	return d;
+	id = 0;
+	flags = METHOD_FLAG_NORMAL;
 }
 
-MethodInfo::MethodInfo()
-	: flags(METHOD_FLAG_NORMAL),
-	  id(0) {
+MethodInfo::MethodInfo(const String &p_name) {
+
+	id = 0;
+	name = p_name;
+	flags = METHOD_FLAG_NORMAL;
 }
+MethodInfo::MethodInfo(const String &p_name, const PropertyInfo &p_param1) {
 
-MethodInfo MethodInfo::from_dict(const Dictionary &p_dict) {
-
-	MethodInfo mi;
-
-	if (p_dict.has("name"))
-		mi.name = p_dict["name"];
-	Array args;
-	if (p_dict.has("args")) {
-		args = p_dict["args"];
-	}
-
-	for (int i = 0; i < args.size(); i++) {
-		Dictionary d = args[i];
-		mi.arguments.push_back(PropertyInfo::from_dict(d));
-	}
-	Array defargs;
-	if (p_dict.has("default_args")) {
-		defargs = p_dict["default_args"];
-	}
-	for (int i = 0; i < defargs.size(); i++) {
-		mi.default_arguments.push_back(defargs[i]);
-	}
-
-	if (p_dict.has("return")) {
-		mi.return_val = PropertyInfo::from_dict(p_dict["return"]);
-	}
-
-	if (p_dict.has("flags"))
-		mi.flags = p_dict["flags"];
-
-	return mi;
-}
-
-MethodInfo::MethodInfo(const String &p_name)
-	: name(p_name),
-	  flags(METHOD_FLAG_NORMAL),
-	  id(0) {
-}
-MethodInfo::MethodInfo(const String &p_name, const PropertyInfo &p_param1)
-	: name(p_name),
-	  flags(METHOD_FLAG_NORMAL),
-	  id(0) {
+	id = 0;
+	name = p_name;
 	arguments.push_back(p_param1);
+	flags = METHOD_FLAG_NORMAL;
 }
-MethodInfo::MethodInfo(const String &p_name, const PropertyInfo &p_param1, const PropertyInfo &p_param2)
-	: name(p_name),
-	  flags(METHOD_FLAG_NORMAL),
-	  id(0) {
+MethodInfo::MethodInfo(const String &p_name, const PropertyInfo &p_param1, const PropertyInfo &p_param2) {
+
+	id = 0;
+	name = p_name;
 	arguments.push_back(p_param1);
 	arguments.push_back(p_param2);
+	flags = METHOD_FLAG_NORMAL;
 }
 
-MethodInfo::MethodInfo(const String &p_name, const PropertyInfo &p_param1, const PropertyInfo &p_param2, const PropertyInfo &p_param3)
-	: name(p_name),
-	  flags(METHOD_FLAG_NORMAL),
-	  id(0) {
+MethodInfo::MethodInfo(const String &p_name, const PropertyInfo &p_param1, const PropertyInfo &p_param2, const PropertyInfo &p_param3) {
+
+	id = 0;
+	name = p_name;
 	arguments.push_back(p_param1);
 	arguments.push_back(p_param2);
 	arguments.push_back(p_param3);
+	flags = METHOD_FLAG_NORMAL;
 }
 
-MethodInfo::MethodInfo(const String &p_name, const PropertyInfo &p_param1, const PropertyInfo &p_param2, const PropertyInfo &p_param3, const PropertyInfo &p_param4)
-	: name(p_name),
-	  flags(METHOD_FLAG_NORMAL),
-	  id(0) {
+MethodInfo::MethodInfo(const String &p_name, const PropertyInfo &p_param1, const PropertyInfo &p_param2, const PropertyInfo &p_param3, const PropertyInfo &p_param4) {
+
+	id = 0;
+	name = p_name;
 	arguments.push_back(p_param1);
 	arguments.push_back(p_param2);
 	arguments.push_back(p_param3);
 	arguments.push_back(p_param4);
+	flags = METHOD_FLAG_NORMAL;
 }
 
-MethodInfo::MethodInfo(const String &p_name, const PropertyInfo &p_param1, const PropertyInfo &p_param2, const PropertyInfo &p_param3, const PropertyInfo &p_param4, const PropertyInfo &p_param5)
-	: name(p_name),
-	  flags(METHOD_FLAG_NORMAL),
-	  id(0) {
+MethodInfo::MethodInfo(const String &p_name, const PropertyInfo &p_param1, const PropertyInfo &p_param2, const PropertyInfo &p_param3, const PropertyInfo &p_param4, const PropertyInfo &p_param5) {
+	id = 0;
+	name = p_name;
 	arguments.push_back(p_param1);
 	arguments.push_back(p_param2);
 	arguments.push_back(p_param3);
 	arguments.push_back(p_param4);
 	arguments.push_back(p_param5);
+	flags = METHOD_FLAG_NORMAL;
 }
 
-MethodInfo::MethodInfo(Variant::Type ret)
-	: flags(METHOD_FLAG_NORMAL),
-	  id(0) {
+MethodInfo::MethodInfo(Variant::Type ret) {
+
+	id = 0;
+	flags = METHOD_FLAG_NORMAL;
 	return_val.type = ret;
 }
 
-MethodInfo::MethodInfo(Variant::Type ret, const String &p_name)
-	: name(p_name),
-	  flags(METHOD_FLAG_NORMAL),
-	  id(0) {
+MethodInfo::MethodInfo(Variant::Type ret, const String &p_name) {
+
+	id = 0;
+	name = p_name;
+	flags = METHOD_FLAG_NORMAL;
 	return_val.type = ret;
 }
-MethodInfo::MethodInfo(Variant::Type ret, const String &p_name, const PropertyInfo &p_param1)
-	: name(p_name),
-	  flags(METHOD_FLAG_NORMAL),
-	  id(0) {
-	return_val.type = ret;
+MethodInfo::MethodInfo(Variant::Type ret, const String &p_name, const PropertyInfo &p_param1) {
+
+	id = 0;
+	name = p_name;
 	arguments.push_back(p_param1);
-}
-MethodInfo::MethodInfo(Variant::Type ret, const String &p_name, const PropertyInfo &p_param1, const PropertyInfo &p_param2)
-	: name(p_name),
-	  flags(METHOD_FLAG_NORMAL),
-	  id(0) {
+	flags = METHOD_FLAG_NORMAL;
 	return_val.type = ret;
-	arguments.push_back(p_param1);
-	arguments.push_back(p_param2);
 }
+MethodInfo::MethodInfo(Variant::Type ret, const String &p_name, const PropertyInfo &p_param1, const PropertyInfo &p_param2) {
 
-MethodInfo::MethodInfo(Variant::Type ret, const String &p_name, const PropertyInfo &p_param1, const PropertyInfo &p_param2, const PropertyInfo &p_param3)
-	: name(p_name),
-	  flags(METHOD_FLAG_NORMAL),
-	  id(0) {
-	return_val.type = ret;
+	id = 0;
+	name = p_name;
 	arguments.push_back(p_param1);
 	arguments.push_back(p_param2);
-	arguments.push_back(p_param3);
+	flags = METHOD_FLAG_NORMAL;
+	return_val.type = ret;
 }
 
-MethodInfo::MethodInfo(Variant::Type ret, const String &p_name, const PropertyInfo &p_param1, const PropertyInfo &p_param2, const PropertyInfo &p_param3, const PropertyInfo &p_param4)
-	: name(p_name),
-	  flags(METHOD_FLAG_NORMAL),
-	  id(0) {
-	return_val.type = ret;
+MethodInfo::MethodInfo(Variant::Type ret, const String &p_name, const PropertyInfo &p_param1, const PropertyInfo &p_param2, const PropertyInfo &p_param3) {
+
+	id = 0;
+	name = p_name;
 	arguments.push_back(p_param1);
 	arguments.push_back(p_param2);
 	arguments.push_back(p_param3);
-	arguments.push_back(p_param4);
+	flags = METHOD_FLAG_NORMAL;
+	return_val.type = ret;
 }
 
-MethodInfo::MethodInfo(Variant::Type ret, const String &p_name, const PropertyInfo &p_param1, const PropertyInfo &p_param2, const PropertyInfo &p_param3, const PropertyInfo &p_param4, const PropertyInfo &p_param5)
-	: name(p_name),
-	  flags(METHOD_FLAG_NORMAL),
-	  id(0) {
-	return_val.type = ret;
+MethodInfo::MethodInfo(Variant::Type ret, const String &p_name, const PropertyInfo &p_param1, const PropertyInfo &p_param2, const PropertyInfo &p_param3, const PropertyInfo &p_param4) {
+
+	id = 0;
+	name = p_name;
 	arguments.push_back(p_param1);
 	arguments.push_back(p_param2);
 	arguments.push_back(p_param3);
 	arguments.push_back(p_param4);
-	arguments.push_back(p_param5);
+	flags = METHOD_FLAG_NORMAL;
+	return_val.type = ret;
 }
 
-MethodInfo::MethodInfo(const PropertyInfo &p_ret, const String &p_name)
-	: name(p_name),
-	  flags(METHOD_FLAG_NORMAL),
-	  return_val(p_ret),
-	  id(0) {
-}
-
-MethodInfo::MethodInfo(const PropertyInfo &p_ret, const String &p_name, const PropertyInfo &p_param1)
-	: name(p_name),
-	  return_val(p_ret),
-	  flags(METHOD_FLAG_NORMAL),
-	  id(0) {
-	arguments.push_back(p_param1);
-}
-
-MethodInfo::MethodInfo(const PropertyInfo &p_ret, const String &p_name, const PropertyInfo &p_param1, const PropertyInfo &p_param2)
-	: name(p_name),
-	  return_val(p_ret),
-	  flags(METHOD_FLAG_NORMAL),
-	  id(0) {
-	arguments.push_back(p_param1);
-	arguments.push_back(p_param2);
-}
-
-MethodInfo::MethodInfo(const PropertyInfo &p_ret, const String &p_name, const PropertyInfo &p_param1, const PropertyInfo &p_param2, const PropertyInfo &p_param3)
-	: name(p_name),
-	  return_val(p_ret),
-	  flags(METHOD_FLAG_NORMAL),
-	  id(0) {
-	arguments.push_back(p_param1);
-	arguments.push_back(p_param2);
-	arguments.push_back(p_param3);
-}
-
-MethodInfo::MethodInfo(const PropertyInfo &p_ret, const String &p_name, const PropertyInfo &p_param1, const PropertyInfo &p_param2, const PropertyInfo &p_param3, const PropertyInfo &p_param4)
-	: name(p_name),
-	  return_val(p_ret),
-	  flags(METHOD_FLAG_NORMAL),
-	  id(0) {
-	arguments.push_back(p_param1);
-	arguments.push_back(p_param2);
-	arguments.push_back(p_param3);
-	arguments.push_back(p_param4);
-}
-
-MethodInfo::MethodInfo(const PropertyInfo &p_ret, const String &p_name, const PropertyInfo &p_param1, const PropertyInfo &p_param2, const PropertyInfo &p_param3, const PropertyInfo &p_param4, const PropertyInfo &p_param5)
-	: name(p_name),
-	  return_val(p_ret),
-	  flags(METHOD_FLAG_NORMAL),
-	  id(0) {
+MethodInfo::MethodInfo(Variant::Type ret, const String &p_name, const PropertyInfo &p_param1, const PropertyInfo &p_param2, const PropertyInfo &p_param3, const PropertyInfo &p_param4, const PropertyInfo &p_param5) {
+	id = 0;
+	name = p_name;
 	arguments.push_back(p_param1);
 	arguments.push_back(p_param2);
 	arguments.push_back(p_param3);
 	arguments.push_back(p_param4);
 	arguments.push_back(p_param5);
+	flags = METHOD_FLAG_NORMAL;
+	return_val.type = ret;
 }
 
 Object::Connection::operator Variant() const {
@@ -384,14 +258,14 @@ bool Object::_predelete() {
 	_predelete_ok = 1;
 	notification(NOTIFICATION_PREDELETE, true);
 	if (_predelete_ok) {
-		_class_ptr = NULL; //must restore so destructors can access class ptr correctly
+		_type_ptr = NULL; //must restore so destructors can access type ptr correctly
 	}
 	return _predelete_ok;
 }
 
 void Object::_postinitialize() {
-	_class_ptr = _get_class_namev();
-	_initialize_classv();
+	_type_ptr = _get_type_namev();
+	_initialize_typev();
 	notification(NOTIFICATION_POSTINITIALIZE);
 }
 
@@ -399,6 +273,33 @@ void Object::get_valid_parents_static(List<String> *p_parents) {
 }
 void Object::_get_valid_parents_static(List<String> *p_parents) {
 }
+#if 0
+//old style set, deprecated
+
+void Object::set(const String& p_name, const Variant& p_value) {
+
+	_setv(p_name,p_value);
+
+	//if (!_use_builtin_script())
+//		return;
+
+	bool success;
+	ObjectTypeDB::set_property(this,p_name,p_value,success);
+	if (success) {
+		return;
+	}
+
+	if (p_name=="__meta__") {
+		metadata=p_value;
+	} else if (p_name=="script/script") {
+		set_script(p_value);
+	} else if (script_instance) {
+		script_instance->set(p_name,p_value);
+	}
+
+
+}
+#endif
 
 void Object::set(const StringName &p_name, const Variant &p_value, bool *r_valid) {
 
@@ -418,11 +319,9 @@ void Object::set(const StringName &p_name, const Variant &p_value, bool *r_valid
 
 	//try built-in setgetter
 	{
-		if (ClassDB::set_property(this, p_name, p_value, r_valid)) {
-			/*
-			if (r_valid)
-				*r_valid=true;
-			*/
+		if (ObjectTypeDB::set_property(this, p_name, p_value, r_valid)) {
+			//if (r_valid)
+			//	*r_valid=true;
 			return;
 		}
 	}
@@ -439,16 +338,6 @@ void Object::set(const StringName &p_name, const Variant &p_value, bool *r_valid
 		if (r_valid)
 			*r_valid = true;
 		return;
-#ifdef TOOLS_ENABLED
-	} else if (p_name == CoreStringNames::get_singleton()->_sections_unfolded) {
-		Array arr = p_value;
-		for (int i = 0; i < arr.size(); i++) {
-			editor_section_folding.insert(arr[i]);
-		}
-		if (r_valid)
-			*r_valid = true;
-		return;
-#endif
 	} else {
 		//something inside the object... :|
 		bool success = _setv(p_name, p_value);
@@ -476,7 +365,7 @@ Variant Object::get(const StringName &p_name, bool *r_valid) const {
 
 	//try built-in setgetter
 	{
-		if (ClassDB::get_property(const_cast<Object *>(this), p_name, ret)) {
+		if (ObjectTypeDB::get_property(const_cast<Object *>(this), p_name, ret)) {
 			if (r_valid)
 				*r_valid = true;
 			return ret;
@@ -494,16 +383,6 @@ Variant Object::get(const StringName &p_name, bool *r_valid) const {
 		if (r_valid)
 			*r_valid = true;
 		return ret;
-#ifdef TOOLS_ENABLED
-	} else if (p_name == CoreStringNames::get_singleton()->_sections_unfolded) {
-		Array array;
-		for (Set<String>::Element *E = editor_section_folding.front(); E; E = E->next()) {
-			array.push_back(E->get());
-		}
-		if (r_valid)
-			*r_valid = true;
-		return array;
-#endif
 	} else {
 		//something inside the object... :|
 		bool success = _getv(p_name, ret);
@@ -517,6 +396,34 @@ Variant Object::get(const StringName &p_name, bool *r_valid) const {
 	}
 }
 
+#if 0
+//old style get, deprecated
+Variant Object::get(const String& p_name) const {
+
+	Variant ret=_getv(p_name);
+	if (ret.get_type()!=Variant::NIL)
+		return ret;
+
+	bool success;
+	ObjectTypeDB::get_property(const_cast<Object*>(this),p_name,ret,success);
+	if (success) {
+		return ret;
+	}
+
+	if (p_name=="__meta__")
+		return metadata;
+	else if (p_name=="script/script")
+		return script;
+
+	if (script_instance) {
+		return script_instance->get(p_name);
+	}
+
+	return Variant();
+
+}
+#endif
+
 void Object::get_property_list(List<PropertyInfo> *p_list, bool p_reversed) const {
 
 	if (script_instance && p_reversed) {
@@ -526,13 +433,11 @@ void Object::get_property_list(List<PropertyInfo> *p_list, bool p_reversed) cons
 
 	_get_property_listv(p_list, p_reversed);
 
-	if (!is_class("Script")) // can still be set, but this is for userfriendlyness
-		p_list->push_back(PropertyInfo(Variant::OBJECT, "script", PROPERTY_HINT_RESOURCE_TYPE, "Script", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_STORE_IF_NONZERO));
-#ifdef TOOLS_ENABLED
-	if (editor_section_folding.size()) {
-		p_list->push_back(PropertyInfo(Variant::ARRAY, CoreStringNames::get_singleton()->_sections_unfolded, PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR));
-	}
-#endif
+	if (!_use_builtin_script())
+		return;
+
+	if (!is_type("Script")) // can still be set, but this is for userfriendlyness
+		p_list->push_back(PropertyInfo(Variant::OBJECT, "script/script", PROPERTY_HINT_RESOURCE_TYPE, "Script", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_STORE_IF_NONZERO));
 	if (!metadata.empty())
 		p_list->push_back(PropertyInfo(Variant::DICTIONARY, "__meta__", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR | PROPERTY_USAGE_STORE_IF_NONZERO));
 	if (script_instance && !p_reversed) {
@@ -546,7 +451,7 @@ void Object::_validate_property(PropertyInfo &property) const {
 
 void Object::get_method_list(List<MethodInfo> *p_list) const {
 
-	ClassDB::get_method_list(get_class_name(), p_list);
+	ObjectTypeDB::get_method_list(get_type_name(), p_list);
 	if (script_instance) {
 		script_instance->get_method_list(p_list);
 	}
@@ -591,11 +496,27 @@ Variant Object::_call_deferred_bind(const Variant **p_args, int p_argcount, Vari
 
 	StringName method = *p_args[0];
 
-	MessageQueue::get_singleton()->push_call(get_instance_id(), method, &p_args[1], p_argcount - 1);
+	MessageQueue::get_singleton()->push_call(get_instance_ID(), method, &p_args[1], p_argcount - 1);
 
 	return Variant();
 }
 
+#if 0
+Variant Object::_call_bind(const StringName& p_name, const Variant& p_arg1, const Variant& p_arg2, const Variant& p_arg3, const Variant& p_arg4) {
+
+	ERR_FAIL_COND_V(p_argcount<1,Variant());
+
+	return call(p_name, p_arg1, p_arg2, p_arg3, p_arg4);
+};
+
+
+
+
+void Object::_call_deferred_bind(const StringName& p_name, const Variant& p_arg1, const Variant& p_arg2, const Variant& p_arg3, const Variant& p_arg4) {
+
+	call_deferred(p_name, p_arg1, p_arg2, p_arg3, p_arg4);
+};
+#endif
 #ifdef DEBUG_ENABLED
 static bool _test_call_error(const StringName &p_func, const Variant::CallError &error) {
 
@@ -638,7 +559,7 @@ void Object::call_multilevel(const StringName &p_method, const Variant **p_args,
 
 	if (p_method == CoreStringNames::get_singleton()->_free) {
 #ifdef DEBUG_ENABLED
-		if (Object::cast_to<Reference>(this)) {
+		if (cast_to<Reference>()) {
 			ERR_EXPLAIN("Can't 'free' a reference.");
 			ERR_FAIL();
 			return;
@@ -666,7 +587,7 @@ void Object::call_multilevel(const StringName &p_method, const Variant **p_args,
 		//_test_call_error(p_method,error);
 	}
 
-	MethodBind *method = ClassDB::get_method(get_class_name(), p_method);
+	MethodBind *method = ObjectTypeDB::get_method(get_type_name(), p_method);
 
 	if (method) {
 
@@ -677,7 +598,7 @@ void Object::call_multilevel(const StringName &p_method, const Variant **p_args,
 
 void Object::call_multilevel_reversed(const StringName &p_method, const Variant **p_args, int p_argcount) {
 
-	MethodBind *method = ClassDB::get_method(get_class_name(), p_method);
+	MethodBind *method = ObjectTypeDB::get_method(get_type_name(), p_method);
 
 	Variant::CallError error;
 	OBJ_DEBUG_LOCK
@@ -706,7 +627,7 @@ bool Object::has_method(const StringName &p_method) const {
 		return true;
 	}
 
-	MethodBind *method = ClassDB::get_method(get_class_name(), p_method);
+	MethodBind *method = ObjectTypeDB::get_method(get_type_name(), p_method);
 
 	if (method) {
 		return true;
@@ -748,6 +669,54 @@ Variant Object::callv(const StringName &p_method, const Array &p_args) {
 }
 
 Variant Object::call(const StringName &p_name, VARIANT_ARG_DECLARE) {
+#if 0
+	if (p_name==CoreStringNames::get_singleton()->_free) {
+#ifdef DEBUG_ENABLED
+		if (cast_to<Reference>()) {
+			ERR_EXPLAIN("Can't 'free' a reference.");
+			ERR_FAIL_V(Variant());
+		}
+#endif
+		//must be here, must be before everything,
+		memdelete(this);
+		return Variant();
+	}
+
+	VARIANT_ARGPTRS;
+
+	int argc=0;
+	for(int i=0;i<VARIANT_ARG_MAX;i++) {
+		if (argptr[i]->get_type()==Variant::NIL)
+			break;
+		argc++;
+	}
+
+	Variant::CallError error;
+
+	Variant ret;
+
+	if (script_instance) {
+		ret = script_instance->call(p_name,argptr,argc,error);
+		if (_test_call_error(p_name,error))
+			return ret;
+	}
+
+	MethodBind *method=ObjectTypeDB::get_method(get_type_name(),p_name);
+
+	if (method) {
+
+
+		Variant ret = method->call(this,argptr,argc,error);
+		if (_test_call_error(p_name,error))
+			return ret;
+
+		return ret;
+	} else {
+
+	}
+
+	return Variant();
+#else
 
 	VARIANT_ARGPTRS;
 
@@ -762,9 +731,52 @@ Variant Object::call(const StringName &p_name, VARIANT_ARG_DECLARE) {
 
 	Variant ret = call(p_name, argptr, argc, error);
 	return ret;
+
+#endif
 }
 
 void Object::call_multilevel(const StringName &p_name, VARIANT_ARG_DECLARE) {
+#if 0
+	if (p_name==CoreStringNames::get_singleton()->_free) {
+#ifdef DEBUG_ENABLED
+		if (cast_to<Reference>()) {
+			ERR_EXPLAIN("Can't 'free' a reference.");
+			ERR_FAIL();
+			return;
+		}
+#endif
+		//must be here, must be before everything,
+		memdelete(this);
+		return;
+	}
+
+	VARIANT_ARGPTRS;
+
+	int argc=0;
+	for(int i=0;i<VARIANT_ARG_MAX;i++) {
+		if (argptr[i]->get_type()==Variant::NIL)
+			break;
+		argc++;
+	}
+
+	Variant::CallError error;
+
+	if (script_instance) {
+		script_instance->call(p_name,argptr,argc,error);
+		_test_call_error(p_name,error);
+
+	}
+
+	MethodBind *method=ObjectTypeDB::get_method(get_type_name(),p_name);
+
+	if (method) {
+
+		method->call(this,argptr,argc,error);
+		_test_call_error(p_name,error);
+
+	}
+
+#else
 
 	VARIANT_ARGPTRS;
 
@@ -777,6 +789,8 @@ void Object::call_multilevel(const StringName &p_name, VARIANT_ARG_DECLARE) {
 
 	//Variant::CallError error;
 	call_multilevel(p_name, argptr, argc);
+
+#endif
 }
 
 Variant Object::call(const StringName &p_method, const Variant **p_args, int p_argcount, Variant::CallError &r_error) {
@@ -791,7 +805,7 @@ Variant Object::call(const StringName &p_method, const Variant **p_args, int p_a
 			r_error.error = Variant::CallError::CALL_ERROR_TOO_MANY_ARGUMENTS;
 			return Variant();
 		}
-		if (Object::cast_to<Reference>(this)) {
+		if (cast_to<Reference>()) {
 			r_error.argument = 0;
 			r_error.error = Variant::CallError::CALL_ERROR_INVALID_METHOD;
 			ERR_EXPLAIN("Can't 'free' a reference.");
@@ -832,7 +846,7 @@ Variant Object::call(const StringName &p_method, const Variant **p_args, int p_a
 		}
 	}
 
-	MethodBind *method = ClassDB::get_method(get_class_name(), p_method);
+	MethodBind *method = ObjectTypeDB::get_method(get_type_name(), p_method);
 
 	if (method) {
 
@@ -876,17 +890,6 @@ void Object::cancel_delete() {
 	_predelete_ok = true;
 }
 
-void Object::set_script_and_instance(const RefPtr &p_script, ScriptInstance *p_instance) {
-
-	//this function is not meant to be used in any of these ways
-	ERR_FAIL_COND(p_script.is_null());
-	ERR_FAIL_COND(!p_instance);
-	ERR_FAIL_COND(script_instance != NULL || !script.is_null());
-
-	script = p_script;
-	script_instance = p_instance;
-}
-
 void Object::set_script(const RefPtr &p_script) {
 
 	if (script == p_script)
@@ -905,7 +908,7 @@ void Object::set_script(const RefPtr &p_script) {
 		script_instance = s->instance_create(this);
 	}
 
-	_change_notify("script");
+	_change_notify("script/script");
 	emit_signal(CoreStringNames::get_singleton()->script_changed);
 }
 
@@ -958,6 +961,25 @@ Array Object::_get_property_list_bind() const {
 	return convert_property_list(&lpi);
 }
 
+static Dictionary _get_dict_from_method(const MethodInfo &mi) {
+
+	Dictionary d;
+	d["name"] = mi.name;
+	d["args"] = convert_property_list(&mi.arguments);
+	Array da;
+	for (int i = 0; i < mi.default_arguments.size(); i++)
+		da.push_back(mi.default_arguments[i]);
+	d["default_args"] = da;
+	d["flags"] = mi.flags;
+	d["id"] = mi.id;
+	Dictionary r;
+	r["type"] = mi.return_val.type;
+	r["hint"] = mi.return_val.hint;
+	r["hint_string"] = mi.return_val.hint_string;
+	d["return_type"] = r;
+	return d;
+}
+
 Array Object::_get_method_list_bind() const {
 
 	List<MethodInfo> ml;
@@ -966,7 +988,7 @@ Array Object::_get_method_list_bind() const {
 
 	for (List<MethodInfo>::Element *E = ml.front(); E; E = E->next()) {
 
-		Dictionary d = E->get();
+		Dictionary d = _get_dict_from_method(E->get());
 		//va.push_back(d);
 		ret.push_back(d);
 	}
@@ -974,9 +996,9 @@ Array Object::_get_method_list_bind() const {
 	return ret;
 }
 
-PoolVector<String> Object::_get_meta_list_bind() const {
+DVector<String> Object::_get_meta_list_bind() const {
 
-	PoolVector<String> _metaret;
+	DVector<String> _metaret;
 
 	List<Variant> keys;
 	metadata.get_key_list(&keys);
@@ -1000,7 +1022,7 @@ void Object::get_meta_list(List<String> *p_list) const {
 void Object::add_user_signal(const MethodInfo &p_signal) {
 
 	ERR_FAIL_COND(p_signal.name == "");
-	ERR_FAIL_COND(ClassDB::has_signal(get_class_name(), p_signal.name));
+	ERR_FAIL_COND(ObjectTypeDB::has_signal(get_type_name(), p_signal.name));
 	ERR_FAIL_COND(signal_map.has(p_signal.name));
 	Signal s;
 	s.user = p_signal;
@@ -1020,6 +1042,22 @@ struct _ObjectSignalDisconnectData {
 	Object *target;
 	StringName method;
 };
+
+#if 0
+void Object::_emit_signal(const StringName& p_name,const Array& p_pargs){
+
+	Variant args[VARIANT_ARG_MAX];
+
+	int count = p_pargs.size();
+
+	for(int i=0;i<count;i++) {
+		args[i]=p_pargs[i];
+	}
+
+	emit_signal(p_name,VARIANT_ARGS_FROM_ARRAY(args));
+}
+
+#endif
 
 Variant Object::_emit_signal(const Variant **p_args, int p_argcount, Variant::CallError &r_error) {
 
@@ -1049,23 +1087,23 @@ Variant Object::_emit_signal(const Variant **p_args, int p_argcount, Variant::Ca
 	return Variant();
 }
 
-Error Object::emit_signal(const StringName &p_name, const Variant **p_args, int p_argcount) {
+void Object::emit_signal(const StringName &p_name, const Variant **p_args, int p_argcount) {
 
 	if (_block_signals)
-		return ERR_CANT_ACQUIRE_RESOURCE; //no emit, signals blocked
+		return; //no emit, signals blocked
 
 	Signal *s = signal_map.getptr(p_name);
 	if (!s) {
 #ifdef DEBUG_ENABLED
-		bool signal_is_valid = ClassDB::has_signal(get_class_name(), p_name);
+		bool signal_is_valid = ObjectTypeDB::has_signal(get_type_name(), p_name);
 		//check in script
 		if (!signal_is_valid && !script.is_null() && !Ref<Script>(script)->has_script_signal(p_name)) {
 			ERR_EXPLAIN("Can't emit non-existing signal " + String("\"") + p_name + "\".");
-			ERR_FAIL_V(ERR_UNAVAILABLE);
+			ERR_FAIL();
 		}
 #endif
 		//not connected? just return
-		return ERR_UNAVAILABLE;
+		return;
 	}
 
 	List<_ObjectSignalDisconnectData> disconnect_data;
@@ -1080,8 +1118,6 @@ Error Object::emit_signal(const StringName &p_name, const Variant **p_args, int 
 	OBJ_DEBUG_LOCK
 
 	Vector<const Variant *> bind_mem;
-
-	Error err = OK;
 
 	for (int i = 0; i < ssize; i++) {
 
@@ -1114,18 +1150,16 @@ Error Object::emit_signal(const StringName &p_name, const Variant **p_args, int 
 		}
 
 		if (c.flags & CONNECT_DEFERRED) {
-			MessageQueue::get_singleton()->push_call(target->get_instance_id(), c.method, args, argc, true);
+			MessageQueue::get_singleton()->push_call(target->get_instance_ID(), c.method, args, argc, true);
 		} else {
 			Variant::CallError ce;
 			target->call(c.method, args, argc, ce);
-
 			if (ce.error != Variant::CallError::CALL_OK) {
 
-				if (ce.error == Variant::CallError::CALL_ERROR_INVALID_METHOD && !ClassDB::class_exists(target->get_class_name())) {
+				if (ce.error == Variant::CallError::CALL_ERROR_INVALID_METHOD && !ObjectTypeDB::type_exists(target->get_type_name())) {
 					//most likely object is not initialized yet, do not throw error.
 				} else {
 					ERR_PRINTS("Error calling method from signal '" + String(p_name) + "': " + Variant::get_call_error_text(target, c.method, args, argc, ce));
-					err = ERR_METHOD_NOT_FOUND;
 				}
 			}
 		}
@@ -1145,24 +1179,21 @@ Error Object::emit_signal(const StringName &p_name, const Variant **p_args, int 
 		disconnect(dd.signal, dd.target, dd.method);
 		disconnect_data.pop_front();
 	}
-
-	return err;
 }
 
-Error Object::emit_signal(const StringName &p_name, VARIANT_ARG_DECLARE) {
+void Object::emit_signal(const StringName &p_name, VARIANT_ARG_DECLARE) {
 
 	VARIANT_ARGPTRS;
 
 	int argc = 0;
 
 	for (int i = 0; i < VARIANT_ARG_MAX; i++) {
-
 		if (argptr[i]->get_type() == Variant::NIL)
 			break;
 		argc++;
 	}
 
-	return emit_signal(p_name, argptr, argc);
+	emit_signal(p_name, argptr, argc);
 }
 
 void Object::_add_user_signal(const String &p_name, const Array &p_args) {
@@ -1189,7 +1220,21 @@ void Object::_add_user_signal(const String &p_name, const Array &p_args) {
 
 	add_user_signal(mi);
 }
+#if 0
+void Object::_emit_signal(const StringName& p_name,const Array& p_pargs){
 
+	Variant args[VARIANT_ARG_MAX];
+
+	int count = p_pargs.size();
+
+	for(int i=0;i<count;i++) {
+		args[i]=p_pargs[i];
+	}
+
+	emit_signal(p_name,VARIANT_ARGS_FROM_ARRAY(args));
+}
+
+#endif
 Array Object::_get_signal_list() const {
 
 	List<MethodInfo> signal_list;
@@ -1198,12 +1243,11 @@ Array Object::_get_signal_list() const {
 	Array ret;
 	for (List<MethodInfo>::Element *E = signal_list.front(); E; E = E->next()) {
 
-		ret.push_back(Dictionary(E->get()));
+		ret.push_back(_get_dict_from_method(E->get()));
 	}
 
 	return ret;
 }
-
 Array Object::_get_signal_connection_list(const String &p_signal) const {
 
 	List<Connection> conns;
@@ -1229,28 +1273,13 @@ Array Object::_get_signal_connection_list(const String &p_signal) const {
 	return ret;
 }
 
-Array Object::_get_incoming_connections() const {
-
-	Array ret;
-	int connections_amount = connections.size();
-	for (int idx_conn = 0; idx_conn < connections_amount; idx_conn++) {
-		Dictionary conn_data;
-		conn_data["source"] = connections[idx_conn].source;
-		conn_data["signal_name"] = connections[idx_conn].signal;
-		conn_data["method_name"] = connections[idx_conn].method;
-		ret.push_back(conn_data);
-	}
-
-	return ret;
-}
-
 void Object::get_signal_list(List<MethodInfo> *p_signals) const {
 
 	if (!script.is_null()) {
 		Ref<Script>(script)->get_script_signal_list(p_signals);
 	}
 
-	ClassDB::get_signal_list(get_class_name(), p_signals);
+	ObjectTypeDB::get_signal_list(get_type_name(), p_signals);
 	//find maybe usersignals?
 	const StringName *S = NULL;
 
@@ -1319,20 +1348,20 @@ Error Object::connect(const StringName &p_signal, Object *p_to_object, const Str
 
 	Signal *s = signal_map.getptr(p_signal);
 	if (!s) {
-		bool signal_is_valid = ClassDB::has_signal(get_class_name(), p_signal);
+		bool signal_is_valid = ObjectTypeDB::has_signal(get_type_name(), p_signal);
 		//check in script
 		if (!signal_is_valid && !script.is_null() && Ref<Script>(script)->has_script_signal(p_signal))
 			signal_is_valid = true;
 
 		if (!signal_is_valid) {
-			ERR_EXPLAIN("In Object of type '" + String(get_class()) + "': Attempt to connect nonexistent signal '" + p_signal + "' to method '" + p_to_object->get_class() + "." + p_to_method + "'");
+			ERR_EXPLAIN("In Object of type '" + String(get_type()) + "': Attempt to connect nonexistent signal '" + p_signal + "' to method '" + p_to_object->get_type() + "." + p_to_method + "'");
 			ERR_FAIL_COND_V(!signal_is_valid, ERR_INVALID_PARAMETER);
 		}
 		signal_map[p_signal] = Signal();
 		s = &signal_map[p_signal];
 	}
 
-	Signal::Target target(p_to_object->get_instance_id(), p_to_method);
+	Signal::Target target(p_to_object->get_instance_ID(), p_to_method);
 	if (s->slot_map.has(target)) {
 		ERR_EXPLAIN("Signal '" + p_signal + "' is already connected to given method '" + p_to_method + "' in that object.");
 		ERR_FAIL_COND_V(s->slot_map.has(target), ERR_INVALID_PARAMETER);
@@ -1359,7 +1388,7 @@ bool Object::is_connected(const StringName &p_signal, Object *p_to_object, const
 	ERR_FAIL_NULL_V(p_to_object, false);
 	const Signal *s = signal_map.getptr(p_signal);
 	if (!s) {
-		bool signal_is_valid = ClassDB::has_signal(get_class_name(), p_signal);
+		bool signal_is_valid = ObjectTypeDB::has_signal(get_type_name(), p_signal);
 		if (signal_is_valid)
 			return false;
 
@@ -1370,7 +1399,7 @@ bool Object::is_connected(const StringName &p_signal, Object *p_to_object, const
 		ERR_FAIL_COND_V(!s, false);
 	}
 
-	Signal::Target target(p_to_object->get_instance_id(), p_to_method);
+	Signal::Target target(p_to_object->get_instance_ID(), p_to_method);
 
 	return s->slot_map.has(target);
 	//const Map<Signal::Target,Signal::Slot>::Element *E = s->slot_map.find(target);
@@ -1390,7 +1419,7 @@ void Object::disconnect(const StringName &p_signal, Object *p_to_object, const S
 		ERR_FAIL_COND(s->lock > 0);
 	}
 
-	Signal::Target target(p_to_object->get_instance_id(), p_to_method);
+	Signal::Target target(p_to_object->get_instance_ID(), p_to_method);
 
 	if (!s->slot_map.has(target)) {
 		ERR_EXPLAIN("Disconnecting nonexistent signal '" + p_signal + "', slot: " + itos(target._id) + ":" + target.method);
@@ -1400,7 +1429,7 @@ void Object::disconnect(const StringName &p_signal, Object *p_to_object, const S
 	p_to_object->connections.erase(s->slot_map[target].cE);
 	s->slot_map.erase(target);
 
-	if (s->slot_map.empty() && ClassDB::has_signal(get_class_name(), p_signal)) {
+	if (s->slot_map.empty() && ObjectTypeDB::has_signal(get_type_name(), p_signal)) {
 		//not user signal, delete
 		signal_map.erase(p_signal);
 	}
@@ -1416,22 +1445,27 @@ Variant Object::_get_bind(const String &p_name) const {
 	return get(p_name);
 }
 
-void Object::initialize_class() {
+void Object::initialize_type() {
 
 	static bool initialized = false;
 	if (initialized)
 		return;
-	ClassDB::_add_class<Object>();
+	ObjectTypeDB::_add_type<Object>();
 	_bind_methods();
 	initialized = true;
 }
 
-StringName Object::tr(const StringName &p_message) const {
+StringName Object::XL_MESSAGE(const StringName &p_message) const {
 
 	if (!_can_translate || !TranslationServer::get_singleton())
 		return p_message;
 
 	return TranslationServer::get_singleton()->translate(p_message);
+}
+
+StringName Object::tr(const StringName &p_message) const {
+
+	return XL_MESSAGE(p_message);
 }
 
 void Object::_clear_internal_resource_paths(const Variant &p_var) {
@@ -1474,26 +1508,8 @@ void Object::_clear_internal_resource_paths(const Variant &p_var) {
 				_clear_internal_resource_paths(d[E->get()]);
 			}
 		} break;
-		default: {}
 	}
 }
-
-#ifdef TOOLS_ENABLED
-void Object::editor_set_section_unfold(const String &p_section, bool p_unfolded) {
-
-	set_edited(true);
-	if (p_unfolded)
-		editor_section_folding.insert(p_section);
-	else
-		editor_section_folding.erase(p_section);
-}
-
-bool Object::editor_is_section_unfolded(const String &p_section) {
-
-	return editor_section_folding.has(p_section);
-}
-
-#endif
 
 void Object::clear_internal_resource_paths() {
 
@@ -1509,87 +1525,102 @@ void Object::clear_internal_resource_paths() {
 
 void Object::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("get_class"), &Object::get_class);
-	ClassDB::bind_method(D_METHOD("is_class", "type"), &Object::is_class);
-	ClassDB::bind_method(D_METHOD("set", "property", "value"), &Object::_set_bind);
-	ClassDB::bind_method(D_METHOD("get", "property"), &Object::_get_bind);
-	ClassDB::bind_method(D_METHOD("get_property_list"), &Object::_get_property_list_bind);
-	ClassDB::bind_method(D_METHOD("get_method_list"), &Object::_get_method_list_bind);
-	ClassDB::bind_method(D_METHOD("notification", "what", "reversed"), &Object::notification, DEFVAL(false));
-	ClassDB::bind_method(D_METHOD("get_instance_id"), &Object::get_instance_id);
+	ObjectTypeDB::bind_method(_MD("get_type"), &Object::get_type);
+	ObjectTypeDB::bind_method(_MD("is_type", "type"), &Object::is_type);
+	ObjectTypeDB::bind_method(_MD("set", "property", "value"), &Object::_set_bind);
+	ObjectTypeDB::bind_method(_MD("get", "property"), &Object::_get_bind);
+	ObjectTypeDB::bind_method(_MD("get_property_list"), &Object::_get_property_list_bind);
+	ObjectTypeDB::bind_method(_MD("get_method_list"), &Object::_get_method_list_bind);
+	ObjectTypeDB::bind_method(_MD("notification", "what", "reversed"), &Object::notification, DEFVAL(false));
+	ObjectTypeDB::bind_method(_MD("get_instance_ID"), &Object::get_instance_ID);
 
-	ClassDB::bind_method(D_METHOD("set_script", "script"), &Object::set_script);
-	ClassDB::bind_method(D_METHOD("get_script"), &Object::get_script);
+	ObjectTypeDB::bind_method(_MD("set_script", "script:Script"), &Object::set_script);
+	ObjectTypeDB::bind_method(_MD("get_script:Script"), &Object::get_script);
 
-	ClassDB::bind_method(D_METHOD("set_meta", "name", "value"), &Object::set_meta);
-	ClassDB::bind_method(D_METHOD("get_meta", "name"), &Object::get_meta);
-	ClassDB::bind_method(D_METHOD("has_meta", "name"), &Object::has_meta);
-	ClassDB::bind_method(D_METHOD("get_meta_list"), &Object::_get_meta_list_bind);
+	ObjectTypeDB::bind_method(_MD("set_meta", "name", "value"), &Object::set_meta);
+	ObjectTypeDB::bind_method(_MD("get_meta:Variant", "name", "value"), &Object::get_meta);
+	ObjectTypeDB::bind_method(_MD("has_meta", "name"), &Object::has_meta);
+	ObjectTypeDB::bind_method(_MD("get_meta_list"), &Object::_get_meta_list_bind);
 
 	//todo reimplement this per language so all 5 arguments can be called
 
-	//ClassDB::bind_method(D_METHOD("call","method","arg1","arg2","arg3","arg4"),&Object::_call_bind,DEFVAL(Variant()),DEFVAL(Variant()),DEFVAL(Variant()),DEFVAL(Variant()));
-	//ClassDB::bind_method(D_METHOD("call_deferred","method","arg1","arg2","arg3","arg4"),&Object::_call_deferred_bind,DEFVAL(Variant()),DEFVAL(Variant()),DEFVAL(Variant()),DEFVAL(Variant()));
+	//	ObjectTypeDB::bind_method(_MD("call","method","arg1","arg2","arg3","arg4"),&Object::_call_bind,DEFVAL(Variant()),DEFVAL(Variant()),DEFVAL(Variant()),DEFVAL(Variant()));
+	//	ObjectTypeDB::bind_method(_MD("call_deferred","method","arg1","arg2","arg3","arg4"),&Object::_call_deferred_bind,DEFVAL(Variant()),DEFVAL(Variant()),DEFVAL(Variant()),DEFVAL(Variant()));
 
-	ClassDB::bind_method(D_METHOD("add_user_signal", "signal", "arguments"), &Object::_add_user_signal, DEFVAL(Array()));
-	ClassDB::bind_method(D_METHOD("has_user_signal", "signal"), &Object::_has_user_signal);
-	//ClassDB::bind_method(D_METHOD("emit_signal","signal","arguments"),&Object::_emit_signal,DEFVAL(Array()));
+	ObjectTypeDB::bind_method(_MD("add_user_signal", "signal", "arguments"), &Object::_add_user_signal, DEFVAL(Array()));
+	ObjectTypeDB::bind_method(_MD("has_user_signal", "signal"), &Object::_has_user_signal);
+	//	ObjectTypeDB::bind_method(_MD("emit_signal","signal","arguments"),&Object::_emit_signal,DEFVAL(Array()));
 
 	{
 		MethodInfo mi;
 		mi.name = "emit_signal";
 		mi.arguments.push_back(PropertyInfo(Variant::STRING, "signal"));
+		Vector<Variant> defargs;
+		for (int i = 0; i < VARIANT_ARG_MAX; i++) {
+			mi.arguments.push_back(PropertyInfo(Variant::NIL, "arg" + itos(i)));
+			defargs.push_back(Variant());
+		}
 
-		ClassDB::bind_vararg_method(METHOD_FLAGS_DEFAULT, "emit_signal", &Object::_emit_signal, mi);
+		ObjectTypeDB::bind_native_method(METHOD_FLAGS_DEFAULT, "emit_signal", &Object::_emit_signal, mi, defargs);
 	}
 
 	{
 		MethodInfo mi;
 		mi.name = "call";
 		mi.arguments.push_back(PropertyInfo(Variant::STRING, "method"));
+		Vector<Variant> defargs;
+		for (int i = 0; i < 10; i++) {
+			mi.arguments.push_back(PropertyInfo(Variant::NIL, "arg" + itos(i)));
+			defargs.push_back(Variant());
+		}
 
-		ClassDB::bind_vararg_method(METHOD_FLAGS_DEFAULT, "call", &Object::_call_bind, mi);
+		ObjectTypeDB::bind_native_method(METHOD_FLAGS_DEFAULT, "call", &Object::_call_bind, mi, defargs);
 	}
 
 	{
 		MethodInfo mi;
 		mi.name = "call_deferred";
 		mi.arguments.push_back(PropertyInfo(Variant::STRING, "method"));
+		Vector<Variant> defargs;
+		for (int i = 0; i < VARIANT_ARG_MAX; i++) {
+			mi.arguments.push_back(PropertyInfo(Variant::NIL, "arg" + itos(i)));
+			defargs.push_back(Variant());
+		}
 
-		ClassDB::bind_vararg_method(METHOD_FLAGS_DEFAULT, "call_deferred", &Object::_call_deferred_bind, mi);
+		ObjectTypeDB::bind_native_method(METHOD_FLAGS_DEFAULT, "call_deferred", &Object::_call_deferred_bind, mi, defargs);
 	}
 
-	ClassDB::bind_method(D_METHOD("callv", "method", "arg_array"), &Object::callv);
+	ObjectTypeDB::bind_method(_MD("callv:Variant", "method", "arg_array"), &Object::callv);
 
-	ClassDB::bind_method(D_METHOD("has_method", "method"), &Object::has_method);
+	ObjectTypeDB::bind_method(_MD("has_method", "method"), &Object::has_method);
 
-	ClassDB::bind_method(D_METHOD("get_signal_list"), &Object::_get_signal_list);
-	ClassDB::bind_method(D_METHOD("get_signal_connection_list", "signal"), &Object::_get_signal_connection_list);
-	ClassDB::bind_method(D_METHOD("get_incoming_connections"), &Object::_get_incoming_connections);
+	ObjectTypeDB::bind_method(_MD("get_signal_list"), &Object::_get_signal_list);
+	ObjectTypeDB::bind_method(_MD("get_signal_connection_list", "signal"), &Object::_get_signal_connection_list);
 
-	ClassDB::bind_method(D_METHOD("connect", "signal", "target", "method", "binds", "flags"), &Object::connect, DEFVAL(Array()), DEFVAL(0));
-	ClassDB::bind_method(D_METHOD("disconnect", "signal", "target", "method"), &Object::disconnect);
-	ClassDB::bind_method(D_METHOD("is_connected", "signal", "target", "method"), &Object::is_connected);
+	ObjectTypeDB::bind_method(_MD("connect", "signal", "target:Object", "method", "binds", "flags"), &Object::connect, DEFVAL(Array()), DEFVAL(0));
+	ObjectTypeDB::bind_method(_MD("disconnect", "signal", "target:Object", "method"), &Object::disconnect);
+	ObjectTypeDB::bind_method(_MD("is_connected", "signal", "target:Object", "method"), &Object::is_connected);
 
-	ClassDB::bind_method(D_METHOD("set_block_signals", "enable"), &Object::set_block_signals);
-	ClassDB::bind_method(D_METHOD("is_blocking_signals"), &Object::is_blocking_signals);
-	ClassDB::bind_method(D_METHOD("property_list_changed_notify"), &Object::property_list_changed_notify);
+	ObjectTypeDB::bind_method(_MD("set_block_signals", "enable"), &Object::set_block_signals);
+	ObjectTypeDB::bind_method(_MD("is_blocking_signals"), &Object::is_blocking_signals);
+	ObjectTypeDB::bind_method(_MD("set_message_translation", "enable"), &Object::set_message_translation);
+	ObjectTypeDB::bind_method(_MD("can_translate_messages"), &Object::can_translate_messages);
+	ObjectTypeDB::bind_method(_MD("property_list_changed_notify"), &Object::property_list_changed_notify);
 
-	ClassDB::bind_method(D_METHOD("set_message_translation", "enable"), &Object::set_message_translation);
-	ClassDB::bind_method(D_METHOD("can_translate_messages"), &Object::can_translate_messages);
-	ClassDB::bind_method(D_METHOD("tr", "message"), &Object::tr);
+	ObjectTypeDB::bind_method(_MD("XL_MESSAGE", "message"), &Object::XL_MESSAGE);
+	ObjectTypeDB::bind_method(_MD("tr", "message"), &Object::tr);
 
-	ClassDB::bind_method(D_METHOD("is_queued_for_deletion"), &Object::is_queued_for_deletion);
+	ObjectTypeDB::bind_method(_MD("is_queued_for_deletion"), &Object::is_queued_for_deletion);
 
-	ClassDB::add_virtual_method("Object", MethodInfo("free"), false);
+	ObjectTypeDB::add_virtual_method("Object", MethodInfo("free"), false);
 
 	ADD_SIGNAL(MethodInfo("script_changed"));
 
 	BIND_VMETHOD(MethodInfo("_notification", PropertyInfo(Variant::INT, "what")));
-	BIND_VMETHOD(MethodInfo(Variant::BOOL, "_set", PropertyInfo(Variant::STRING, "property"), PropertyInfo(Variant::NIL, "value")));
+	BIND_VMETHOD(MethodInfo("_set", PropertyInfo(Variant::STRING, "property"), PropertyInfo(Variant::NIL, "value")));
 #ifdef TOOLS_ENABLED
 	MethodInfo miget("_get", PropertyInfo(Variant::STRING, "property"));
-	miget.return_val.name = "Variant";
+	miget.return_val.name = "var";
 	BIND_VMETHOD(miget);
 
 	MethodInfo plget("_get_property_list");
@@ -1603,9 +1634,9 @@ void Object::_bind_methods() {
 	BIND_CONSTANT(NOTIFICATION_POSTINITIALIZE);
 	BIND_CONSTANT(NOTIFICATION_PREDELETE);
 
-	BIND_ENUM_CONSTANT(CONNECT_DEFERRED);
-	BIND_ENUM_CONSTANT(CONNECT_PERSIST);
-	BIND_ENUM_CONSTANT(CONNECT_ONESHOT);
+	BIND_CONSTANT(CONNECT_DEFERRED);
+	BIND_CONSTANT(CONNECT_PERSIST);
+	BIND_CONSTANT(CONNECT_ONESHOT);
 }
 
 void Object::call_deferred(const StringName &p_method, VARIANT_ARG_DECLARE) {
@@ -1645,7 +1676,7 @@ void Object::get_translatable_strings(List<String> *p_strings) const {
 Variant::Type Object::get_static_property_type(const StringName &p_property, bool *r_valid) const {
 
 	bool valid;
-	Variant::Type t = ClassDB::get_property_type(get_class_name(), p_property, &valid);
+	Variant::Type t = ObjectTypeDB::get_property_type(get_type_name(), p_property, &valid);
 	if (valid) {
 		if (r_valid)
 			*r_valid = true;
@@ -1683,33 +1714,15 @@ uint32_t Object::get_edited_version() const {
 }
 #endif
 
-void *Object::get_script_instance_binding(int p_script_language_index) {
-#ifdef DEBUG_ENABLED
-	ERR_FAIL_INDEX_V(p_script_language_index, MAX_SCRIPT_INSTANCE_BINDINGS, NULL);
-#endif
-
-	//it's up to the script language to make this thread safe, if the function is called twice due to threads being out of syncro
-	//just return the same pointer.
-	//if you want to put a big lock in the entire function and keep allocated pointers in a map or something, feel free to do it
-	//as it should not really affect performance much (won't be called too often), as in far most caes the condition below will be false afterwards
-
-	if (!_script_instance_bindings[p_script_language_index]) {
-		_script_instance_bindings[p_script_language_index] = ScriptServer::get_language(p_script_language_index)->alloc_instance_binding_data(this);
-	}
-
-	return _script_instance_bindings[p_script_language_index];
-}
-
 Object::Object() {
 
-	_class_ptr = NULL;
+	_type_ptr = NULL;
 	_block_signals = false;
 	_predelete_ok = 0;
 	_instance_ID = 0;
 	_instance_ID = ObjectDB::add_instance(this);
 	_can_translate = true;
 	_is_queued_for_deletion = false;
-	memset(_script_instance_bindings, 0, sizeof(void *) * MAX_SCRIPT_INSTANCE_BINDINGS);
 	script_instance = NULL;
 #ifdef TOOLS_ENABLED
 
@@ -1761,12 +1774,6 @@ Object::~Object() {
 	ObjectDB::remove_instance(this);
 	_instance_ID = 0;
 	_predelete_ok = 2;
-
-	for (int i = 0; i < MAX_SCRIPT_INSTANCE_BINDINGS; i++) {
-		if (_script_instance_bindings[i]) {
-			ScriptServer::get_language(i)->free_instance_binding_data(_script_instance_bindings[i]);
-		}
-	}
 }
 
 bool predelete_handler(Object *p_object) {
@@ -1779,40 +1786,32 @@ void postinitialize_handler(Object *p_object) {
 	p_object->_postinitialize();
 }
 
-HashMap<ObjectID, Object *> ObjectDB::instances;
-ObjectID ObjectDB::instance_counter = 1;
+HashMap<uint32_t, Object *> ObjectDB::instances;
+uint32_t ObjectDB::instance_counter = 1;
 HashMap<Object *, ObjectID, ObjectDB::ObjectPtrHash> ObjectDB::instance_checks;
-ObjectID ObjectDB::add_instance(Object *p_object) {
+uint32_t ObjectDB::add_instance(Object *p_object) {
 
-	ERR_FAIL_COND_V(p_object->get_instance_id() != 0, 0);
-
-	rw_lock->write_lock();
+	GLOBAL_LOCK_FUNCTION;
+	ERR_FAIL_COND_V(p_object->get_instance_ID() != 0, 0);
 	instances[++instance_counter] = p_object;
 #ifdef DEBUG_ENABLED
 	instance_checks[p_object] = instance_counter;
 #endif
-	rw_lock->write_unlock();
-
 	return instance_counter;
 }
 
 void ObjectDB::remove_instance(Object *p_object) {
 
-	rw_lock->write_lock();
-
-	instances.erase(p_object->get_instance_id());
+	GLOBAL_LOCK_FUNCTION;
+	instances.erase(p_object->get_instance_ID());
 #ifdef DEBUG_ENABLED
 	instance_checks.erase(p_object);
 #endif
-
-	rw_lock->write_unlock();
 }
-Object *ObjectDB::get_instance(ObjectID p_instance_ID) {
+Object *ObjectDB::get_instance(uint32_t p_instance_ID) {
 
-	rw_lock->read_lock();
+	GLOBAL_LOCK_FUNCTION;
 	Object **obj = instances.getptr(p_instance_ID);
-	rw_lock->read_unlock();
-
 	if (!obj)
 		return NULL;
 	return *obj;
@@ -1820,15 +1819,13 @@ Object *ObjectDB::get_instance(ObjectID p_instance_ID) {
 
 void ObjectDB::debug_objects(DebugFunc p_func) {
 
-	rw_lock->read_lock();
+	GLOBAL_LOCK_FUNCTION;
 
-	const ObjectID *K = NULL;
+	const uint32_t *K = NULL;
 	while ((K = instances.next(K))) {
 
 		p_func(instances[*K]);
 	}
-
-	rw_lock->read_unlock();
 }
 
 void Object::get_argument_options(const StringName &p_function, int p_idx, List<String> *r_options) const {
@@ -1836,42 +1833,29 @@ void Object::get_argument_options(const StringName &p_function, int p_idx, List<
 
 int ObjectDB::get_object_count() {
 
-	rw_lock->read_lock();
-	int count = instances.size();
-	rw_lock->read_unlock();
-
-	return count;
-}
-
-RWLock *ObjectDB::rw_lock = NULL;
-
-void ObjectDB::setup() {
-
-	rw_lock = RWLock::create();
+	GLOBAL_LOCK_FUNCTION;
+	return instances.size();
 }
 
 void ObjectDB::cleanup() {
 
-	rw_lock->write_lock();
+	GLOBAL_LOCK_FUNCTION;
 	if (instances.size()) {
 
 		WARN_PRINT("ObjectDB Instances still exist!");
 		if (OS::get_singleton()->is_stdout_verbose()) {
-			const ObjectID *K = NULL;
+			const uint32_t *K = NULL;
 			while ((K = instances.next(K))) {
 
 				String node_name;
-				if (instances[*K]->is_class("Node"))
+				if (instances[*K]->is_type("Node"))
 					node_name = " - Node Name: " + String(instances[*K]->call("get_name"));
-				if (instances[*K]->is_class("Resource"))
+				if (instances[*K]->is_type("Resource"))
 					node_name = " - Resource Name: " + String(instances[*K]->call("get_name")) + " Path: " + String(instances[*K]->call("get_path"));
-				print_line("Leaked Instance: " + String(instances[*K]->get_class()) + ":" + itos(*K) + node_name);
+				print_line("Leaked Instance: " + String(instances[*K]->get_type()) + ":" + itos(*K) + node_name);
 			}
 		}
 	}
 	instances.clear();
 	instance_checks.clear();
-	rw_lock->write_unlock();
-
-	memdelete(rw_lock);
 }

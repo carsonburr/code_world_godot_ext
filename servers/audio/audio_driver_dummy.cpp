@@ -29,24 +29,25 @@
 /*************************************************************************/
 #include "audio_driver_dummy.h"
 
+#include "globals.h"
 #include "os/os.h"
-#include "project_settings.h"
 
 Error AudioDriverDummy::init() {
 
 	active = false;
 	thread_exited = false;
 	exit_thread = false;
+	pcm_open = false;
 	samples_in = NULL;
 
-	mix_rate = DEFAULT_MIX_RATE;
-	speaker_mode = SPEAKER_MODE_STEREO;
+	mix_rate = 44100;
+	output_format = OUTPUT_STEREO;
 	channels = 2;
 
-	int latency = GLOBAL_DEF("audio/output_latency", DEFAULT_OUTPUT_LATENCY);
-	buffer_frames = closest_power_of_2(latency * mix_rate / 1000);
+	int latency = GLOBAL_DEF("audio/output_latency", 25);
+	buffer_size = closest_power_of_2(latency * mix_rate / 1000);
 
-	samples_in = memnew_arr(int32_t, buffer_frames * channels);
+	samples_in = memnew_arr(int32_t, buffer_size * channels);
 
 	mutex = Mutex::create();
 	thread = Thread::create(AudioDriverDummy::thread_func, this);
@@ -58,15 +59,17 @@ void AudioDriverDummy::thread_func(void *p_udata) {
 
 	AudioDriverDummy *ad = (AudioDriverDummy *)p_udata;
 
-	uint64_t usdelay = (ad->buffer_frames / float(ad->mix_rate)) * 1000000;
+	uint64_t usdelay = (ad->buffer_size / float(ad->mix_rate)) * 1000000;
 
 	while (!ad->exit_thread) {
 
-		if (ad->active) {
+		if (!ad->active) {
+
+		} else {
 
 			ad->lock();
 
-			ad->audio_server_process(ad->buffer_frames, ad->samples_in);
+			ad->audio_server_process(ad->buffer_size, ad->samples_in);
 
 			ad->unlock();
 		};
@@ -87,18 +90,16 @@ int AudioDriverDummy::get_mix_rate() const {
 	return mix_rate;
 };
 
-AudioDriver::SpeakerMode AudioDriverDummy::get_speaker_mode() const {
+AudioDriverSW::OutputFormat AudioDriverDummy::get_output_format() const {
 
-	return speaker_mode;
+	return output_format;
 };
-
 void AudioDriverDummy::lock() {
 
 	if (!thread || !mutex)
 		return;
 	mutex->lock();
 };
-
 void AudioDriverDummy::unlock() {
 
 	if (!thread || !mutex)

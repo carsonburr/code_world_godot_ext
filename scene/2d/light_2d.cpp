@@ -28,8 +28,6 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 #include "light_2d.h"
-
-#include "engine.h"
 #include "servers/visual_server.h"
 
 void Light2D::edit_set_pivot(const Point2 &p_pivot) {
@@ -72,7 +70,7 @@ void Light2D::_update_light_visibility() {
 
 #ifdef TOOLS_ENABLED
 	if (editor_only) {
-		if (!Engine::get_singleton()->is_editor_hint()) {
+		if (!get_tree()->is_editor_hint()) {
 			editor_ok = false;
 		} else {
 			editor_ok = (get_tree()->get_edited_scene_root() && (this == get_tree()->get_edited_scene_root() || get_owner() == get_tree()->get_edited_scene_root()));
@@ -84,7 +82,7 @@ void Light2D::_update_light_visibility() {
 	}
 #endif
 
-	VS::get_singleton()->canvas_light_set_enabled(canvas_light, enabled && is_visible_in_tree() && editor_ok);
+	VS::get_singleton()->canvas_light_set_enabled(canvas_light, enabled && is_visible() && editor_ok);
 }
 
 void Light2D::set_enabled(bool p_enabled) {
@@ -221,24 +219,24 @@ int Light2D::get_layer_range_max() const {
 	return layer_max;
 }
 
-void Light2D::set_item_cull_mask(int p_mask) {
+void Light2D::set_item_mask(int p_mask) {
 
 	item_mask = p_mask;
-	VS::get_singleton()->canvas_light_set_item_cull_mask(canvas_light, item_mask);
+	VS::get_singleton()->canvas_light_set_item_mask(canvas_light, item_mask);
 }
 
-int Light2D::get_item_cull_mask() const {
+int Light2D::get_item_mask() const {
 
 	return item_mask;
 }
 
-void Light2D::set_item_shadow_cull_mask(int p_mask) {
+void Light2D::set_item_shadow_mask(int p_mask) {
 
 	item_shadow_mask = p_mask;
-	VS::get_singleton()->canvas_light_set_item_shadow_cull_mask(canvas_light, item_shadow_mask);
+	VS::get_singleton()->canvas_light_set_item_shadow_mask(canvas_light, item_shadow_mask);
 }
 
-int Light2D::get_item_shadow_cull_mask() const {
+int Light2D::get_item_shadow_mask() const {
 
 	return item_shadow_mask;
 }
@@ -275,25 +273,15 @@ int Light2D::get_shadow_buffer_size() const {
 	return shadow_buffer_size;
 }
 
-void Light2D::set_shadow_gradient_length(float p_multiplier) {
+void Light2D::set_shadow_esm_multiplier(float p_multiplier) {
 
-	shadow_gradient_length = p_multiplier;
-	VS::get_singleton()->canvas_light_set_shadow_gradient_length(canvas_light, p_multiplier);
+	shadow_esm_multiplier = p_multiplier;
+	VS::get_singleton()->canvas_light_set_shadow_esm_multiplier(canvas_light, p_multiplier);
 }
 
-float Light2D::get_shadow_gradient_length() const {
+float Light2D::get_shadow_esm_multiplier() const {
 
-	return shadow_gradient_length;
-}
-
-void Light2D::set_shadow_filter(ShadowFilter p_filter) {
-	shadow_filter = p_filter;
-	VS::get_singleton()->canvas_light_set_shadow_filter(canvas_light, VS::CanvasLightShadowFilter(p_filter));
-}
-
-Light2D::ShadowFilter Light2D::get_shadow_filter() const {
-
-	return shadow_filter;
+	return shadow_esm_multiplier;
 }
 
 void Light2D::set_shadow_color(const Color &p_shadow_color) {
@@ -338,118 +326,89 @@ String Light2D::get_configuration_warning() const {
 	return String();
 }
 
-void Light2D::set_shadow_smooth(float p_amount) {
-
-	shadow_smooth = p_amount;
-	VS::get_singleton()->canvas_light_set_shadow_smooth(canvas_light, shadow_smooth);
-}
-
-float Light2D::get_shadow_smooth() const {
-
-	return shadow_smooth;
-}
-
 void Light2D::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("set_enabled", "enabled"), &Light2D::set_enabled);
-	ClassDB::bind_method(D_METHOD("is_enabled"), &Light2D::is_enabled);
+	ObjectTypeDB::bind_method(_MD("set_enabled", "enabled"), &Light2D::set_enabled);
+	ObjectTypeDB::bind_method(_MD("is_enabled"), &Light2D::is_enabled);
 
-	ClassDB::bind_method(D_METHOD("set_editor_only", "editor_only"), &Light2D::set_editor_only);
-	ClassDB::bind_method(D_METHOD("is_editor_only"), &Light2D::is_editor_only);
+	ObjectTypeDB::bind_method(_MD("set_editor_only", "editor_only"), &Light2D::set_editor_only);
+	ObjectTypeDB::bind_method(_MD("is_editor_only"), &Light2D::is_editor_only);
 
-	ClassDB::bind_method(D_METHOD("set_texture", "texture"), &Light2D::set_texture);
-	ClassDB::bind_method(D_METHOD("get_texture"), &Light2D::get_texture);
+	ObjectTypeDB::bind_method(_MD("set_texture", "texture"), &Light2D::set_texture);
+	ObjectTypeDB::bind_method(_MD("get_texture"), &Light2D::get_texture);
 
-	ClassDB::bind_method(D_METHOD("set_texture_offset", "texture_offset"), &Light2D::set_texture_offset);
-	ClassDB::bind_method(D_METHOD("get_texture_offset"), &Light2D::get_texture_offset);
+	ObjectTypeDB::bind_method(_MD("set_texture_offset", "texture_offset"), &Light2D::set_texture_offset);
+	ObjectTypeDB::bind_method(_MD("get_texture_offset"), &Light2D::get_texture_offset);
 
-	ClassDB::bind_method(D_METHOD("set_color", "color"), &Light2D::set_color);
-	ClassDB::bind_method(D_METHOD("get_color"), &Light2D::get_color);
+	ObjectTypeDB::bind_method(_MD("set_color", "color"), &Light2D::set_color);
+	ObjectTypeDB::bind_method(_MD("get_color"), &Light2D::get_color);
 
-	ClassDB::bind_method(D_METHOD("set_height", "height"), &Light2D::set_height);
-	ClassDB::bind_method(D_METHOD("get_height"), &Light2D::get_height);
+	ObjectTypeDB::bind_method(_MD("set_height", "height"), &Light2D::set_height);
+	ObjectTypeDB::bind_method(_MD("get_height"), &Light2D::get_height);
 
-	ClassDB::bind_method(D_METHOD("set_energy", "energy"), &Light2D::set_energy);
-	ClassDB::bind_method(D_METHOD("get_energy"), &Light2D::get_energy);
+	ObjectTypeDB::bind_method(_MD("set_energy", "energy"), &Light2D::set_energy);
+	ObjectTypeDB::bind_method(_MD("get_energy"), &Light2D::get_energy);
 
-	ClassDB::bind_method(D_METHOD("set_texture_scale", "texture_scale"), &Light2D::set_texture_scale);
-	ClassDB::bind_method(D_METHOD("get_texture_scale"), &Light2D::get_texture_scale);
+	ObjectTypeDB::bind_method(_MD("set_texture_scale", "texture_scale"), &Light2D::set_texture_scale);
+	ObjectTypeDB::bind_method(_MD("get_texture_scale"), &Light2D::get_texture_scale);
 
-	ClassDB::bind_method(D_METHOD("set_z_range_min", "z"), &Light2D::set_z_range_min);
-	ClassDB::bind_method(D_METHOD("get_z_range_min"), &Light2D::get_z_range_min);
+	ObjectTypeDB::bind_method(_MD("set_z_range_min", "z"), &Light2D::set_z_range_min);
+	ObjectTypeDB::bind_method(_MD("get_z_range_min"), &Light2D::get_z_range_min);
 
-	ClassDB::bind_method(D_METHOD("set_z_range_max", "z"), &Light2D::set_z_range_max);
-	ClassDB::bind_method(D_METHOD("get_z_range_max"), &Light2D::get_z_range_max);
+	ObjectTypeDB::bind_method(_MD("set_z_range_max", "z"), &Light2D::set_z_range_max);
+	ObjectTypeDB::bind_method(_MD("get_z_range_max"), &Light2D::get_z_range_max);
 
-	ClassDB::bind_method(D_METHOD("set_layer_range_min", "layer"), &Light2D::set_layer_range_min);
-	ClassDB::bind_method(D_METHOD("get_layer_range_min"), &Light2D::get_layer_range_min);
+	ObjectTypeDB::bind_method(_MD("set_layer_range_min", "layer"), &Light2D::set_layer_range_min);
+	ObjectTypeDB::bind_method(_MD("get_layer_range_min"), &Light2D::get_layer_range_min);
 
-	ClassDB::bind_method(D_METHOD("set_layer_range_max", "layer"), &Light2D::set_layer_range_max);
-	ClassDB::bind_method(D_METHOD("get_layer_range_max"), &Light2D::get_layer_range_max);
+	ObjectTypeDB::bind_method(_MD("set_layer_range_max", "layer"), &Light2D::set_layer_range_max);
+	ObjectTypeDB::bind_method(_MD("get_layer_range_max"), &Light2D::get_layer_range_max);
 
-	ClassDB::bind_method(D_METHOD("set_item_cull_mask", "item_cull_mask"), &Light2D::set_item_cull_mask);
-	ClassDB::bind_method(D_METHOD("get_item_cull_mask"), &Light2D::get_item_cull_mask);
+	ObjectTypeDB::bind_method(_MD("set_item_mask", "item_mask"), &Light2D::set_item_mask);
+	ObjectTypeDB::bind_method(_MD("get_item_mask"), &Light2D::get_item_mask);
 
-	ClassDB::bind_method(D_METHOD("set_item_shadow_cull_mask", "item_shadow_cull_mask"), &Light2D::set_item_shadow_cull_mask);
-	ClassDB::bind_method(D_METHOD("get_item_shadow_cull_mask"), &Light2D::get_item_shadow_cull_mask);
+	ObjectTypeDB::bind_method(_MD("set_item_shadow_mask", "item_shadow_mask"), &Light2D::set_item_shadow_mask);
+	ObjectTypeDB::bind_method(_MD("get_item_shadow_mask"), &Light2D::get_item_shadow_mask);
 
-	ClassDB::bind_method(D_METHOD("set_mode", "mode"), &Light2D::set_mode);
-	ClassDB::bind_method(D_METHOD("get_mode"), &Light2D::get_mode);
+	ObjectTypeDB::bind_method(_MD("set_mode", "mode"), &Light2D::set_mode);
+	ObjectTypeDB::bind_method(_MD("get_mode"), &Light2D::get_mode);
 
-	ClassDB::bind_method(D_METHOD("set_shadow_enabled", "enabled"), &Light2D::set_shadow_enabled);
-	ClassDB::bind_method(D_METHOD("is_shadow_enabled"), &Light2D::is_shadow_enabled);
+	ObjectTypeDB::bind_method(_MD("set_shadow_enabled", "enabled"), &Light2D::set_shadow_enabled);
+	ObjectTypeDB::bind_method(_MD("is_shadow_enabled"), &Light2D::is_shadow_enabled);
 
-	ClassDB::bind_method(D_METHOD("set_shadow_buffer_size", "size"), &Light2D::set_shadow_buffer_size);
-	ClassDB::bind_method(D_METHOD("get_shadow_buffer_size"), &Light2D::get_shadow_buffer_size);
+	ObjectTypeDB::bind_method(_MD("set_shadow_buffer_size", "size"), &Light2D::set_shadow_buffer_size);
+	ObjectTypeDB::bind_method(_MD("get_shadow_buffer_size"), &Light2D::get_shadow_buffer_size);
 
-	ClassDB::bind_method(D_METHOD("set_shadow_smooth", "smooth"), &Light2D::set_shadow_smooth);
-	ClassDB::bind_method(D_METHOD("get_shadow_smooth"), &Light2D::get_shadow_smooth);
+	ObjectTypeDB::bind_method(_MD("set_shadow_esm_multiplier", "multiplier"), &Light2D::set_shadow_esm_multiplier);
+	ObjectTypeDB::bind_method(_MD("get_shadow_esm_multiplier"), &Light2D::get_shadow_esm_multiplier);
 
-	ClassDB::bind_method(D_METHOD("set_shadow_gradient_length", "multiplier"), &Light2D::set_shadow_gradient_length);
-	ClassDB::bind_method(D_METHOD("get_shadow_gradient_length"), &Light2D::get_shadow_gradient_length);
+	ObjectTypeDB::bind_method(_MD("set_shadow_color", "shadow_color"), &Light2D::set_shadow_color);
+	ObjectTypeDB::bind_method(_MD("get_shadow_color"), &Light2D::get_shadow_color);
 
-	ClassDB::bind_method(D_METHOD("set_shadow_filter", "filter"), &Light2D::set_shadow_filter);
-	ClassDB::bind_method(D_METHOD("get_shadow_filter"), &Light2D::get_shadow_filter);
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "enabled"), _SCS("set_enabled"), _SCS("is_enabled"));
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "editor_only"), _SCS("set_editor_only"), _SCS("is_editor_only"));
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "texture", PROPERTY_HINT_RESOURCE_TYPE, "Texture"), _SCS("set_texture"), _SCS("get_texture"));
+	ADD_PROPERTY(PropertyInfo(Variant::VECTOR2, "offset"), _SCS("set_texture_offset"), _SCS("get_texture_offset"));
+	ADD_PROPERTY(PropertyInfo(Variant::REAL, "scale", PROPERTY_HINT_RANGE, "0.01,50,0.01"), _SCS("set_texture_scale"), _SCS("get_texture_scale"));
+	ADD_PROPERTY(PropertyInfo(Variant::COLOR, "color"), _SCS("set_color"), _SCS("get_color"));
+	ADD_PROPERTY(PropertyInfo(Variant::REAL, "energy", PROPERTY_HINT_RANGE, "0.01,100,0.01"), _SCS("set_energy"), _SCS("get_energy"));
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "mode", PROPERTY_HINT_ENUM, "Add,Sub,Mix,Mask"), _SCS("set_mode"), _SCS("get_mode"));
+	ADD_PROPERTY(PropertyInfo(Variant::REAL, "range/height", PROPERTY_HINT_RANGE, "-100,100,0.1"), _SCS("set_height"), _SCS("get_height"));
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "range/z_min", PROPERTY_HINT_RANGE, itos(VS::CANVAS_ITEM_Z_MIN) + "," + itos(VS::CANVAS_ITEM_Z_MAX) + ",1"), _SCS("set_z_range_min"), _SCS("get_z_range_min"));
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "range/z_max", PROPERTY_HINT_RANGE, itos(VS::CANVAS_ITEM_Z_MIN) + "," + itos(VS::CANVAS_ITEM_Z_MAX) + ",1"), _SCS("set_z_range_max"), _SCS("get_z_range_max"));
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "range/layer_min", PROPERTY_HINT_RANGE, "-512,512,1"), _SCS("set_layer_range_min"), _SCS("get_layer_range_min"));
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "range/layer_max", PROPERTY_HINT_RANGE, "-512,512,1"), _SCS("set_layer_range_max"), _SCS("get_layer_range_max"));
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "range/item_mask", PROPERTY_HINT_ALL_FLAGS), _SCS("set_item_mask"), _SCS("get_item_mask"));
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "shadow/enabled"), _SCS("set_shadow_enabled"), _SCS("is_shadow_enabled"));
+	ADD_PROPERTY(PropertyInfo(Variant::COLOR, "shadow/color"), _SCS("set_shadow_color"), _SCS("get_shadow_color"));
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "shadow/buffer_size", PROPERTY_HINT_RANGE, "32,16384,1"), _SCS("set_shadow_buffer_size"), _SCS("get_shadow_buffer_size"));
+	ADD_PROPERTY(PropertyInfo(Variant::REAL, "shadow/esm_multiplier", PROPERTY_HINT_RANGE, "1,4096,0.1"), _SCS("set_shadow_esm_multiplier"), _SCS("get_shadow_esm_multiplier"));
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "shadow/item_mask", PROPERTY_HINT_ALL_FLAGS), _SCS("set_item_shadow_mask"), _SCS("get_item_shadow_mask"));
 
-	ClassDB::bind_method(D_METHOD("set_shadow_color", "shadow_color"), &Light2D::set_shadow_color);
-	ClassDB::bind_method(D_METHOD("get_shadow_color"), &Light2D::get_shadow_color);
-
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "enabled"), "set_enabled", "is_enabled");
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "editor_only"), "set_editor_only", "is_editor_only");
-	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "texture", PROPERTY_HINT_RESOURCE_TYPE, "Texture"), "set_texture", "get_texture");
-	ADD_PROPERTY(PropertyInfo(Variant::VECTOR2, "offset"), "set_texture_offset", "get_texture_offset");
-	ADD_PROPERTY(PropertyInfo(Variant::REAL, "texture_scale", PROPERTY_HINT_RANGE, "0.01,50,0.01"), "set_texture_scale", "get_texture_scale");
-	ADD_PROPERTY(PropertyInfo(Variant::COLOR, "color"), "set_color", "get_color");
-	ADD_PROPERTY(PropertyInfo(Variant::REAL, "energy", PROPERTY_HINT_RANGE, "0.01,100,0.01"), "set_energy", "get_energy");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "mode", PROPERTY_HINT_ENUM, "Add,Sub,Mix,Mask"), "set_mode", "get_mode");
-	ADD_GROUP("Range", "range_");
-	ADD_PROPERTY(PropertyInfo(Variant::REAL, "range_height", PROPERTY_HINT_RANGE, "-100,100,0.1"), "set_height", "get_height");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "range_z_min", PROPERTY_HINT_RANGE, itos(VS::CANVAS_ITEM_Z_MIN) + "," + itos(VS::CANVAS_ITEM_Z_MAX) + ",1"), "set_z_range_min", "get_z_range_min");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "range_z_max", PROPERTY_HINT_RANGE, itos(VS::CANVAS_ITEM_Z_MIN) + "," + itos(VS::CANVAS_ITEM_Z_MAX) + ",1"), "set_z_range_max", "get_z_range_max");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "range_layer_min", PROPERTY_HINT_RANGE, "-512,512,1"), "set_layer_range_min", "get_layer_range_min");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "range_layer_max", PROPERTY_HINT_RANGE, "-512,512,1"), "set_layer_range_max", "get_layer_range_max");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "range_item_cull_mask", PROPERTY_HINT_LAYERS_2D_RENDER), "set_item_cull_mask", "get_item_cull_mask");
-
-	ADD_GROUP("Shadow", "shadow_");
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "shadow_enabled"), "set_shadow_enabled", "is_shadow_enabled");
-	ADD_PROPERTY(PropertyInfo(Variant::COLOR, "shadow_color"), "set_shadow_color", "get_shadow_color");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "shadow_buffer_size", PROPERTY_HINT_RANGE, "32,16384,1"), "set_shadow_buffer_size", "get_shadow_buffer_size");
-	ADD_PROPERTY(PropertyInfo(Variant::REAL, "shadow_gradient_length", PROPERTY_HINT_RANGE, "0,4096,0.1"), "set_shadow_gradient_length", "get_shadow_gradient_length");
-	ADD_PROPERTY(PropertyInfo(Variant::REAL, "shadow_filter", PROPERTY_HINT_ENUM, "None,PCF3,PCF5,PCF7,PCF9,PCF13"), "set_shadow_filter", "get_shadow_filter");
-	ADD_PROPERTY(PropertyInfo(Variant::REAL, "shadow_filter_smooth", PROPERTY_HINT_RANGE, "0,64,0.1"), "set_shadow_smooth", "get_shadow_smooth");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "shadow_item_cull_mask", PROPERTY_HINT_LAYERS_2D_RENDER), "set_item_shadow_cull_mask", "get_item_shadow_cull_mask");
-
-	BIND_ENUM_CONSTANT(MODE_ADD);
-	BIND_ENUM_CONSTANT(MODE_SUB);
-	BIND_ENUM_CONSTANT(MODE_MIX);
-	BIND_ENUM_CONSTANT(MODE_MASK);
-
-	BIND_ENUM_CONSTANT(SHADOW_FILTER_NONE);
-	BIND_ENUM_CONSTANT(SHADOW_FILTER_PCF3);
-	BIND_ENUM_CONSTANT(SHADOW_FILTER_PCF5);
-	BIND_ENUM_CONSTANT(SHADOW_FILTER_PCF7);
-	BIND_ENUM_CONSTANT(SHADOW_FILTER_PCF9);
-	BIND_ENUM_CONSTANT(SHADOW_FILTER_PCF13);
+	BIND_CONSTANT(MODE_ADD);
+	BIND_CONSTANT(MODE_SUB);
+	BIND_CONSTANT(MODE_MIX);
+	BIND_CONSTANT(MODE_MASK);
 }
 
 Light2D::Light2D() {
@@ -469,13 +428,9 @@ Light2D::Light2D() {
 	item_shadow_mask = 1;
 	mode = MODE_ADD;
 	shadow_buffer_size = 2048;
-	shadow_gradient_length = 0;
+	shadow_esm_multiplier = 80;
 	energy = 1.0;
 	shadow_color = Color(0, 0, 0, 0);
-	shadow_filter = SHADOW_FILTER_NONE;
-	shadow_smooth = 0;
-
-	set_notify_transform(true);
 }
 
 Light2D::~Light2D() {

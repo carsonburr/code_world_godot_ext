@@ -30,8 +30,8 @@
 #ifndef FACE3_H
 #define FACE3_H
 
+#include "aabb.h"
 #include "plane.h"
-#include "rect3.h"
 #include "transform.h"
 #include "vector3.h"
 
@@ -74,18 +74,18 @@ public:
 	ClockDirection get_clock_dir() const; ///< todo, test if this is returning the proper clockwisity
 
 	void get_support(const Vector3 &p_normal, const Transform &p_transform, Vector3 *p_vertices, int *p_count, int p_max) const;
-	void project_range(const Vector3 &p_normal, const Transform &p_transform, real_t &r_min, real_t &r_max) const;
+	void project_range(const Vector3 &p_normal, const Transform &p_transform, float &r_min, float &r_max) const;
 
-	Rect3 get_aabb() const {
+	AABB get_aabb() const {
 
-		Rect3 aabb(vertex[0], Vector3());
+		AABB aabb(vertex[0], Vector3());
 		aabb.expand_to(vertex[1]);
 		aabb.expand_to(vertex[2]);
 		return aabb;
 	}
 
-	bool intersects_aabb(const Rect3 &p_aabb) const;
-	_FORCE_INLINE_ bool intersects_aabb2(const Rect3 &p_aabb) const;
+	bool intersects_aabb(const AABB &p_aabb) const;
+	_FORCE_INLINE_ bool intersects_aabb2(const AABB &p_aabb) const;
 	operator String() const;
 
 	inline Face3() {}
@@ -96,39 +96,39 @@ public:
 	}
 };
 
-bool Face3::intersects_aabb2(const Rect3 &p_aabb) const {
+bool Face3::intersects_aabb2(const AABB &p_aabb) const {
 
 	Vector3 perp = (vertex[0] - vertex[2]).cross(vertex[0] - vertex[1]);
 
 	Vector3 half_extents = p_aabb.size * 0.5;
-	Vector3 ofs = p_aabb.position + half_extents;
+	Vector3 ofs = p_aabb.pos + half_extents;
 
 	Vector3 sup = Vector3(
 			(perp.x > 0) ? -half_extents.x : half_extents.x,
 			(perp.y > 0) ? -half_extents.y : half_extents.y,
 			(perp.z > 0) ? -half_extents.z : half_extents.z);
 
-	real_t d = perp.dot(vertex[0]);
-	real_t dist_a = perp.dot(ofs + sup) - d;
-	real_t dist_b = perp.dot(ofs - sup) - d;
+	float d = perp.dot(vertex[0]);
+	float dist_a = perp.dot(ofs + sup) - d;
+	float dist_b = perp.dot(ofs - sup) - d;
 
 	if (dist_a * dist_b > 0)
 		return false; //does not intersect the plane
 
-#define TEST_AXIS(m_ax)                                            \
-	{                                                              \
-		real_t aabb_min = p_aabb.position.m_ax;                    \
-		real_t aabb_max = p_aabb.position.m_ax + p_aabb.size.m_ax; \
-		real_t tri_min, tri_max;                                   \
-		for (int i = 0; i < 3; i++) {                              \
-			if (i == 0 || vertex[i].m_ax > tri_max)                \
-				tri_max = vertex[i].m_ax;                          \
-			if (i == 0 || vertex[i].m_ax < tri_min)                \
-				tri_min = vertex[i].m_ax;                          \
-		}                                                          \
-                                                                   \
-		if (tri_max < aabb_min || aabb_max < tri_min)              \
-			return false;                                          \
+#define TEST_AXIS(m_ax)                                      \
+	{                                                        \
+		float aabb_min = p_aabb.pos.m_ax;                    \
+		float aabb_max = p_aabb.pos.m_ax + p_aabb.size.m_ax; \
+		float tri_min, tri_max;                              \
+		for (int i = 0; i < 3; i++) {                        \
+			if (i == 0 || vertex[i].m_ax > tri_max)          \
+				tri_max = vertex[i].m_ax;                    \
+			if (i == 0 || vertex[i].m_ax < tri_min)          \
+				tri_min = vertex[i].m_ax;                    \
+		}                                                    \
+                                                             \
+		if (tri_max < aabb_min || aabb_max < tri_min)        \
+			return false;                                    \
 	}
 
 	TEST_AXIS(x);
@@ -150,68 +150,68 @@ bool Face3::intersects_aabb2(const Rect3 &p_aabb) const {
 
 			case 0: {
 
-				from = Vector3(p_aabb.position.x + p_aabb.size.x, p_aabb.position.y, p_aabb.position.z);
-				to = Vector3(p_aabb.position.x, p_aabb.position.y, p_aabb.position.z);
+				from = Vector3(p_aabb.pos.x + p_aabb.size.x, p_aabb.pos.y, p_aabb.pos.z);
+				to = Vector3(p_aabb.pos.x, p_aabb.pos.y, p_aabb.pos.z);
 			} break;
 			case 1: {
 
-				from = Vector3(p_aabb.position.x + p_aabb.size.x, p_aabb.position.y, p_aabb.position.z + p_aabb.size.z);
-				to = Vector3(p_aabb.position.x + p_aabb.size.x, p_aabb.position.y, p_aabb.position.z);
+				from = Vector3(p_aabb.pos.x + p_aabb.size.x, p_aabb.pos.y, p_aabb.pos.z + p_aabb.size.z);
+				to = Vector3(p_aabb.pos.x + p_aabb.size.x, p_aabb.pos.y, p_aabb.pos.z);
 			} break;
 			case 2: {
-				from = Vector3(p_aabb.position.x, p_aabb.position.y, p_aabb.position.z + p_aabb.size.z);
-				to = Vector3(p_aabb.position.x + p_aabb.size.x, p_aabb.position.y, p_aabb.position.z + p_aabb.size.z);
+				from = Vector3(p_aabb.pos.x, p_aabb.pos.y, p_aabb.pos.z + p_aabb.size.z);
+				to = Vector3(p_aabb.pos.x + p_aabb.size.x, p_aabb.pos.y, p_aabb.pos.z + p_aabb.size.z);
 
 			} break;
 			case 3: {
 
-				from = Vector3(p_aabb.position.x, p_aabb.position.y, p_aabb.position.z);
-				to = Vector3(p_aabb.position.x, p_aabb.position.y, p_aabb.position.z + p_aabb.size.z);
+				from = Vector3(p_aabb.pos.x, p_aabb.pos.y, p_aabb.pos.z);
+				to = Vector3(p_aabb.pos.x, p_aabb.pos.y, p_aabb.pos.z + p_aabb.size.z);
 
 			} break;
 			case 4: {
 
-				from = Vector3(p_aabb.position.x, p_aabb.position.y + p_aabb.size.y, p_aabb.position.z);
-				to = Vector3(p_aabb.position.x + p_aabb.size.x, p_aabb.position.y + p_aabb.size.y, p_aabb.position.z);
+				from = Vector3(p_aabb.pos.x, p_aabb.pos.y + p_aabb.size.y, p_aabb.pos.z);
+				to = Vector3(p_aabb.pos.x + p_aabb.size.x, p_aabb.pos.y + p_aabb.size.y, p_aabb.pos.z);
 			} break;
 			case 5: {
 
-				from = Vector3(p_aabb.position.x + p_aabb.size.x, p_aabb.position.y + p_aabb.size.y, p_aabb.position.z);
-				to = Vector3(p_aabb.position.x + p_aabb.size.x, p_aabb.position.y + p_aabb.size.y, p_aabb.position.z + p_aabb.size.z);
+				from = Vector3(p_aabb.pos.x + p_aabb.size.x, p_aabb.pos.y + p_aabb.size.y, p_aabb.pos.z);
+				to = Vector3(p_aabb.pos.x + p_aabb.size.x, p_aabb.pos.y + p_aabb.size.y, p_aabb.pos.z + p_aabb.size.z);
 			} break;
 			case 6: {
-				from = Vector3(p_aabb.position.x + p_aabb.size.x, p_aabb.position.y + p_aabb.size.y, p_aabb.position.z + p_aabb.size.z);
-				to = Vector3(p_aabb.position.x, p_aabb.position.y + p_aabb.size.y, p_aabb.position.z + p_aabb.size.z);
+				from = Vector3(p_aabb.pos.x + p_aabb.size.x, p_aabb.pos.y + p_aabb.size.y, p_aabb.pos.z + p_aabb.size.z);
+				to = Vector3(p_aabb.pos.x, p_aabb.pos.y + p_aabb.size.y, p_aabb.pos.z + p_aabb.size.z);
 
 			} break;
 			case 7: {
 
-				from = Vector3(p_aabb.position.x, p_aabb.position.y + p_aabb.size.y, p_aabb.position.z + p_aabb.size.z);
-				to = Vector3(p_aabb.position.x, p_aabb.position.y + p_aabb.size.y, p_aabb.position.z);
+				from = Vector3(p_aabb.pos.x, p_aabb.pos.y + p_aabb.size.y, p_aabb.pos.z + p_aabb.size.z);
+				to = Vector3(p_aabb.pos.x, p_aabb.pos.y + p_aabb.size.y, p_aabb.pos.z);
 
 			} break;
 			case 8: {
 
-				from = Vector3(p_aabb.position.x, p_aabb.position.y, p_aabb.position.z + p_aabb.size.z);
-				to = Vector3(p_aabb.position.x, p_aabb.position.y + p_aabb.size.y, p_aabb.position.z + p_aabb.size.z);
+				from = Vector3(p_aabb.pos.x, p_aabb.pos.y, p_aabb.pos.z + p_aabb.size.z);
+				to = Vector3(p_aabb.pos.x, p_aabb.pos.y + p_aabb.size.y, p_aabb.pos.z + p_aabb.size.z);
 
 			} break;
 			case 9: {
 
-				from = Vector3(p_aabb.position.x, p_aabb.position.y, p_aabb.position.z);
-				to = Vector3(p_aabb.position.x, p_aabb.position.y + p_aabb.size.y, p_aabb.position.z);
+				from = Vector3(p_aabb.pos.x, p_aabb.pos.y, p_aabb.pos.z);
+				to = Vector3(p_aabb.pos.x, p_aabb.pos.y + p_aabb.size.y, p_aabb.pos.z);
 
 			} break;
 			case 10: {
 
-				from = Vector3(p_aabb.position.x + p_aabb.size.x, p_aabb.position.y, p_aabb.position.z);
-				to = Vector3(p_aabb.position.x + p_aabb.size.x, p_aabb.position.y + p_aabb.size.y, p_aabb.position.z);
+				from = Vector3(p_aabb.pos.x + p_aabb.size.x, p_aabb.pos.y, p_aabb.pos.z);
+				to = Vector3(p_aabb.pos.x + p_aabb.size.x, p_aabb.pos.y + p_aabb.size.y, p_aabb.pos.z);
 
 			} break;
 			case 11: {
 
-				from = Vector3(p_aabb.position.x + p_aabb.size.x, p_aabb.position.y, p_aabb.position.z + p_aabb.size.z);
-				to = Vector3(p_aabb.position.x + p_aabb.size.x, p_aabb.position.y + p_aabb.size.y, p_aabb.position.z + p_aabb.size.z);
+				from = Vector3(p_aabb.pos.x + p_aabb.size.x, p_aabb.pos.y, p_aabb.pos.z + p_aabb.size.z);
+				to = Vector3(p_aabb.pos.x + p_aabb.size.x, p_aabb.pos.y + p_aabb.size.y, p_aabb.pos.z + p_aabb.size.z);
 
 			} break;
 		}
@@ -231,16 +231,16 @@ bool Face3::intersects_aabb2(const Rect3 &p_aabb) const {
 					(axis.y > 0) ? -half_extents.y : half_extents.y,
 					(axis.z > 0) ? -half_extents.z : half_extents.z);
 
-			real_t maxB = axis.dot(ofs + sup2);
-			real_t minB = axis.dot(ofs - sup2);
+			float maxB = axis.dot(ofs + sup2);
+			float minB = axis.dot(ofs - sup2);
 			if (minB > maxB) {
 				SWAP(maxB, minB);
 			}
 
-			real_t minT = 1e20, maxT = -1e20;
+			float minT = 1e20, maxT = -1e20;
 			for (int k = 0; k < 3; k++) {
 
-				real_t d = axis.dot(vertex[k]);
+				float d = axis.dot(vertex[k]);
 
 				if (d > maxT)
 					maxT = d;

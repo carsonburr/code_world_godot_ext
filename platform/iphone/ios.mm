@@ -33,7 +33,7 @@
 
 void iOS::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("get_rate_url", "app_id"), &iOS::get_rate_url);
+	ObjectTypeDB::bind_method(_MD("get_rate_url", "app_id"), &iOS::get_rate_url);
 };
 
 void iOS::alert(const char *p_alert, const char *p_title) {

@@ -30,12 +30,44 @@
 #ifndef HASH_MAP_H
 #define HASH_MAP_H
 
-#include "error_macros.h"
 #include "hashfuncs.h"
 #include "list.h"
 #include "math_funcs.h"
 #include "os/memory.h"
 #include "ustring.h"
+
+struct HashMapHasherDefault {
+	static _FORCE_INLINE_ uint32_t hash(const String &p_string) { return p_string.hash(); }
+	static _FORCE_INLINE_ uint32_t hash(const char *p_cstr) { return hash_djb2(p_cstr); }
+	static _FORCE_INLINE_ uint32_t hash(const uint64_t p_int) { return hash_one_uint64(p_int); }
+
+	static _FORCE_INLINE_ uint32_t hash(const int64_t p_int) { return hash(uint64_t(p_int)); }
+	static _FORCE_INLINE_ uint32_t hash(const float p_float) { return hash_djb2_one_float(p_float); }
+	static _FORCE_INLINE_ uint32_t hash(const double p_double) { return hash_djb2_one_float(p_double); }
+	static _FORCE_INLINE_ uint32_t hash(const uint32_t p_int) { return p_int; }
+	static _FORCE_INLINE_ uint32_t hash(const int32_t p_int) { return (uint32_t)p_int; }
+	static _FORCE_INLINE_ uint32_t hash(const uint16_t p_int) { return p_int; }
+	static _FORCE_INLINE_ uint32_t hash(const int16_t p_int) { return (uint32_t)p_int; }
+	static _FORCE_INLINE_ uint32_t hash(const uint8_t p_int) { return p_int; }
+	static _FORCE_INLINE_ uint32_t hash(const int8_t p_int) { return (uint32_t)p_int; }
+	static _FORCE_INLINE_ uint32_t hash(const wchar_t p_wchar) { return (uint32_t)p_wchar; }
+	//static _FORCE_INLINE_ uint32_t hash(const void* p_ptr)  { return uint32_t(uint64_t(p_ptr))*(0x9e3779b1L); }
+};
+
+template <typename T>
+struct HashMapComparatorDefault {
+	static bool compare(const T &p_lhs, const T &p_rhs) {
+		return p_lhs == p_rhs;
+	}
+
+	bool compare(const float &p_lhs, const float &p_rhs) {
+		return (p_lhs == p_rhs) || (Math::is_nan(p_lhs) && Math::is_nan(p_rhs));
+	}
+
+	bool compare(const double &p_lhs, const double &p_rhs) {
+		return (p_lhs == p_rhs) || (Math::is_nan(p_lhs) && Math::is_nan(p_rhs));
+	}
+};
 
 /**
  * @class HashMap
@@ -63,37 +95,23 @@ public:
 		TData data;
 
 		Pair() {}
-		Pair(const TKey &p_key, const TData &p_data)
-			: key(p_key),
-			  data(p_data) {
-		}
-	};
-
-	struct Element {
-	private:
-		friend class HashMap;
-
-		uint32_t hash;
-		Element *next;
-		Element() { next = 0; }
-		Pair pair;
-
-	public:
-		const TKey &key() const {
-			return pair.key;
-		}
-
-		TData &value() {
-			return pair.data;
-		}
-
-		const TData &value() const {
-			return pair.value();
+		Pair(const TKey &p_key, const TData &p_data) {
+			key = p_key;
+			data = p_data;
 		}
 	};
 
 private:
-	Element **hash_table;
+	struct Entry {
+
+		uint32_t hash;
+		Entry *next;
+		Pair pair;
+
+		Entry() { next = 0; }
+	};
+
+	Entry **hash_table;
 	uint8_t hash_table_power;
 	uint32_t elements;
 
@@ -101,7 +119,7 @@ private:
 
 		ERR_FAIL_COND(hash_table);
 
-		hash_table = memnew_arr(Element *, (1 << MIN_HASH_TABLE_POWER));
+		hash_table = memnew_arr(Entry *, (1 << MIN_HASH_TABLE_POWER));
 
 		hash_table_power = MIN_HASH_TABLE_POWER;
 		elements = 0;
@@ -149,7 +167,7 @@ private:
 		if (new_hash_table_power == -1)
 			return;
 
-		Element **new_hash_table = memnew_arr(Element *, (1 << new_hash_table_power));
+		Entry **new_hash_table = memnew_arr(Entry *, (1 << new_hash_table_power));
 		if (!new_hash_table) {
 
 			ERR_PRINT("Out of Memory");
@@ -165,7 +183,7 @@ private:
 
 			while (hash_table[i]) {
 
-				Element *se = hash_table[i];
+				Entry *se = hash_table[i];
 				hash_table[i] = se->next;
 				int new_pos = se->hash & ((1 << new_hash_table_power) - 1);
 				se->next = new_hash_table[new_pos];
@@ -180,12 +198,12 @@ private:
 	}
 
 	/* I want to have only one function.. */
-	_FORCE_INLINE_ const Element *get_element(const TKey &p_key) const {
+	_FORCE_INLINE_ const Entry *get_entry(const TKey &p_key) const {
 
 		uint32_t hash = Hasher::hash(p_key);
 		uint32_t index = hash & ((1 << hash_table_power) - 1);
 
-		Element *e = hash_table[index];
+		Entry *e = hash_table[index];
 
 		while (e) {
 
@@ -202,10 +220,10 @@ private:
 		return NULL;
 	}
 
-	Element *create_element(const TKey &p_key) {
+	Entry *create_entry(const TKey &p_key) {
 
-		/* if element doesn't exist, create it */
-		Element *e = memnew(Element);
+		/* if entry doesn't exist, create it */
+		Entry *e = memnew(Entry);
 		ERR_FAIL_COND_V(!e, NULL); /* out of memory */
 		uint32_t hash = Hasher::hash(p_key);
 		uint32_t index = hash & ((1 << hash_table_power) - 1);
@@ -229,19 +247,20 @@ private:
 		if (!p_t.hash_table || p_t.hash_table_power == 0)
 			return; /* not copying from empty table */
 
-		hash_table = memnew_arr(Element *, 1 << p_t.hash_table_power);
+		hash_table = memnew_arr(Entry *, 1 << p_t.hash_table_power);
 		hash_table_power = p_t.hash_table_power;
 		elements = p_t.elements;
 
 		for (int i = 0; i < (1 << p_t.hash_table_power); i++) {
 
 			hash_table[i] = NULL;
+			/* elements will be in the reverse order, but it doesn't matter */
 
-			const Element *e = p_t.hash_table[i];
+			const Entry *e = p_t.hash_table[i];
 
 			while (e) {
 
-				Element *le = memnew(Element); /* local element */
+				Entry *le = memnew(Entry); /* local entry */
 
 				*le = *e; /* copy data */
 
@@ -255,30 +274,30 @@ private:
 	}
 
 public:
-	Element *set(const TKey &p_key, const TData &p_data) {
-		return set(Pair(p_key, p_data));
+	void set(const TKey &p_key, const TData &p_data) {
+
+		set(Pair(p_key, p_data));
 	}
 
-	Element *set(const Pair &p_pair) {
+	void set(const Pair &p_pair) {
 
-		Element *e = NULL;
+		Entry *e = NULL;
 		if (!hash_table)
 			make_hash_table(); // if no table, make one
 		else
-			e = const_cast<Element *>(get_element(p_pair.key));
+			e = const_cast<Entry *>(get_entry(p_pair.key));
 
 		/* if we made it up to here, the pair doesn't exist, create and assign */
 
 		if (!e) {
 
-			e = create_element(p_pair.key);
+			e = create_entry(p_pair.key);
 			if (!e)
-				return NULL;
+				return;
 			check_hash_table(); // perform mantenience routine
 		}
 
 		e->pair.data = p_pair.data;
-		return e;
 	}
 
 	bool has(const TKey &p_key) const {
@@ -316,7 +335,7 @@ public:
 		if (!hash_table)
 			return NULL;
 
-		Element *e = const_cast<Element *>(get_element(p_key));
+		Entry *e = const_cast<Entry *>(get_entry(p_key));
 
 		if (e)
 			return &e->pair.data;
@@ -329,7 +348,7 @@ public:
 		if (!hash_table)
 			return NULL;
 
-		const Element *e = const_cast<Element *>(get_element(p_key));
+		const Entry *e = const_cast<Entry *>(get_entry(p_key));
 
 		if (e)
 			return &e->pair.data;
@@ -351,7 +370,7 @@ public:
 		uint32_t hash = p_custom_hash;
 		uint32_t index = hash & ((1 << hash_table_power) - 1);
 
-		Element *e = hash_table[index];
+		Entry *e = hash_table[index];
 
 		while (e) {
 
@@ -377,7 +396,7 @@ public:
 		uint32_t hash = p_custom_hash;
 		uint32_t index = hash & ((1 << hash_table_power) - 1);
 
-		const Element *e = hash_table[index];
+		const Entry *e = hash_table[index];
 
 		while (e) {
 
@@ -395,7 +414,7 @@ public:
 	}
 
 	/**
-	 * Erase an item, return true if erasing was successful
+	 * Erase an item, return true if erasing was succesful
 	 */
 
 	bool erase(const TKey &p_key) {
@@ -406,8 +425,8 @@ public:
 		uint32_t hash = Hasher::hash(p_key);
 		uint32_t index = hash & ((1 << hash_table_power) - 1);
 
-		Element *e = hash_table[index];
-		Element *p = NULL;
+		Entry *e = hash_table[index];
+		Entry *p = NULL;
 		while (e) {
 
 			/* checking hash first avoids comparing key, which may take longer */
@@ -444,17 +463,17 @@ public:
 	}
 	inline TData &operator[](const TKey &p_key) { //assignment
 
-		Element *e = NULL;
+		Entry *e = NULL;
 		if (!hash_table)
 			make_hash_table(); // if no table, make one
 		else
-			e = const_cast<Element *>(get_element(p_key));
+			e = const_cast<Entry *>(get_entry(p_key));
 
 		/* if we made it up to here, the pair doesn't exist, create */
 		if (!e) {
 
-			e = create_element(p_key);
-			CRASH_COND(!e);
+			e = create_entry(p_key);
+			PRAY_COND(!e, TData);
 			check_hash_table(); // perform mantenience routine
 		}
 
@@ -491,14 +510,14 @@ public:
 
 		} else { /* get the next key */
 
-			const Element *e = get_element(*p_key);
+			const Entry *e = get_entry(*p_key);
 			ERR_FAIL_COND_V(!e, NULL); /* invalid key supplied */
 
 			if (e->next) {
 				/* if there is a "next" in the list, return that */
 				return &e->next->pair.key;
 			} else {
-				/* go to next elements */
+				/* go to next entries */
 				uint32_t index = e->hash & ((1 << hash_table_power) - 1);
 				index++;
 				for (int i = index; i < (1 << hash_table_power); i++) {
@@ -533,7 +552,7 @@ public:
 
 				while (hash_table[i]) {
 
-					Element *e = hash_table[i];
+					Entry *e = hash_table[i];
 					hash_table[i] = e->next;
 					memdelete(e);
 				}
@@ -558,26 +577,12 @@ public:
 		hash_table_power = 0;
 	}
 
-	void get_key_value_ptr_array(const Pair **p_pairs) const {
-		if (!hash_table)
-			return;
-		for (int i = 0; i < (1 << hash_table_power); i++) {
-
-			Element *e = hash_table[i];
-			while (e) {
-				*p_pairs = &e->pair;
-				p_pairs++;
-				e = e->next;
-			}
-		}
-	}
-
 	void get_key_list(List<TKey> *p_keys) const {
 		if (!hash_table)
 			return;
 		for (int i = 0; i < (1 << hash_table_power); i++) {
 
-			Element *e = hash_table[i];
+			Entry *e = hash_table[i];
 			while (e) {
 				p_keys->push_back(e->pair.key);
 				e = e->next;

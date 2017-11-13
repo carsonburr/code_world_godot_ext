@@ -36,7 +36,7 @@ void Physics2DServerWrapMT::thread_exit() {
 	exit = true;
 }
 
-void Physics2DServerWrapMT::thread_step(real_t p_delta) {
+void Physics2DServerWrapMT::thread_step(float p_delta) {
 
 	physics_2d_server->step(p_delta);
 	step_sem->post();
@@ -51,7 +51,7 @@ void Physics2DServerWrapMT::_thread_callback(void *_instance) {
 
 void Physics2DServerWrapMT::thread_loop() {
 
-	server_thread = Thread::get_caller_id();
+	server_thread = Thread::get_caller_ID();
 
 	OS::get_singleton()->make_rendering_thread();
 
@@ -71,7 +71,7 @@ void Physics2DServerWrapMT::thread_loop() {
 
 /* EVENT QUEUING */
 
-void Physics2DServerWrapMT::step(real_t p_step) {
+void Physics2DServerWrapMT::step(float p_step) {
 
 	if (create_thread) {
 
@@ -109,13 +109,16 @@ void Physics2DServerWrapMT::init() {
 	if (create_thread) {
 
 		step_sem = Semaphore::create();
+		print_line("CREATING PHYSICS 2D THREAD");
 		//OS::get_singleton()->release_rendering_thread();
 		if (create_thread) {
 			thread = Thread::create(_thread_callback, this);
+			print_line("STARTING PHYISICS 2D THREAD");
 		}
 		while (!step_thread_up) {
 			OS::get_singleton()->delay_usec(1000);
 		}
+		print_line("DONE PHYSICS 2D THREAD");
 	} else {
 
 		physics_2d_server->init();
@@ -158,20 +161,20 @@ Physics2DServerWrapMT::Physics2DServerWrapMT(Physics2DServer *p_contained, bool 
 	step_thread_up = false;
 	alloc_mutex = Mutex::create();
 
-	shape_pool_max_size = GLOBAL_GET("memory/limits/multithreaded_server/rid_pool_prealloc");
-	area_pool_max_size = GLOBAL_GET("memory/limits/multithreaded_server/rid_pool_prealloc");
-	body_pool_max_size = GLOBAL_GET("memory/limits/multithreaded_server/rid_pool_prealloc");
-	pin_joint_pool_max_size = GLOBAL_GET("memory/limits/multithreaded_server/rid_pool_prealloc");
-	groove_joint_pool_max_size = GLOBAL_GET("memory/limits/multithreaded_server/rid_pool_prealloc");
-	damped_spring_joint_pool_max_size = GLOBAL_GET("memory/limits/multithreaded_server/rid_pool_prealloc");
+	shape_pool_max_size = GLOBAL_DEF("core/thread_rid_pool_prealloc", 20);
+	area_pool_max_size = GLOBAL_DEF("core/thread_rid_pool_prealloc", 20);
+	body_pool_max_size = GLOBAL_DEF("core/thread_rid_pool_prealloc", 20);
+	pin_joint_pool_max_size = GLOBAL_DEF("core/thread_rid_pool_prealloc", 20);
+	groove_joint_pool_max_size = GLOBAL_DEF("core/thread_rid_pool_prealloc", 20);
+	damped_spring_joint_pool_max_size = GLOBAL_DEF("core/thread_rid_pool_prealloc", 20);
 
 	if (!p_create_thread) {
-		server_thread = Thread::get_caller_id();
+		server_thread = Thread::get_caller_ID();
 	} else {
 		server_thread = 0;
 	}
 
-	main_thread = Thread::get_caller_id();
+	main_thread = Thread::get_caller_ID();
 	first_frame = true;
 }
 

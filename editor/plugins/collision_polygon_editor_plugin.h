@@ -35,17 +35,17 @@
 #include "scene/3d/collision_polygon.h"
 #include "scene/3d/immediate_geometry.h"
 #include "scene/3d/mesh_instance.h"
+#include "scene/gui/button_group.h"
 #include "scene/gui/tool_button.h"
 
 /**
 	@author Juan Linietsky <reduzio@gmail.com>
 */
-
 class CanvasItemEditor;
 
 class CollisionPolygonEditor : public HBoxContainer {
 
-	GDCLASS(CollisionPolygonEditor, HBoxContainer);
+	OBJ_TYPE(CollisionPolygonEditor, HBoxContainer);
 
 	UndoRedo *undo_redo;
 	enum Mode {
@@ -60,15 +60,15 @@ class CollisionPolygonEditor : public HBoxContainer {
 	ToolButton *button_create;
 	ToolButton *button_edit;
 
-	Ref<SpatialMaterial> line_material;
-	Ref<SpatialMaterial> handle_material;
+	Ref<FixedMaterial> line_material;
+	Ref<FixedMaterial> handle_material;
 
 	EditorNode *editor;
 	Panel *panel;
 	CollisionPolygon *node;
 	ImmediateGeometry *imgeom;
 	MeshInstance *pointsm;
-	Ref<ArrayMesh> m;
+	Ref<Mesh> m;
 
 	MenuButton *options;
 
@@ -90,7 +90,7 @@ protected:
 	static void _bind_methods();
 
 public:
-	virtual bool forward_spatial_gui_input(Camera *p_camera, const Ref<InputEvent> &p_event);
+	virtual bool forward_spatial_input_event(Camera *p_camera, const InputEvent &p_event);
 	void edit(Node *p_collision_polygon);
 	CollisionPolygonEditor(EditorNode *p_editor);
 	~CollisionPolygonEditor();
@@ -98,18 +98,18 @@ public:
 
 class CollisionPolygonEditorPlugin : public EditorPlugin {
 
-	GDCLASS(CollisionPolygonEditorPlugin, EditorPlugin);
+	OBJ_TYPE(CollisionPolygonEditorPlugin, EditorPlugin);
 
 	CollisionPolygonEditor *collision_polygon_editor;
 	EditorNode *editor;
 
 public:
-	virtual bool forward_spatial_gui_input(Camera *p_camera, const Ref<InputEvent> &p_event) { return collision_polygon_editor->forward_spatial_gui_input(p_camera, p_event); }
+	virtual bool forward_spatial_input_event(Camera *p_camera, const InputEvent &p_event) { return collision_polygon_editor->forward_spatial_input_event(p_camera, p_event); }
 
 	virtual String get_name() const { return "CollisionPolygon"; }
 	bool has_main_screen() const { return false; }
-	virtual void edit(Object *p_object);
-	virtual bool handles(Object *p_object) const;
+	virtual void edit(Object *p_node);
+	virtual bool handles(Object *p_node) const;
 	virtual void make_visible(bool p_visible);
 
 	CollisionPolygonEditorPlugin(EditorNode *p_node);

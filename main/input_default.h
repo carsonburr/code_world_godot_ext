@@ -34,29 +34,20 @@
 
 class InputDefault : public Input {
 
-	GDCLASS(InputDefault, Input);
+	OBJ_TYPE(InputDefault, Input);
 	_THREAD_SAFE_CLASS_
 
 	int mouse_button_mask;
-
 	Set<int> keys_pressed;
 	Set<int> joy_buttons_pressed;
 	Map<int, float> _joy_axis;
-	//Map<StringName,int> custom_action_press;
+	Map<StringName, int> custom_action_press;
 	Vector3 gravity;
 	Vector3 accelerometer;
 	Vector3 magnetometer;
 	Vector3 gyroscope;
 	Vector2 mouse_pos;
 	MainLoop *main_loop;
-
-	struct Action {
-		uint64_t physics_frame;
-		uint64_t idle_frame;
-		bool pressed;
-	};
-
-	Map<StringName, Action> action_state;
 
 	bool emulate_touch;
 
@@ -83,7 +74,7 @@ class InputDefault : public Input {
 		SpeedTrack();
 	};
 
-	struct Joypad {
+	struct Joystick {
 		StringName name;
 		StringName uid;
 		bool connected;
@@ -94,7 +85,7 @@ class InputDefault : public Input {
 		int mapping;
 		int hat_current;
 
-		Joypad() {
+		Joystick() {
 
 			for (int i = 0; i < JOY_AXIS_MAX; i++) {
 
@@ -112,7 +103,7 @@ class InputDefault : public Input {
 	};
 
 	SpeedTrack mouse_speed_track;
-	Map<int, Joypad> joy_names;
+	Map<int, Joystick> joy_names;
 	int fallback_mapping;
 	RES custom_cursor;
 
@@ -134,7 +125,7 @@ public:
 	};
 
 	enum {
-		JOYPADS_MAX = 16,
+		JOYSTICKS_MAX = 16,
 	};
 
 	struct JoyAxis {
@@ -170,40 +161,38 @@ private:
 	Vector<JoyDeviceMapping> map_db;
 
 	JoyEvent _find_to_event(String p_to);
-	void _button_event(int p_device, int p_index, bool p_pressed);
-	void _axis_event(int p_device, int p_axis, float p_value);
+	uint32_t _button_event(uint32_t p_last_id, int p_device, int p_index, bool p_pressed);
+	uint32_t _axis_event(uint32_t p_last_id, int p_device, int p_axis, float p_value);
 	float _handle_deadzone(int p_device, int p_axis, float p_value);
 
 public:
-	virtual bool is_key_pressed(int p_scancode) const;
-	virtual bool is_mouse_button_pressed(int p_button) const;
-	virtual bool is_joy_button_pressed(int p_device, int p_button) const;
-	virtual bool is_action_pressed(const StringName &p_action) const;
-	virtual bool is_action_just_pressed(const StringName &p_action) const;
-	virtual bool is_action_just_released(const StringName &p_action) const;
+	virtual bool is_key_pressed(int p_scancode);
+	virtual bool is_mouse_button_pressed(int p_button);
+	virtual bool is_joy_button_pressed(int p_device, int p_button);
+	virtual bool is_action_pressed(const StringName &p_action);
 
-	virtual float get_joy_axis(int p_device, int p_axis) const;
+	virtual float get_joy_axis(int p_device, int p_axis);
 	String get_joy_name(int p_idx);
-	virtual Array get_connected_joypads();
+	virtual Array get_connected_joysticks();
 	virtual Vector2 get_joy_vibration_strength(int p_device);
 	virtual float get_joy_vibration_duration(int p_device);
 	virtual uint64_t get_joy_vibration_timestamp(int p_device);
 	void joy_connection_changed(int p_idx, bool p_connected, String p_name, String p_guid = "");
-	void parse_joypad_mapping(String p_mapping, bool p_update_existing);
+	void parse_joystick_mapping(String p_mapping, bool p_update_existing);
 
-	virtual Vector3 get_gravity() const;
-	virtual Vector3 get_accelerometer() const;
-	virtual Vector3 get_magnetometer() const;
-	virtual Vector3 get_gyroscope() const;
+	virtual Vector3 get_gravity();
+	virtual Vector3 get_accelerometer();
+	virtual Vector3 get_magnetometer();
+	virtual Vector3 get_gyroscope();
 
-	virtual Point2 get_mouse_position() const;
-	virtual Point2 get_last_mouse_speed() const;
+	virtual Point2 get_mouse_pos() const;
+	virtual Point2 get_mouse_speed() const;
 	virtual int get_mouse_button_mask() const;
 
-	virtual void warp_mouse_position(const Vector2 &p_to);
-	virtual Point2i warp_mouse_motion(const Ref<InputEventMouseMotion> &p_motion, const Rect2 &p_rect);
+	virtual void warp_mouse_pos(const Vector2 &p_to);
+	virtual Point2i warp_mouse_motion(const InputEventMouseMotion &p_motion, const Rect2 &p_rect);
 
-	virtual void parse_input_event(const Ref<InputEvent> &p_event);
+	virtual void parse_input_event(const InputEvent &p_event);
 
 	void set_gravity(const Vector3 &p_gravity);
 	void set_accelerometer(const Vector3 &p_accel);
@@ -214,8 +203,8 @@ public:
 	virtual void start_joy_vibration(int p_device, float p_weak_magnitude, float p_strong_magnitude, float p_duration = 0);
 	virtual void stop_joy_vibration(int p_device);
 
-	void set_main_loop(MainLoop *p_main_loop);
-	void set_mouse_position(const Point2 &p_posf);
+	void set_main_loop(MainLoop *main_loop);
+	void set_mouse_pos(const Point2 &p_posf);
 
 	void action_press(const StringName &p_action);
 	void action_release(const StringName &p_action);
@@ -229,9 +218,9 @@ public:
 	virtual void set_mouse_in_window(bool p_in_window);
 
 	void parse_mapping(String p_mapping);
-	void joy_button(int p_device, int p_button, bool p_pressed);
-	void joy_axis(int p_device, int p_axis, const JoyAxis &p_value);
-	void joy_hat(int p_device, int p_val);
+	uint32_t joy_button(uint32_t p_last_id, int p_device, int p_button, bool p_pressed);
+	uint32_t joy_axis(uint32_t p_last_id, int p_device, int p_axis, const JoyAxis &p_value);
+	uint32_t joy_hat(uint32_t p_last_id, int p_device, int p_val);
 
 	virtual void add_joy_mapping(String p_mapping, bool p_update_existing = false);
 	virtual void remove_joy_mapping(String p_guid);

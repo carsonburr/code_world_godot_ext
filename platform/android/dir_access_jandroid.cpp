@@ -46,7 +46,7 @@ DirAccess *DirAccessJAndroid::create_fs() {
 	return memnew(DirAccessJAndroid);
 }
 
-Error DirAccessJAndroid::list_dir_begin() {
+bool DirAccessJAndroid::list_dir_begin() {
 
 	list_dir_end();
 	JNIEnv *env = ThreadAndroid::get_env();
@@ -54,11 +54,11 @@ Error DirAccessJAndroid::list_dir_begin() {
 	jstring js = env->NewStringUTF(current_dir.utf8().get_data());
 	int res = env->CallIntMethod(io, _dir_open, js);
 	if (res <= 0)
-		return ERR_CANT_OPEN;
+		return true;
 
 	id = res;
 
-	return OK;
+	return false;
 }
 
 String DirAccessJAndroid::get_next() {
@@ -248,7 +248,7 @@ void DirAccessJAndroid::setup(jobject p_io) {
 		__android_log_print(ANDROID_LOG_INFO, "godot", "*******GOT METHOD _dir_is_dir ok!!");
 	}
 
-	//(*env)->CallVoidMethod(env,obj,aMethodID, myvar);
+	//	(*env)->CallVoidMethod(env,obj,aMethodID, myvar);
 }
 
 DirAccessJAndroid::DirAccessJAndroid() {

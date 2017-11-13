@@ -42,7 +42,7 @@
 
 class GroupsEditor : public VBoxContainer {
 
-	GDCLASS(GroupsEditor, VBoxContainer);
+	OBJ_TYPE(GroupsEditor, VBoxContainer);
 
 	Node *node;
 

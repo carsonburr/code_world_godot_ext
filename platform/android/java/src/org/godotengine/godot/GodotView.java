@@ -78,18 +78,18 @@ public class GodotView extends GLSurfaceView implements InputDeviceListener {
 
 	private static GodotIO io;
 	private static boolean firsttime=true;
-	private static boolean use_gl3=false;
+	private static boolean use_gl2=false;
 	private static boolean use_32=false;
 
 	private Godot activity;
 
 
 	private InputManagerCompat mInputManager;
-	public GodotView(Context context,GodotIO p_io,boolean p_use_gl3, boolean p_use_32_bits, Godot p_activity) {
+	public GodotView(Context context,GodotIO p_io,boolean p_use_gl2, boolean p_use_32_bits, Godot p_activity) {
 		super(context);
 		ctx=context;
 		io=p_io;
-		use_gl3=p_use_gl3;
+		use_gl2=p_use_gl2;
 		use_32=p_use_32_bits;
 
 		activity = p_activity;
@@ -208,9 +208,8 @@ public class GodotView extends GLSurfaceView implements InputDeviceListener {
 	@Override public void onInputDeviceAdded(int deviceId) {
 		joystick joy = new joystick();
 		joy.device_id = deviceId;
-		final int id = joy_devices.size();
+		int id = joy_devices.size();
 		InputDevice device = mInputManager.getInputDevice(deviceId);
-		final String name = device.getName();
 		joy.name = device.getName();
 		joy.axes = new ArrayList<InputDevice.MotionRange>();
 		joy.hats = new ArrayList<InputDevice.MotionRange>();
@@ -225,29 +224,19 @@ public class GodotView extends GLSurfaceView implements InputDeviceListener {
 			}
 		}
 		joy_devices.add(joy);
-		queueEvent(new Runnable() {
-			@Override
-			public void run() {
-				GodotLib.joyconnectionchanged(id, true, name);
-			}
-		});
+		GodotLib.joyconnectionchanged(id, true, joy.name);
   }
 
 	@Override public void onInputDeviceRemoved(int deviceId) {
-		final int id = find_joy_device(deviceId);
+		int id = find_joy_device(deviceId);
 		joy_devices.remove(id);
-		queueEvent(new Runnable() {
-			@Override
-			public void run() {
-				GodotLib.joyconnectionchanged(id, false, "");
-			}
-		});
+		GodotLib.joyconnectionchanged(id, false, "");
 	}
 
 	@Override public void onInputDeviceChanged(int deviceId) {
 
 	}
-	@Override public boolean onKeyUp(final int keyCode, KeyEvent event) {
+	@Override public boolean onKeyUp(int keyCode, KeyEvent event) {
 
 		if (keyCode == KeyEvent.KEYCODE_BACK) {
 			return true;
@@ -260,34 +249,24 @@ public class GodotView extends GLSurfaceView implements InputDeviceListener {
 		int source = event.getSource();
 		if ((source & InputDevice.SOURCE_JOYSTICK) != 0 || (source & InputDevice.SOURCE_DPAD) != 0 || (source & InputDevice.SOURCE_GAMEPAD) != 0) {
 
-			final int button = get_godot_button(keyCode);
-			final int device = find_joy_device(event.getDeviceId());
+			int button = get_godot_button(keyCode);
+			int device = find_joy_device(event.getDeviceId());
 
-			queueEvent(new Runnable() {
-				@Override
-				public void run() {
-					GodotLib.joybutton(device, button, false);
-				}
-			});
+			GodotLib.joybutton(device, button, false);
 			return true;
 		} else {
-			final int chr = event.getUnicodeChar(0);
-			queueEvent(new Runnable() {
-				@Override
-				public void run() {
-					GodotLib.key(keyCode, chr, false);
-				}
-			});
+
+			GodotLib.key(keyCode, event.getUnicodeChar(0), false);
 		};
 		return super.onKeyUp(keyCode, event);
 	};
 
-	@Override public boolean onKeyDown(final int keyCode, KeyEvent event) {
+	@Override public boolean onKeyDown(int keyCode, KeyEvent event) {
 
 		if (keyCode == KeyEvent.KEYCODE_BACK) {
 			activity.onBackPressed();
 			// press 'back' button should not terminate program
-			//normal handle 'back' event in game logic
+			//	normal handle 'back' event in game logic
 			return true;
 		}
 
@@ -302,26 +281,16 @@ public class GodotView extends GLSurfaceView implements InputDeviceListener {
 
 			if (event.getRepeatCount() > 0) // ignore key echo
 				return true;
-			final int button = get_godot_button(keyCode);
-			final int device = find_joy_device(event.getDeviceId());
+			int button = get_godot_button(keyCode);
+			int device = find_joy_device(event.getDeviceId());
 
 			//Log.e(TAG, String.format("joy button down! button %x, %d, device %d", keyCode, button, device));
-			queueEvent(new Runnable() {
-				@Override
-				public void run() {
-					GodotLib.joybutton(device, button, true);
-				}
-			});
+
+			GodotLib.joybutton(device, button, true);
 			return true;
 
 		} else {
-			final int chr = event.getUnicodeChar(0);
-			queueEvent(new Runnable() {
-				@Override
-				public void run() {
-					GodotLib.key(keyCode, chr, true);
-				}
-			});
+			GodotLib.key(keyCode, event.getUnicodeChar(0), true);
 		};
 		return super.onKeyDown(keyCode, event);
 	}
@@ -330,32 +299,21 @@ public class GodotView extends GLSurfaceView implements InputDeviceListener {
 
 		if ((event.getSource() & InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK && event.getAction() == MotionEvent.ACTION_MOVE) {
 
-			final int device_id = find_joy_device(event.getDeviceId());
+			int device_id = find_joy_device(event.getDeviceId());
 			joystick joy = joy_devices.get(device_id);
 
 			for (int i = 0; i < joy.axes.size(); i++) {
 				InputDevice.MotionRange range = joy.axes.get(i);
-				final float value = (event.getAxisValue(range.getAxis()) - range.getMin() ) / range.getRange() * 2.0f - 1.0f;
+				float value = (event.getAxisValue(range.getAxis()) - range.getMin() ) / range.getRange() * 2.0f - 1.0f;
 				//Log.e(TAG, String.format("axis event: %d, value %f", i, value));
-				final int idx = i;
-				queueEvent(new Runnable() {
-					@Override
-					public void run() {
-						GodotLib.joyaxis(device_id, idx, value);
-					}
-				});
+				GodotLib.joyaxis(device_id, i, value);
 			}
 
 			for (int i = 0; i < joy.hats.size(); i+=2) {
-				final int hatX = Math.round(event.getAxisValue(joy.hats.get(i).getAxis()));
-				final int hatY = Math.round(event.getAxisValue(joy.hats.get(i+1).getAxis()));
+				int hatX = Math.round(event.getAxisValue(joy.hats.get(i).getAxis()));
+				int hatY = Math.round(event.getAxisValue(joy.hats.get(i+1).getAxis()));
 				//Log.e(TAG, String.format("HAT EVENT %d, %d", hatX, hatY));
-				queueEvent(new Runnable() {
-					@Override
-					public void run() {
-						GodotLib.joyhat(device_id, hatX, hatY);
-					}
-				});
+				GodotLib.joyhat(device_id, hatX, hatY);
 			}
 			return true;
 		};
@@ -405,15 +363,14 @@ public class GodotView extends GLSurfaceView implements InputDeviceListener {
 	private static class ContextFactory implements GLSurfaceView.EGLContextFactory {
 	private static int EGL_CONTEXT_CLIENT_VERSION = 0x3098;
 	public EGLContext createContext(EGL10 egl, EGLDisplay display, EGLConfig eglConfig) {
-		if (use_gl3)
-			Log.w(TAG, "creating OpenGL ES 3.0 context :");
-		else
+		if (use_gl2)
 			Log.w(TAG, "creating OpenGL ES 2.0 context :");
+		else
+			Log.w(TAG, "creating OpenGL ES 1.1 context :");
 
 		checkEglError("Before eglCreateContext", egl);
 		int[] attrib_list2 = {EGL_CONTEXT_CLIENT_VERSION, 2, EGL10.EGL_NONE };
-		int[] attrib_list3 = {EGL_CONTEXT_CLIENT_VERSION, 3, EGL10.EGL_NONE };
-		EGLContext context = egl.eglCreateContext(display, eglConfig, EGL10.EGL_NO_CONTEXT, use_gl3?attrib_list3:attrib_list2);
+		EGLContext context = egl.eglCreateContext(display, eglConfig, EGL10.EGL_NO_CONTEXT, use_gl2?attrib_list2:null);
 		checkEglError("After eglCreateContext", egl);
 		return context;
 	}
@@ -476,14 +433,13 @@ public class GodotView extends GLSurfaceView implements InputDeviceListener {
 			EGL10.EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
 			EGL10.EGL_NONE
 		};
-		private static int[] s_configAttribs3 =
+		private static int[] s_configAttribs =
 		{
 			EGL10.EGL_RED_SIZE, 4,
 			EGL10.EGL_GREEN_SIZE, 4,
 			EGL10.EGL_BLUE_SIZE, 4,
 		   // EGL10.EGL_DEPTH_SIZE,     16,
 		  //  EGL10.EGL_STENCIL_SIZE,   EGL10.EGL_DONT_CARE,
-			EGL10.EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT, //apparently there is no EGL_OPENGL_ES3_BIT
 			EGL10.EGL_NONE
 		};
 
@@ -492,7 +448,7 @@ public class GodotView extends GLSurfaceView implements InputDeviceListener {
 			/* Get the number of minimally matching EGL configurations
 			 */
 			int[] num_config = new int[1];
-			egl.eglChooseConfig(display, use_gl3?s_configAttribs3:s_configAttribs2, null, 0, num_config);
+			egl.eglChooseConfig(display, use_gl2?s_configAttribs2:s_configAttribs, null, 0, num_config);
 
 			int numConfigs = num_config[0];
 
@@ -503,7 +459,7 @@ public class GodotView extends GLSurfaceView implements InputDeviceListener {
 			/* Allocate then read the array of minimally matching EGL configs
 			 */
 			EGLConfig[] configs = new EGLConfig[numConfigs];
-			egl.eglChooseConfig(display, use_gl3?s_configAttribs3:s_configAttribs2, configs, numConfigs, num_config);
+			egl.eglChooseConfig(display, use_gl2?s_configAttribs2:s_configAttribs, configs, numConfigs, num_config);
 
 			if (DEBUG) {
 			 printConfigs(egl, display, configs);

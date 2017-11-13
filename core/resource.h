@@ -30,27 +30,66 @@
 #ifndef RESOURCE_H
 #define RESOURCE_H
 
-#include "class_db.h"
 #include "object.h"
+#include "object_type_db.h"
 #include "ref_ptr.h"
 #include "reference.h"
 #include "safe_refcount.h"
-#include "self_list.h"
 
 /**
 	@author Juan Linietsky <reduzio@gmail.com>
 */
 
-#define RES_BASE_EXTENSION(m_ext)                                                                                   \
-public:                                                                                                             \
-	static void register_custom_data_to_otdb() { ClassDB::add_resource_base_extension(m_ext, get_class_static()); } \
-	virtual String get_base_extension() const { return m_ext; }                                                     \
-                                                                                                                    \
+#define RES_BASE_EXTENSION(m_ext)                                                                                       \
+public:                                                                                                                 \
+	static void register_custom_data_to_otdb() { ObjectTypeDB::add_resource_base_extension(m_ext, get_type_static()); } \
+	virtual String get_base_extension() const { return m_ext; }                                                         \
+                                                                                                                        \
 private:
+
+class ResourceImportMetadata : public Reference {
+
+	OBJ_TYPE(ResourceImportMetadata, Reference);
+
+	struct Source {
+		String path;
+		String md5;
+	};
+
+	Vector<Source> sources;
+	String editor;
+
+	Map<String, Variant> options;
+
+	StringArray _get_options() const;
+
+protected:
+	virtual bool _use_builtin_script() const { return false; }
+	static void _bind_methods();
+
+public:
+	void set_editor(const String &p_editor);
+	String get_editor() const;
+
+	void add_source(const String &p_path, const String &p_md5 = "");
+	String get_source_path(int p_idx) const;
+	String get_source_md5(int p_idx) const;
+	void set_source_md5(int p_idx, const String &p_md5);
+	void remove_source(int p_idx);
+	int get_source_count() const;
+
+	void set_option(const String &p_key, const Variant &p_value);
+	Variant get_option(const String &p_key) const;
+	bool has_option(const String &p_key) const;
+
+	void get_options(List<String> *r_options) const;
+
+	ResourceImportMetadata();
+};
 
 class Resource : public Reference {
 
-	GDCLASS(Resource, Reference);
+	OBJ_TYPE(Resource, Reference);
 	OBJ_CATEGORY("Resources");
 	RES_BASE_EXTENSION("res");
 
@@ -66,16 +105,9 @@ class Resource : public Reference {
 	virtual bool _use_builtin_script() const { return true; }
 
 #ifdef TOOLS_ENABLED
+	Ref<ResourceImportMetadata> import_metadata;
 	uint64_t last_modified_time;
-	uint64_t import_last_modified_time;
-	String import_path;
 #endif
-
-	bool local_to_scene;
-	friend class SceneState;
-	Node *local_scene;
-
-	SelfList<Resource> remapped_list;
 
 protected:
 	void emit_changed();
@@ -89,8 +121,6 @@ protected:
 	void _take_over_path(const String &p_path);
 
 public:
-	static Node *(*_get_local_scene_func)(); //used by editor
-
 	virtual bool editor_can_reload_from_file();
 	virtual void reload_from_file();
 
@@ -106,14 +136,10 @@ public:
 	void set_subindex(int p_sub_index);
 	int get_subindex() const;
 
-	virtual Ref<Resource> duplicate(bool p_subresources = false) const;
-	Ref<Resource> duplicate_for_local_scene(Node *p_for_scene, Map<Ref<Resource>, Ref<Resource> > &remap_cache);
+	Ref<Resource> duplicate(bool p_subresources = false);
 
-	void set_local_to_scene(bool p_enable);
-	bool is_local_to_scene() const;
-	virtual void setup_local_to_scene();
-
-	Node *get_local_scene() const;
+	void set_import_metadata(const Ref<ResourceImportMetadata> &p_metadata);
+	Ref<ResourceImportMetadata> get_import_metadata() const;
 
 #ifdef TOOLS_ENABLED
 
@@ -122,16 +148,7 @@ public:
 	virtual void set_last_modified_time(uint64_t p_time) { last_modified_time = p_time; }
 	uint64_t get_last_modified_time() const { return last_modified_time; }
 
-	virtual void set_import_last_modified_time(uint64_t p_time) { import_last_modified_time = p_time; }
-	uint64_t get_import_last_modified_time() const { return import_last_modified_time; }
-
-	void set_import_path(const String &p_path) { import_path = p_path; }
-	String get_import_path() const { return import_path; }
-
 #endif
-
-	void set_as_translation_remapped(bool p_remapped);
-	bool is_translation_remapped() const;
 
 	virtual RID get_rid() const; // some resources may offer conversion to RID
 
@@ -143,13 +160,9 @@ typedef Ref<Resource> RES;
 
 class ResourceCache {
 	friend class Resource;
-	friend class ResourceLoader; //need the lock
-	static RWLock *lock;
 	static HashMap<String, Resource *> resources;
 	friend void unregister_core_types();
 	static void clear();
-	friend void register_core_types();
-	static void setup();
 
 public:
 	static void reload_externals();

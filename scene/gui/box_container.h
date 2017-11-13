@@ -34,7 +34,7 @@
 
 class BoxContainer : public Container {
 
-	GDCLASS(BoxContainer, Container);
+	OBJ_TYPE(BoxContainer, Container);
 
 public:
 	enum AlignMode {
@@ -67,7 +67,7 @@ public:
 
 class HBoxContainer : public BoxContainer {
 
-	GDCLASS(HBoxContainer, BoxContainer);
+	OBJ_TYPE(HBoxContainer, BoxContainer);
 
 public:
 	HBoxContainer()
@@ -77,7 +77,7 @@ public:
 class MarginContainer;
 class VBoxContainer : public BoxContainer {
 
-	GDCLASS(VBoxContainer, BoxContainer);
+	OBJ_TYPE(VBoxContainer, BoxContainer);
 
 public:
 	MarginContainer *add_margin_child(const String &p_label, Control *p_control, bool p_expand = false);

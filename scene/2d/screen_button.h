@@ -37,7 +37,7 @@
 
 class TouchScreenButton : public Node2D {
 
-	GDCLASS(TouchScreenButton, Node2D);
+	OBJ_TYPE(TouchScreenButton, Node2D);
 
 public:
 	enum VisibilityMode {
@@ -58,12 +58,13 @@ private:
 	StringName action;
 	bool passby_press;
 	int finger_pressed;
+	int action_id;
 
 	VisibilityMode visibility;
 
-	void _input(const Ref<InputEvent> &p_event);
+	void _input(const InputEvent &p_Event);
 
-	bool _is_point_inside(const Point2 &p_point);
+	bool _is_touch_inside(const InputEventScreenTouch &p_touch);
 
 	void _press(int p_finger_pressed);
 	void _release(bool p_exiting_tree = false);

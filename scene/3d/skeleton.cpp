@@ -31,7 +31,7 @@
 
 #include "message_queue.h"
 
-#include "core/project_settings.h"
+#include "core/globals.h"
 #include "scene/resources/surface_tool.h"
 
 bool Skeleton::_set(const StringName &p_path, const Variant &p_value) {
@@ -82,9 +82,9 @@ bool Skeleton::_set(const StringName &p_path, const Variant &p_value) {
 	return true;
 }
 
-bool Skeleton::_get(const StringName &p_path, Variant &r_ret) const {
+bool Skeleton::_get(const StringName &p_name, Variant &r_ret) const {
 
-	String path = p_path;
+	String path = p_name;
 
 	if (!path.begins_with("bones/"))
 		return false;
@@ -111,7 +111,7 @@ bool Skeleton::_get(const StringName &p_path, Variant &r_ret) const {
 
 			Object *obj = ObjectDB::get_instance(E->get());
 			ERR_CONTINUE(!obj);
-			Node *node = Object::cast_to<Node>(obj);
+			Node *node = obj->cast_to<Node>();
 			ERR_CONTINUE(!node);
 			NodePath path = get_path_to(node);
 			children.push_back(path);
@@ -159,7 +159,7 @@ void Skeleton::_notification(int p_what) {
 			Bone *bonesptr = &bones[0];
 			int len = bones.size();
 
-			vs->skeleton_allocate(skeleton, len); // if same size, nothin really happens
+			vs->skeleton_resize(skeleton, len); // if same size, nothin really happens
 
 			// pose changed, rebuild cache of inverses
 			if (rest_global_inverse_dirty) {
@@ -245,7 +245,7 @@ void Skeleton::_notification(int p_what) {
 
 					Object *obj = ObjectDB::get_instance(E->get());
 					ERR_CONTINUE(!obj);
-					Spatial *sp = Object::cast_to<Spatial>(obj);
+					Spatial *sp = obj->cast_to<Spatial>();
 					ERR_CONTINUE(!sp);
 					sp->set_transform(b.pose_global);
 				}
@@ -407,7 +407,7 @@ void Skeleton::bind_child_node_to_bone(int p_bone, Node *p_node) {
 	ERR_FAIL_NULL(p_node);
 	ERR_FAIL_INDEX(p_bone, bones.size());
 
-	uint32_t id = p_node->get_instance_id();
+	uint32_t id = p_node->get_instance_ID();
 
 	for (List<uint32_t>::Element *E = bones[p_bone].nodes_bound.front(); E; E = E->next()) {
 
@@ -422,7 +422,7 @@ void Skeleton::unbind_child_node_from_bone(int p_bone, Node *p_node) {
 	ERR_FAIL_NULL(p_node);
 	ERR_FAIL_INDEX(p_bone, bones.size());
 
-	uint32_t id = p_node->get_instance_id();
+	uint32_t id = p_node->get_instance_ID();
 	bones[p_bone].nodes_bound.erase(id);
 }
 void Skeleton::get_bound_child_nodes_to_bone(int p_bone, List<Node *> *p_bound) const {
@@ -433,7 +433,7 @@ void Skeleton::get_bound_child_nodes_to_bone(int p_bone, List<Node *> *p_bound) 
 
 		Object *obj = ObjectDB::get_instance(E->get());
 		ERR_CONTINUE(!obj);
-		p_bound->push_back(Object::cast_to<Node>(obj));
+		p_bound->push_back(obj->cast_to<Node>());
 	}
 }
 
@@ -463,7 +463,7 @@ Transform Skeleton::get_bone_pose(int p_bone) const {
 void Skeleton::set_bone_custom_pose(int p_bone, const Transform &p_custom_pose) {
 
 	ERR_FAIL_INDEX(p_bone, bones.size());
-	//ERR_FAIL_COND( !is_inside_scene() );
+	//	ERR_FAIL_COND( !is_inside_scene() );
 
 	bones[p_bone].custom_pose_enable = (p_custom_pose != Transform());
 	bones[p_bone].custom_pose = p_custom_pose;
@@ -490,6 +490,49 @@ void Skeleton::_make_dirty() {
 	dirty = true;
 }
 
+RES Skeleton::_get_gizmo_geometry() const {
+
+	if (!GLOBAL_DEF("debug/draw_skeleton", true))
+		return RES();
+
+	if (bones.size() == 0)
+		return RES();
+
+	Ref<SurfaceTool> surface_tool(memnew(SurfaceTool));
+
+	Ref<FixedMaterial> mat(memnew(FixedMaterial));
+
+	mat->set_parameter(FixedMaterial::PARAM_DIFFUSE, Color(0.6, 1.0, 0.3, 0.1));
+	mat->set_line_width(4);
+	mat->set_flag(Material::FLAG_DOUBLE_SIDED, true);
+	mat->set_flag(Material::FLAG_UNSHADED, true);
+	mat->set_flag(Material::FLAG_ONTOP, true);
+	//	mat->set_hint(Material::HINT_NO_DEPTH_DRAW,true);
+
+	surface_tool->begin(Mesh::PRIMITIVE_LINES);
+	surface_tool->set_material(mat);
+
+	const Bone *bonesptr = &bones[0];
+	int len = bones.size();
+
+	for (int i = 0; i < len; i++) {
+
+		const Bone &b = bonesptr[i];
+
+		Transform t;
+		if (b.parent < 0)
+			continue;
+
+		Vector3 v1 = (bonesptr[b.parent].pose_global * bonesptr[b.parent].rest_global_inverse).xform(bonesptr[b.parent].rest_global_inverse.affine_inverse().origin);
+		Vector3 v2 = (b.pose_global * b.rest_global_inverse).xform(b.rest_global_inverse.affine_inverse().origin);
+
+		surface_tool->add_vertex(v1);
+		surface_tool->add_vertex(v2);
+	}
+
+	return surface_tool->commit();
+}
+
 void Skeleton::localize_rests() {
 
 	for (int i = bones.size() - 1; i >= 0; i--) {
@@ -501,39 +544,39 @@ void Skeleton::localize_rests() {
 
 void Skeleton::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("add_bone", "name"), &Skeleton::add_bone);
-	ClassDB::bind_method(D_METHOD("find_bone", "name"), &Skeleton::find_bone);
-	ClassDB::bind_method(D_METHOD("get_bone_name", "bone_idx"), &Skeleton::get_bone_name);
+	ObjectTypeDB::bind_method(_MD("add_bone", "name"), &Skeleton::add_bone);
+	ObjectTypeDB::bind_method(_MD("find_bone", "name"), &Skeleton::find_bone);
+	ObjectTypeDB::bind_method(_MD("get_bone_name", "bone_idx"), &Skeleton::get_bone_name);
 
-	ClassDB::bind_method(D_METHOD("get_bone_parent", "bone_idx"), &Skeleton::get_bone_parent);
-	ClassDB::bind_method(D_METHOD("set_bone_parent", "bone_idx", "parent_idx"), &Skeleton::set_bone_parent);
+	ObjectTypeDB::bind_method(_MD("get_bone_parent", "bone_idx"), &Skeleton::get_bone_parent);
+	ObjectTypeDB::bind_method(_MD("set_bone_parent", "bone_idx", "parent_idx"), &Skeleton::set_bone_parent);
 
-	ClassDB::bind_method(D_METHOD("get_bone_count"), &Skeleton::get_bone_count);
+	ObjectTypeDB::bind_method(_MD("get_bone_count"), &Skeleton::get_bone_count);
 
-	ClassDB::bind_method(D_METHOD("unparent_bone_and_rest", "bone_idx"), &Skeleton::unparent_bone_and_rest);
+	ObjectTypeDB::bind_method(_MD("unparent_bone_and_rest", "bone_idx"), &Skeleton::unparent_bone_and_rest);
 
-	ClassDB::bind_method(D_METHOD("get_bone_rest", "bone_idx"), &Skeleton::get_bone_rest);
-	ClassDB::bind_method(D_METHOD("set_bone_rest", "bone_idx", "rest"), &Skeleton::set_bone_rest);
+	ObjectTypeDB::bind_method(_MD("get_bone_rest", "bone_idx"), &Skeleton::get_bone_rest);
+	ObjectTypeDB::bind_method(_MD("set_bone_rest", "bone_idx", "rest"), &Skeleton::set_bone_rest);
 
-	ClassDB::bind_method(D_METHOD("set_bone_disable_rest", "bone_idx", "disable"), &Skeleton::set_bone_disable_rest);
-	ClassDB::bind_method(D_METHOD("is_bone_rest_disabled", "bone_idx"), &Skeleton::is_bone_rest_disabled);
+	ObjectTypeDB::bind_method(_MD("set_bone_disable_rest", "bone_idx", "disable"), &Skeleton::set_bone_disable_rest);
+	ObjectTypeDB::bind_method(_MD("is_bone_rest_disabled", "bone_idx"), &Skeleton::is_bone_rest_disabled);
 
-	ClassDB::bind_method(D_METHOD("bind_child_node_to_bone", "bone_idx", "node"), &Skeleton::bind_child_node_to_bone);
-	ClassDB::bind_method(D_METHOD("unbind_child_node_from_bone", "bone_idx", "node"), &Skeleton::unbind_child_node_from_bone);
-	ClassDB::bind_method(D_METHOD("get_bound_child_nodes_to_bone", "bone_idx"), &Skeleton::_get_bound_child_nodes_to_bone);
+	ObjectTypeDB::bind_method(_MD("bind_child_node_to_bone", "bone_idx", "node:Node"), &Skeleton::bind_child_node_to_bone);
+	ObjectTypeDB::bind_method(_MD("unbind_child_node_from_bone", "bone_idx", "node:Node"), &Skeleton::unbind_child_node_from_bone);
+	ObjectTypeDB::bind_method(_MD("get_bound_child_nodes_to_bone", "bone_idx"), &Skeleton::_get_bound_child_nodes_to_bone);
 
-	ClassDB::bind_method(D_METHOD("clear_bones"), &Skeleton::clear_bones);
+	ObjectTypeDB::bind_method(_MD("clear_bones"), &Skeleton::clear_bones);
 
-	ClassDB::bind_method(D_METHOD("get_bone_pose", "bone_idx"), &Skeleton::get_bone_pose);
-	ClassDB::bind_method(D_METHOD("set_bone_pose", "bone_idx", "pose"), &Skeleton::set_bone_pose);
+	ObjectTypeDB::bind_method(_MD("get_bone_pose", "bone_idx"), &Skeleton::get_bone_pose);
+	ObjectTypeDB::bind_method(_MD("set_bone_pose", "bone_idx", "pose"), &Skeleton::set_bone_pose);
 
-	ClassDB::bind_method(D_METHOD("set_bone_global_pose", "bone_idx", "pose"), &Skeleton::set_bone_global_pose);
-	ClassDB::bind_method(D_METHOD("get_bone_global_pose", "bone_idx"), &Skeleton::get_bone_global_pose);
+	ObjectTypeDB::bind_method(_MD("set_bone_global_pose", "bone_idx", "pose"), &Skeleton::set_bone_global_pose);
+	ObjectTypeDB::bind_method(_MD("get_bone_global_pose", "bone_idx"), &Skeleton::get_bone_global_pose);
 
-	ClassDB::bind_method(D_METHOD("get_bone_custom_pose", "bone_idx"), &Skeleton::get_bone_custom_pose);
-	ClassDB::bind_method(D_METHOD("set_bone_custom_pose", "bone_idx", "custom_pose"), &Skeleton::set_bone_custom_pose);
+	ObjectTypeDB::bind_method(_MD("get_bone_custom_pose", "bone_idx"), &Skeleton::get_bone_custom_pose);
+	ObjectTypeDB::bind_method(_MD("set_bone_custom_pose", "bone_idx", "custom_pose"), &Skeleton::set_bone_custom_pose);
 
-	ClassDB::bind_method(D_METHOD("get_bone_transform", "bone_idx"), &Skeleton::get_bone_transform);
+	ObjectTypeDB::bind_method(_MD("get_bone_transform", "bone_idx"), &Skeleton::get_bone_transform);
 
 	BIND_CONSTANT(NOTIFICATION_UPDATE_SKELETON);
 }

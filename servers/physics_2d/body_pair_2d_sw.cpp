@@ -97,7 +97,7 @@ void BodyPair2DSW::_contact_added_callback(const Vector2 &p_point_A, const Vecto
 			Vector2 global_B = B->get_transform().basis_xform(c.local_B) + offset_B;
 
 			Vector2 axis = global_A - global_B;
-			real_t depth = axis.dot(c.normal);
+			float depth = axis.dot(c.normal);
 
 			if (depth < min_depth) {
 
@@ -145,7 +145,7 @@ void BodyPair2DSW::_validate_contacts() {
 			Vector2 global_A = A->get_transform().basis_xform(c.local_A);
 			Vector2 global_B = B->get_transform().basis_xform(c.local_B) + offset_B;
 			Vector2 axis = global_A - global_B;
-			real_t depth = axis.dot(c.normal);
+			float depth = axis.dot(c.normal);
 
 			if (depth < -max_separation || (global_B + c.normal * depth - global_A).length_squared() > max_separation2) {
 				erase = true;
@@ -166,7 +166,7 @@ void BodyPair2DSW::_validate_contacts() {
 	}
 }
 
-bool BodyPair2DSW::_test_ccd(real_t p_step, Body2DSW *p_A, int p_shape_A, const Transform2D &p_xform_A, Body2DSW *p_B, int p_shape_B, const Transform2D &p_xform_B, bool p_swap_result) {
+bool BodyPair2DSW::_test_ccd(float p_step, Body2DSW *p_A, int p_shape_A, const Matrix32 &p_xform_A, Body2DSW *p_B, int p_shape_B, const Matrix32 &p_xform_B, bool p_swap_result) {
 
 	Vector2 motion = p_A->get_linear_velocity() * p_step;
 	real_t mlen = motion.length();
@@ -191,7 +191,7 @@ bool BodyPair2DSW::_test_ccd(real_t p_step, Body2DSW *p_A, int p_shape_A, const 
 	Vector2 from = p_xform_A.xform(s[0]);
 	Vector2 to = from + motion;
 
-	Transform2D from_inv = p_xform_B.affine_inverse();
+	Matrix32 from_inv = p_xform_B.affine_inverse();
 
 	Vector2 local_from = from_inv.xform(from - mnormal * mlen * 0.1); //start from a little inside the bounding box
 	Vector2 local_to = from_inv.xform(to);
@@ -217,15 +217,16 @@ bool BodyPair2DSW::_test_ccd(real_t p_step, Body2DSW *p_A, int p_shape_A, const 
 	return true;
 }
 
-bool BodyPair2DSW::setup(real_t p_step) {
+bool BodyPair2DSW::setup(float p_step) {
 
-	//cannot collide
-	if (!A->test_collision_mask(B) || A->has_exception(B->get_self()) || B->has_exception(A->get_self()) || (A->get_mode() <= Physics2DServer::BODY_MODE_KINEMATIC && B->get_mode() <= Physics2DServer::BODY_MODE_KINEMATIC && A->get_max_contacts_reported() == 0 && B->get_max_contacts_reported() == 0)) {
+	//one or both shapes have been removed
+	if (shape_A == -1 || shape_B == -1) {
 		collided = false;
 		return false;
 	}
 
-	if (A->is_shape_set_as_disabled(shape_A) || B->is_shape_set_as_disabled(shape_B)) {
+	//cannot collide
+	if (!A->test_collision_mask(B) || A->has_exception(B->get_self()) || B->has_exception(A->get_self()) || (A->get_mode() <= Physics2DServer::BODY_MODE_KINEMATIC && B->get_mode() <= Physics2DServer::BODY_MODE_KINEMATIC && A->get_max_contacts_reported() == 0 && B->get_max_contacts_reported() == 0)) {
 		collided = false;
 		return false;
 	}
@@ -236,12 +237,12 @@ bool BodyPair2DSW::setup(real_t p_step) {
 	_validate_contacts();
 
 	Vector2 offset_A = A->get_transform().get_origin();
-	Transform2D xform_Au = A->get_transform().untranslated();
-	Transform2D xform_A = xform_Au * A->get_shape_transform(shape_A);
+	Matrix32 xform_Au = A->get_transform().untranslated();
+	Matrix32 xform_A = xform_Au * A->get_shape_transform(shape_A);
 
-	Transform2D xform_Bu = B->get_transform();
+	Matrix32 xform_Bu = B->get_transform();
 	xform_Bu.elements[2] -= A->get_transform().get_origin();
-	Transform2D xform_B = xform_Bu * B->get_shape_transform(shape_B);
+	Matrix32 xform_B = xform_Bu * B->get_shape_transform(shape_B);
 
 	Shape2DSW *shape_A_ptr = A->get_shape(shape_A);
 	Shape2DSW *shape_B_ptr = B->get_shape(shape_B);
@@ -285,8 +286,8 @@ bool BodyPair2DSW::setup(real_t p_step) {
 	//if (!prev_collided) {
 	{
 
-		if (A->is_shape_set_as_one_way_collision(shape_A)) {
-			Vector2 direction = xform_A.get_axis(1).normalized();
+		if (A->is_using_one_way_collision()) {
+			Vector2 direction = A->get_one_way_collision_direction();
 			bool valid = false;
 			if (B->get_linear_velocity().dot(direction) >= 0) {
 				for (int i = 0; i < contact_count; i++) {
@@ -308,8 +309,8 @@ bool BodyPair2DSW::setup(real_t p_step) {
 			}
 		}
 
-		if (B->is_shape_set_as_one_way_collision(shape_B)) {
-			Vector2 direction = xform_B.get_axis(1).normalized();
+		if (B->is_using_one_way_collision()) {
+			Vector2 direction = B->get_one_way_collision_direction();
 			bool valid = false;
 			if (A->get_linear_velocity().dot(direction) >= 0) {
 				for (int i = 0; i < contact_count; i++) {
@@ -333,7 +334,7 @@ bool BodyPair2DSW::setup(real_t p_step) {
 
 	real_t max_penetration = space->get_contact_max_allowed_penetration();
 
-	real_t bias = 0.3;
+	float bias = 0.3f;
 	if (shape_A_ptr->get_custom_bias() || shape_B_ptr->get_custom_bias()) {
 
 		if (shape_A_ptr->get_custom_bias() == 0)
@@ -395,7 +396,7 @@ bool BodyPair2DSW::setup(real_t p_step) {
 			}
 		}
 
-		if ((A->get_mode() <= Physics2DServer::BODY_MODE_KINEMATIC && B->get_mode() <= Physics2DServer::BODY_MODE_KINEMATIC)) {
+		if (A->is_shape_set_as_trigger(shape_A) || B->is_shape_set_as_trigger(shape_B) || (A->get_mode() <= Physics2DServer::BODY_MODE_KINEMATIC && B->get_mode() <= Physics2DServer::BODY_MODE_KINEMATIC)) {
 			c.active = false;
 			collided = false;
 			continue;
@@ -445,7 +446,7 @@ bool BodyPair2DSW::setup(real_t p_step) {
 	return do_process;
 }
 
-void BodyPair2DSW::solve(real_t p_step) {
+void BodyPair2DSW::solve(float p_step) {
 
 	if (!collided)
 		return;
@@ -497,6 +498,21 @@ void BodyPair2DSW::solve(real_t p_step) {
 
 		A->apply_impulse(c.rA, -j);
 		B->apply_impulse(c.rB, j);
+	}
+}
+
+void BodyPair2DSW::shift_shape_indices(const CollisionObject2DSW *p_object, int p_removed_index) {
+
+	if (p_object == A) {
+		if (shape_A == p_removed_index)
+			shape_A = -1;
+		else if (shape_A > p_removed_index)
+			shape_A--;
+	} else if (p_object == B) {
+		if (shape_B == p_removed_index)
+			shape_B = -1;
+		else if (shape_B > p_removed_index)
+			shape_B--;
 	}
 }
 

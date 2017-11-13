@@ -40,7 +40,7 @@ static bool _equalsn(const CharType *str1, const CharType *str2, int len) {
 			return false;
 
 	// if one (or both) of the strings was smaller then they
-	// are only equal if they have the same length
+	// are only equal if they have the same lenght
 	return (i == len) || (str1[i] == 0 && str2[i] == 0);
 }
 
@@ -355,37 +355,37 @@ Error XMLParser::seek(uint64_t p_pos) {
 
 void XMLParser::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("read"), &XMLParser::read);
-	ClassDB::bind_method(D_METHOD("get_node_type"), &XMLParser::get_node_type);
-	ClassDB::bind_method(D_METHOD("get_node_name"), &XMLParser::get_node_name);
-	ClassDB::bind_method(D_METHOD("get_node_data"), &XMLParser::get_node_data);
-	ClassDB::bind_method(D_METHOD("get_node_offset"), &XMLParser::get_node_offset);
-	ClassDB::bind_method(D_METHOD("get_attribute_count"), &XMLParser::get_attribute_count);
-	ClassDB::bind_method(D_METHOD("get_attribute_name", "idx"), &XMLParser::get_attribute_name);
-	ClassDB::bind_method(D_METHOD("get_attribute_value", "idx"), (String(XMLParser::*)(int) const) & XMLParser::get_attribute_value);
-	ClassDB::bind_method(D_METHOD("has_attribute", "name"), &XMLParser::has_attribute);
-	ClassDB::bind_method(D_METHOD("get_named_attribute_value", "name"), (String(XMLParser::*)(const String &) const) & XMLParser::get_attribute_value);
-	ClassDB::bind_method(D_METHOD("get_named_attribute_value_safe", "name"), &XMLParser::get_attribute_value_safe);
-	ClassDB::bind_method(D_METHOD("is_empty"), &XMLParser::is_empty);
-	ClassDB::bind_method(D_METHOD("get_current_line"), &XMLParser::get_current_line);
-	ClassDB::bind_method(D_METHOD("skip_section"), &XMLParser::skip_section);
-	ClassDB::bind_method(D_METHOD("seek", "position"), &XMLParser::seek);
-	ClassDB::bind_method(D_METHOD("open", "file"), &XMLParser::open);
-	ClassDB::bind_method(D_METHOD("open_buffer", "buffer"), &XMLParser::open_buffer);
+	ObjectTypeDB::bind_method(_MD("read"), &XMLParser::read);
+	ObjectTypeDB::bind_method(_MD("get_node_type"), &XMLParser::get_node_type);
+	ObjectTypeDB::bind_method(_MD("get_node_name"), &XMLParser::get_node_name);
+	ObjectTypeDB::bind_method(_MD("get_node_data"), &XMLParser::get_node_data);
+	ObjectTypeDB::bind_method(_MD("get_node_offset"), &XMLParser::get_node_offset);
+	ObjectTypeDB::bind_method(_MD("get_attribute_count"), &XMLParser::get_attribute_count);
+	ObjectTypeDB::bind_method(_MD("get_attribute_name", "idx"), &XMLParser::get_attribute_name);
+	ObjectTypeDB::bind_method(_MD("get_attribute_value", "idx"), (String(XMLParser::*)(int) const) & XMLParser::get_attribute_value);
+	ObjectTypeDB::bind_method(_MD("has_attribute", "name"), &XMLParser::has_attribute);
+	ObjectTypeDB::bind_method(_MD("get_named_attribute_value", "name"), (String(XMLParser::*)(const String &) const) & XMLParser::get_attribute_value);
+	ObjectTypeDB::bind_method(_MD("get_named_attribute_value_safe", "name"), &XMLParser::get_attribute_value_safe);
+	ObjectTypeDB::bind_method(_MD("is_empty"), &XMLParser::is_empty);
+	ObjectTypeDB::bind_method(_MD("get_current_line"), &XMLParser::get_current_line);
+	ObjectTypeDB::bind_method(_MD("skip_section"), &XMLParser::skip_section);
+	ObjectTypeDB::bind_method(_MD("seek", "pos"), &XMLParser::seek);
+	ObjectTypeDB::bind_method(_MD("open", "file"), &XMLParser::open);
+	ObjectTypeDB::bind_method(_MD("open_buffer", "buffer"), &XMLParser::open_buffer);
 
-	BIND_ENUM_CONSTANT(NODE_NONE);
-	BIND_ENUM_CONSTANT(NODE_ELEMENT);
-	BIND_ENUM_CONSTANT(NODE_ELEMENT_END);
-	BIND_ENUM_CONSTANT(NODE_TEXT);
-	BIND_ENUM_CONSTANT(NODE_COMMENT);
-	BIND_ENUM_CONSTANT(NODE_CDATA);
-	BIND_ENUM_CONSTANT(NODE_UNKNOWN);
+	BIND_CONSTANT(NODE_NONE);
+	BIND_CONSTANT(NODE_ELEMENT);
+	BIND_CONSTANT(NODE_ELEMENT_END);
+	BIND_CONSTANT(NODE_TEXT);
+	BIND_CONSTANT(NODE_COMMENT);
+	BIND_CONSTANT(NODE_CDATA);
+	BIND_CONSTANT(NODE_UNKNOWN);
 };
 
 Error XMLParser::read() {
 
 	// if not end reached, parse the node
-	if (P && (P - data) < (int64_t)length - 1 && *P != 0) {
+	if (P && (P - data) < length - 1 && *P != 0) {
 		_parse_current_node();
 		return OK;
 	}

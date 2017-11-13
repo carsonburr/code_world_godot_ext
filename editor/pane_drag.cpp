@@ -29,12 +29,11 @@
 /*************************************************************************/
 #include "pane_drag.h"
 
-void PaneDrag::_gui_input(const Ref<InputEvent> &p_input) {
+void PaneDrag::_input_event(const InputEvent &p_input) {
 
-	Ref<InputEventMouseMotion> mm = p_input;
-	if (mm.is_valid() && mm->get_button_mask() & BUTTON_MASK_LEFT) {
+	if (p_input.type == InputEvent::MOUSE_MOTION && p_input.mouse_motion.button_mask & BUTTON_MASK_LEFT) {
 
-		emit_signal("dragged", Point2(mm->get_relative().x, mm->get_relative().y));
+		emit_signal("dragged", Point2(p_input.mouse_motion.relative_x, p_input.mouse_motion.relative_y));
 	}
 }
 
@@ -69,7 +68,7 @@ Size2 PaneDrag::get_minimum_size() const {
 
 void PaneDrag::_bind_methods() {
 
-	ClassDB::bind_method("_gui_input", &PaneDrag::_gui_input);
+	ObjectTypeDB::bind_method("_input_event", &PaneDrag::_input_event);
 	ADD_SIGNAL(MethodInfo("dragged", PropertyInfo(Variant::VECTOR2, "amount")));
 }
 

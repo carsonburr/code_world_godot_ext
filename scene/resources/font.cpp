@@ -40,7 +40,7 @@ void Font::draw_halign(RID p_canvas_item, const Point2 &p_pos, HAlign p_align, f
 		return;
 	}
 
-	float ofs = 0.f;
+	float ofs;
 	switch (p_align) {
 		case HALIGN_LEFT: {
 			ofs = 0;
@@ -50,9 +50,6 @@ void Font::draw_halign(RID p_canvas_item, const Point2 &p_pos, HAlign p_align, f
 		} break;
 		case HALIGN_RIGHT: {
 			ofs = p_width - length;
-		} break;
-		default: {
-			ERR_PRINT("Unknown halignment type");
 		} break;
 	}
 	draw(p_canvas_item, p_pos + Point2(ofs, 0), p_text, p_modulate, p_width);
@@ -80,14 +77,14 @@ void Font::update_changes() {
 
 void Font::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("draw", "canvas_item", "position", "string", "modulate", "clip_w"), &Font::draw, DEFVAL(Color(1, 1, 1)), DEFVAL(-1));
-	ClassDB::bind_method(D_METHOD("get_ascent"), &Font::get_ascent);
-	ClassDB::bind_method(D_METHOD("get_descent"), &Font::get_descent);
-	ClassDB::bind_method(D_METHOD("get_height"), &Font::get_height);
-	ClassDB::bind_method(D_METHOD("is_distance_field_hint"), &Font::is_distance_field_hint);
-	ClassDB::bind_method(D_METHOD("get_string_size", "string"), &Font::get_string_size);
-	ClassDB::bind_method(D_METHOD("draw_char", "canvas_item", "position", "char", "next", "modulate"), &Font::draw_char, DEFVAL(-1), DEFVAL(Color(1, 1, 1)));
-	ClassDB::bind_method(D_METHOD("update_changes"), &Font::update_changes);
+	ObjectTypeDB::bind_method(_MD("draw", "canvas_item", "pos", "string", "modulate", "clip_w"), &Font::draw, DEFVAL(Color(1, 1, 1)), DEFVAL(-1));
+	ObjectTypeDB::bind_method(_MD("get_ascent"), &Font::get_ascent);
+	ObjectTypeDB::bind_method(_MD("get_descent"), &Font::get_descent);
+	ObjectTypeDB::bind_method(_MD("get_height"), &Font::get_height);
+	ObjectTypeDB::bind_method(_MD("is_distance_field_hint"), &Font::is_distance_field_hint);
+	ObjectTypeDB::bind_method(_MD("get_string_size", "string"), &Font::get_string_size);
+	ObjectTypeDB::bind_method(_MD("draw_char", "canvas_item", "pos", "char", "next", "modulate"), &Font::draw_char, DEFVAL(-1), DEFVAL(Color(1, 1, 1)));
+	ObjectTypeDB::bind_method(_MD("update_changes"), &Font::update_changes);
 }
 
 Font::Font() {
@@ -95,7 +92,7 @@ Font::Font() {
 
 /////////////////////////////////////////////////////////////////
 
-void BitmapFont::_set_chars(const PoolVector<int> &p_chars) {
+void BitmapFont::_set_chars(const DVector<int> &p_chars) {
 
 	int len = p_chars.size();
 	//char 1 charsize 1 texture, 4 rect, 2 align, advance 1
@@ -104,7 +101,7 @@ void BitmapFont::_set_chars(const PoolVector<int> &p_chars) {
 		return; //none to do
 	int chars = len / 9;
 
-	PoolVector<int>::Read r = p_chars.read();
+	DVector<int>::Read r = p_chars.read();
 	for (int i = 0; i < chars; i++) {
 
 		const int *data = &r[i * 9];
@@ -112,9 +109,9 @@ void BitmapFont::_set_chars(const PoolVector<int> &p_chars) {
 	}
 }
 
-PoolVector<int> BitmapFont::_get_chars() const {
+DVector<int> BitmapFont::_get_chars() const {
 
-	PoolVector<int> chars;
+	DVector<int> chars;
 
 	const CharType *key = NULL;
 
@@ -123,8 +120,8 @@ PoolVector<int> BitmapFont::_get_chars() const {
 		const Character *c = char_map.getptr(*key);
 		chars.push_back(*key);
 		chars.push_back(c->texture_idx);
-		chars.push_back(c->rect.position.x);
-		chars.push_back(c->rect.position.y);
+		chars.push_back(c->rect.pos.x);
+		chars.push_back(c->rect.pos.y);
 
 		chars.push_back(c->rect.size.x);
 		chars.push_back(c->rect.size.y);
@@ -136,13 +133,13 @@ PoolVector<int> BitmapFont::_get_chars() const {
 	return chars;
 }
 
-void BitmapFont::_set_kernings(const PoolVector<int> &p_kernings) {
+void BitmapFont::_set_kernings(const DVector<int> &p_kernings) {
 
 	int len = p_kernings.size();
 	ERR_FAIL_COND(len % 3);
 	if (!len)
 		return;
-	PoolVector<int>::Read r = p_kernings.read();
+	DVector<int>::Read r = p_kernings.read();
 
 	for (int i = 0; i < len / 3; i++) {
 
@@ -151,9 +148,9 @@ void BitmapFont::_set_kernings(const PoolVector<int> &p_kernings) {
 	}
 }
 
-PoolVector<int> BitmapFont::_get_kernings() const {
+DVector<int> BitmapFont::_get_kernings() const {
 
-	PoolVector<int> kernings;
+	DVector<int> kernings;
 
 	for (Map<KerningPairKey, int>::Element *E = kerning_map.front(); E; E = E->next()) {
 
@@ -182,14 +179,14 @@ Vector<Variant> BitmapFont::_get_textures() const {
 	return rtextures;
 }
 
-Error BitmapFont::create_from_fnt(const String &p_file) {
+Error BitmapFont::create_from_fnt(const String &p_string) {
 	//fnt format used by angelcode bmfont
 	//http://www.angelcode.com/products/bmfont/
 
-	FileAccess *f = FileAccess::open(p_file, FileAccess::READ);
+	FileAccess *f = FileAccess::open(p_string, FileAccess::READ);
 
 	if (!f) {
-		ERR_EXPLAIN("Can't open font: " + p_file);
+		ERR_EXPLAIN("Can't open font: " + p_string);
 		ERR_FAIL_V(ERR_FILE_NOT_FOUND);
 	}
 
@@ -241,10 +238,8 @@ Error BitmapFont::create_from_fnt(const String &p_file) {
 
 			if (keys.has("face"))
 				set_name(keys["face"]);
-			/*
-			if (keys.has("size"))
-				font->set_height(keys["size"].to_int());
-			*/
+			//if (keys.has("size"))
+			//	font->set_height(keys["size"].to_int());
 
 		} else if (type == "common") {
 
@@ -258,7 +253,7 @@ Error BitmapFont::create_from_fnt(const String &p_file) {
 			if (keys.has("file")) {
 
 				String file = keys["file"];
-				file = p_file.get_base_dir() + "/" + file;
+				file = p_string.get_base_dir() + "/" + file;
 				Ref<Texture> tex = ResourceLoader::load(file);
 				if (tex.is_null()) {
 					ERR_PRINT("Can't load font texture!");
@@ -275,9 +270,9 @@ Error BitmapFont::create_from_fnt(const String &p_file) {
 			Rect2 rect;
 
 			if (keys.has("x"))
-				rect.position.x = keys["x"].to_int();
+				rect.pos.x = keys["x"].to_int();
 			if (keys.has("y"))
-				rect.position.y = keys["y"].to_int();
+				rect.pos.y = keys["y"].to_int();
 			if (keys.has("width"))
 				rect.size.width = keys["width"].to_int();
 			if (keys.has("height"))
@@ -509,7 +504,7 @@ float BitmapFont::draw_char(RID p_canvas_item, const Point2 &p_pos, CharType p_c
 	cpos.y += c->v_align;
 	ERR_FAIL_COND_V(c->texture_idx < -1 || c->texture_idx >= textures.size(), 0);
 	if (c->texture_idx != -1)
-		VisualServer::get_singleton()->canvas_item_add_texture_rect_region(p_canvas_item, Rect2(cpos, c->rect.size), textures[c->texture_idx]->get_rid(), c->rect, p_modulate, false, RID(), false);
+		VisualServer::get_singleton()->canvas_item_add_texture_rect_region(p_canvas_item, Rect2(cpos, c->rect.size), textures[c->texture_idx]->get_rid(), c->rect, p_modulate);
 
 	return get_char_size(p_char, p_next).width;
 }
@@ -544,46 +539,46 @@ Size2 BitmapFont::get_char_size(CharType p_char, CharType p_next) const {
 
 void BitmapFont::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("create_from_fnt", "path"), &BitmapFont::create_from_fnt);
-	ClassDB::bind_method(D_METHOD("set_height", "px"), &BitmapFont::set_height);
+	ObjectTypeDB::bind_method(_MD("create_from_fnt", "path"), &BitmapFont::create_from_fnt);
+	ObjectTypeDB::bind_method(_MD("set_height", "px"), &BitmapFont::set_height);
 
-	ClassDB::bind_method(D_METHOD("set_ascent", "px"), &BitmapFont::set_ascent);
+	ObjectTypeDB::bind_method(_MD("set_ascent", "px"), &BitmapFont::set_ascent);
 
-	ClassDB::bind_method(D_METHOD("add_kerning_pair", "char_a", "char_b", "kerning"), &BitmapFont::add_kerning_pair);
-	ClassDB::bind_method(D_METHOD("get_kerning_pair", "char_a", "char_b"), &BitmapFont::get_kerning_pair);
+	ObjectTypeDB::bind_method(_MD("add_kerning_pair", "char_a", "char_b", "kerning"), &BitmapFont::add_kerning_pair);
+	ObjectTypeDB::bind_method(_MD("get_kerning_pair", "char_a", "char_b"), &BitmapFont::get_kerning_pair);
 
-	ClassDB::bind_method(D_METHOD("add_texture", "texture"), &BitmapFont::add_texture);
-	ClassDB::bind_method(D_METHOD("add_char", "character", "texture", "rect", "align", "advance"), &BitmapFont::add_char, DEFVAL(Point2()), DEFVAL(-1));
+	ObjectTypeDB::bind_method(_MD("add_texture", "texture:Texture"), &BitmapFont::add_texture);
+	ObjectTypeDB::bind_method(_MD("add_char", "character", "texture", "rect", "align", "advance"), &BitmapFont::add_char, DEFVAL(Point2()), DEFVAL(-1));
 
-	ClassDB::bind_method(D_METHOD("get_texture_count"), &BitmapFont::get_texture_count);
-	ClassDB::bind_method(D_METHOD("get_texture", "idx"), &BitmapFont::get_texture);
+	ObjectTypeDB::bind_method(_MD("get_texture_count"), &BitmapFont::get_texture_count);
+	ObjectTypeDB::bind_method(_MD("get_texture:Texture", "idx"), &BitmapFont::get_texture);
 
-	ClassDB::bind_method(D_METHOD("get_char_size", "char", "next"), &BitmapFont::get_char_size, DEFVAL(0));
+	ObjectTypeDB::bind_method(_MD("get_char_size", "char", "next"), &BitmapFont::get_char_size, DEFVAL(0));
 
-	ClassDB::bind_method(D_METHOD("set_distance_field_hint", "enable"), &BitmapFont::set_distance_field_hint);
+	ObjectTypeDB::bind_method(_MD("set_distance_field_hint", "enable"), &BitmapFont::set_distance_field_hint);
 
-	ClassDB::bind_method(D_METHOD("clear"), &BitmapFont::clear);
+	ObjectTypeDB::bind_method(_MD("clear"), &BitmapFont::clear);
 
-	ClassDB::bind_method(D_METHOD("_set_chars"), &BitmapFont::_set_chars);
-	ClassDB::bind_method(D_METHOD("_get_chars"), &BitmapFont::_get_chars);
+	ObjectTypeDB::bind_method(_MD("_set_chars"), &BitmapFont::_set_chars);
+	ObjectTypeDB::bind_method(_MD("_get_chars"), &BitmapFont::_get_chars);
 
-	ClassDB::bind_method(D_METHOD("_set_kernings"), &BitmapFont::_set_kernings);
-	ClassDB::bind_method(D_METHOD("_get_kernings"), &BitmapFont::_get_kernings);
+	ObjectTypeDB::bind_method(_MD("_set_kernings"), &BitmapFont::_set_kernings);
+	ObjectTypeDB::bind_method(_MD("_get_kernings"), &BitmapFont::_get_kernings);
 
-	ClassDB::bind_method(D_METHOD("_set_textures"), &BitmapFont::_set_textures);
-	ClassDB::bind_method(D_METHOD("_get_textures"), &BitmapFont::_get_textures);
+	ObjectTypeDB::bind_method(_MD("_set_textures"), &BitmapFont::_set_textures);
+	ObjectTypeDB::bind_method(_MD("_get_textures"), &BitmapFont::_get_textures);
 
-	ClassDB::bind_method(D_METHOD("set_fallback", "fallback"), &BitmapFont::set_fallback);
-	ClassDB::bind_method(D_METHOD("get_fallback"), &BitmapFont::get_fallback);
+	ObjectTypeDB::bind_method(_MD("set_fallback", "fallback"), &BitmapFont::set_fallback);
+	ObjectTypeDB::bind_method(_MD("get_fallback"), &BitmapFont::get_fallback);
 
-	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "textures", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR), "_set_textures", "_get_textures");
-	ADD_PROPERTY(PropertyInfo(Variant::POOL_INT_ARRAY, "chars", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR), "_set_chars", "_get_chars");
-	ADD_PROPERTY(PropertyInfo(Variant::POOL_INT_ARRAY, "kernings", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR), "_set_kernings", "_get_kernings");
+	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "textures", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR), _SCS("_set_textures"), _SCS("_get_textures"));
+	ADD_PROPERTY(PropertyInfo(Variant::INT_ARRAY, "chars", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR), _SCS("_set_chars"), _SCS("_get_chars"));
+	ADD_PROPERTY(PropertyInfo(Variant::INT_ARRAY, "kernings", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR), _SCS("_set_kernings"), _SCS("_get_kernings"));
 
-	ADD_PROPERTY(PropertyInfo(Variant::REAL, "height", PROPERTY_HINT_RANGE, "-1024,1024,1"), "set_height", "get_height");
-	ADD_PROPERTY(PropertyInfo(Variant::REAL, "ascent", PROPERTY_HINT_RANGE, "-1024,1024,1"), "set_ascent", "get_ascent");
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "distance_field"), "set_distance_field_hint", "is_distance_field_hint");
-	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "fallback", PROPERTY_HINT_RESOURCE_TYPE, "BitmapFont"), "set_fallback", "get_fallback");
+	ADD_PROPERTY(PropertyInfo(Variant::REAL, "height", PROPERTY_HINT_RANGE, "-1024,1024,1"), _SCS("set_height"), _SCS("get_height"));
+	ADD_PROPERTY(PropertyInfo(Variant::REAL, "ascent", PROPERTY_HINT_RANGE, "-1024,1024,1"), _SCS("set_ascent"), _SCS("get_ascent"));
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "distance_field"), _SCS("set_distance_field_hint"), _SCS("is_distance_field_hint"));
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "fallback", PROPERTY_HINT_RESOURCE_TYPE, "BitmapFont"), _SCS("set_fallback"), _SCS("get_fallback"));
 }
 
 BitmapFont::BitmapFont() {

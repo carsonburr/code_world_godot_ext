@@ -28,10 +28,10 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 #include "file_access_network.h"
+#include "globals.h"
 #include "io/ip.h"
 #include "marshalls.h"
 #include "os/os.h"
-#include "project_settings.h"
 
 //#define DEBUG_PRINT(m_p) print_line(m_p)
 //#define DEBUG_TIME(m_what) printf("MS: %s - %lli\n",m_what,OS::get_singleton()->get_ticks_usec());
@@ -87,8 +87,6 @@ void FileAccessNetworkClient::_thread_func() {
 
 		DEBUG_PRINT("SEM WAIT - " + itos(sem->get()));
 		Error err = sem->wait();
-		if (err != OK)
-			ERR_PRINT("sem->wait() failed");
 		DEBUG_TIME("sem_unlock");
 		//DEBUG_PRINT("semwait returned "+itos(werr));
 		DEBUG_PRINT("MUTEX LOCK " + itos(lockcount));
@@ -191,7 +189,7 @@ Error FileAccessNetworkClient::connect(const String &p_host, int p_port, const S
 	}
 
 	DEBUG_PRINT("IP: " + String(ip) + " port " + itos(p_port));
-	Error err = client->connect_to_host(ip, p_port);
+	Error err = client->connect(ip, p_port);
 	ERR_FAIL_COND_V(err, err);
 	while (client->get_status() == StreamPeerTCP::STATUS_CONNECTING) {
 		//DEBUG_PRINT("trying to connect....");
@@ -246,14 +244,14 @@ FileAccessNetworkClient::~FileAccessNetworkClient() {
 	memdelete(sem);
 }
 
-void FileAccessNetwork::_set_block(int p_offset, const Vector<uint8_t> &p_block) {
+void FileAccessNetwork::_set_block(size_t p_offset, const Vector<uint8_t> &p_block) {
 
 	int page = p_offset / page_size;
 	ERR_FAIL_INDEX(page, pages.size());
 	if (page < pages.size() - 1) {
 		ERR_FAIL_COND(p_block.size() != page_size);
 	} else {
-		ERR_FAIL_COND((p_block.size() != (int)(total_size % page_size)));
+		ERR_FAIL_COND((p_block.size() != (total_size % page_size)));
 	}
 
 	buffer_mutex->lock();
@@ -301,7 +299,7 @@ Error FileAccessNetwork::_open(const String &p_path, int p_mode_flags) {
 	last_page = -1;
 	last_page_buff = NULL;
 
-	//buffers.clear();
+	//	buffers.clear();
 	nc->unlock_mutex();
 	DEBUG_PRINT("OPEN POST");
 	DEBUG_TIME("open_post");
@@ -350,7 +348,7 @@ void FileAccessNetwork::seek_end(int64_t p_position) {
 
 	seek(total_size + p_position);
 }
-size_t FileAccessNetwork::get_position() const {
+size_t FileAccessNetwork::get_pos() const {
 
 	ERR_FAIL_COND_V(!opened, 0);
 	return pos;
@@ -406,7 +404,7 @@ int FileAccessNetwork::get_buffer(uint8_t *p_dst, int p_length) const {
 		p_length = total_size - pos;
 	}
 
-	//FileAccessNetworkClient *nc = FileAccessNetworkClient::singleton;
+	//	FileAccessNetworkClient *nc = FileAccessNetworkClient::singleton;
 
 	uint8_t *buff = last_page_buff;
 
@@ -456,10 +454,6 @@ Error FileAccessNetwork::get_error() const {
 	return pos == total_size ? ERR_FILE_EOF : OK;
 }
 
-void FileAccessNetwork::flush() {
-	ERR_FAIL();
-}
-
 void FileAccessNetwork::store_8(uint8_t p_dest) {
 
 	ERR_FAIL();
@@ -499,13 +493,6 @@ uint64_t FileAccessNetwork::_get_modified_time(const String &p_file) {
 	return exists_modtime;
 }
 
-void FileAccessNetwork::configure() {
-
-	GLOBAL_DEF("network/remote_fs/page_size", 65536);
-	GLOBAL_DEF("network/remote_fs/page_read_ahead", 4);
-	GLOBAL_DEF("network/remote_fs/max_pages", 20);
-}
-
 FileAccessNetwork::FileAccessNetwork() {
 
 	eof_flag = false;
@@ -519,9 +506,9 @@ FileAccessNetwork::FileAccessNetwork() {
 	id = nc->last_id++;
 	nc->accesses[id] = this;
 	nc->unlock_mutex();
-	page_size = GLOBAL_GET("network/remote_fs/page_size");
-	read_ahead = GLOBAL_GET("network/remote_fs/page_read_ahead");
-	max_pages = GLOBAL_GET("network/remote_fs/max_pages");
+	page_size = GLOBAL_DEF("remote_fs/page_size", 65536);
+	read_ahead = GLOBAL_DEF("remote_fs/page_read_ahead", 4);
+	max_pages = GLOBAL_DEF("remote_fs/max_pages", 20);
 	last_activity_val = 0;
 	waiting_on_page = -1;
 	last_page = -1;

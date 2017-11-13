@@ -28,49 +28,20 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 #include "editor_resource_preview.h"
-
 #include "editor_scale.h"
 #include "editor_settings.h"
+#include "globals.h"
 #include "io/resource_loader.h"
 #include "io/resource_saver.h"
 #include "message_queue.h"
 #include "os/file_access.h"
-#include "project_settings.h"
-
-bool EditorResourcePreviewGenerator::handles(const String &p_type) const {
-
-	if (get_script_instance() && get_script_instance()->has_method("handles")) {
-		return get_script_instance()->call("handles", p_type);
-	}
-	ERR_EXPLAIN("EditorResourcePreviewGenerator::handles needs to be overridden");
-	ERR_FAIL_V(false);
-}
-Ref<Texture> EditorResourcePreviewGenerator::generate(const RES &p_from) {
-
-	if (get_script_instance() && get_script_instance()->has_method("generate")) {
-		return get_script_instance()->call("generate", p_from);
-	}
-	ERR_EXPLAIN("EditorResourcePreviewGenerator::generate needs to be overridden");
-	ERR_FAIL_V(Ref<Texture>());
-}
 
 Ref<Texture> EditorResourcePreviewGenerator::generate_from_path(const String &p_path) {
-
-	if (get_script_instance() && get_script_instance()->has_method("generate_from_path")) {
-		return get_script_instance()->call("generate_from_path", p_path);
-	}
 
 	RES res = ResourceLoader::load(p_path);
 	if (!res.is_valid())
 		return res;
 	return generate(res);
-}
-
-void EditorResourcePreviewGenerator::_bind_methods() {
-
-	ClassDB::add_virtual_method(get_class_static(), MethodInfo(Variant::BOOL, "handles", PropertyInfo(Variant::STRING, "type")));
-	ClassDB::add_virtual_method(get_class_static(), MethodInfo(CLASS_INFO(Texture), "generate", PropertyInfo(Variant::OBJECT, "from", PROPERTY_HINT_RESOURCE_TYPE, "Resource")));
-	ClassDB::add_virtual_method(get_class_static(), MethodInfo(CLASS_INFO(Texture), "generate_from_path", PropertyInfo(Variant::STRING, "path", PROPERTY_HINT_FILE)));
 }
 
 EditorResourcePreviewGenerator::EditorResourcePreviewGenerator() {
@@ -118,7 +89,7 @@ Ref<Texture> EditorResourcePreview::_generate_preview(const QueueItem &p_item, c
 	String type;
 
 	if (p_item.resource.is_valid())
-		type = p_item.resource->get_class();
+		type = p_item.resource->get_type();
 	else
 		type = ResourceLoader::get_resource_type(p_item.path);
 	//print_line("resource type is: "+type);
@@ -145,7 +116,7 @@ Ref<Texture> EditorResourcePreview::_generate_preview(const QueueItem &p_item, c
 		// cache the preview in case it's a resource on disk
 		if (generated.is_valid()) {
 			//print_line("was generated");
-			int thumbnail_size = EditorSettings::get_singleton()->get("filesystem/file_dialog/thumbnail_size");
+			int thumbnail_size = EditorSettings::get_singleton()->get("file_dialog/thumbnail_size");
 			thumbnail_size *= EDSCALE;
 			//wow it generated a preview... save cache
 			ResourceSaver::save(cache_base + ".png", generated);
@@ -180,22 +151,21 @@ void EditorResourcePreview::_thread() {
 
 			if (cache.has(item.path)) {
 				//already has it because someone loaded it, just let it know it's ready
-				String path = item.path;
 				if (item.resource.is_valid()) {
-					path += ":" + itos(cache[item.path].last_hash); //keep last hash (see description of what this is in condition below)
+					item.path += ":" + itos(cache[item.path].last_hash); //keep last hash (see description of what this is in condition below)
 				}
 
-				_preview_ready(path, cache[item.path].preview, item.id, item.function, item.userdata);
+				_preview_ready(item.path, cache[item.path].preview, item.id, item.function, item.userdata);
 
 				preview_mutex->unlock();
 			} else {
 				preview_mutex->unlock();
 
-				Ref<ImageTexture> texture;
+				Ref<Texture> texture;
 
 				//print_line("pop from queue "+item.path);
 
-				int thumbnail_size = EditorSettings::get_singleton()->get("filesystem/file_dialog/thumbnail_size");
+				int thumbnail_size = EditorSettings::get_singleton()->get("file_dialog/thumbnail_size");
 				thumbnail_size *= EDSCALE;
 
 				if (item.resource.is_valid()) {
@@ -207,14 +177,17 @@ void EditorResourcePreview::_thread() {
 				} else {
 
 					String temp_path = EditorSettings::get_singleton()->get_settings_path().plus_file("tmp");
-					String cache_base = ProjectSettings::get_singleton()->globalize_path(item.path).md5_text();
+					String cache_base = Globals::get_singleton()->globalize_path(item.path).md5_text();
 					cache_base = temp_path.plus_file("resthumb-" + cache_base);
 
 					//does not have it, try to load a cached thumbnail
 
 					String file = cache_base + ".txt";
+					//print_line("cachetxt at "+file);
 					FileAccess *f = FileAccess::open(file, FileAccess::READ);
 					if (!f) {
+
+						//print_line("generate because not cached");
 
 						//generate
 						texture = _generate_preview(item, cache_base);
@@ -227,7 +200,6 @@ void EditorResourcePreview::_thread() {
 						bool cache_valid = true;
 
 						if (tsize != thumbnail_size) {
-
 							cache_valid = false;
 							memdelete(f);
 						} else if (last_modtime != modtime) {
@@ -239,7 +211,6 @@ void EditorResourcePreview::_thread() {
 							if (last_md5 != md5) {
 
 								cache_valid = false;
-
 							} else {
 								//update modified time
 
@@ -252,20 +223,12 @@ void EditorResourcePreview::_thread() {
 							memdelete(f);
 						}
 
-						//cache_valid = false;
-
 						if (cache_valid) {
 
-							Ref<Image> img;
-							img.instance();
-
-							if (img->load(cache_base + ".png") != OK) {
+							texture = ResourceLoader::load(cache_base + ".png", "ImageTexture", true);
+							if (!texture.is_valid()) {
 								//well fuck
 								cache_valid = false;
-							} else {
-
-								texture.instance();
-								texture->create_from_image(img, Texture::FLAG_FILTER);
 							}
 						}
 
@@ -275,6 +238,7 @@ void EditorResourcePreview::_thread() {
 						}
 					}
 
+					//print_line("notify of preview ready");
 					_preview_ready(item.path, texture, item.id, item.function, item.userdata);
 				}
 			}
@@ -292,7 +256,7 @@ void EditorResourcePreview::queue_edited_resource_preview(const Ref<Resource> &p
 
 	preview_mutex->lock();
 
-	String path_id = "ID:" + itos(p_res->get_instance_id());
+	String path_id = "ID:" + itos(p_res->get_instance_ID());
 
 	if (cache.has(path_id) && cache[path_id].last_hash == p_res->hash_edited_version()) {
 
@@ -307,7 +271,7 @@ void EditorResourcePreview::queue_edited_resource_preview(const Ref<Resource> &p
 	//print_line("send to thread "+p_path);
 	QueueItem item;
 	item.function = p_receiver_func;
-	item.id = p_receiver->get_instance_id();
+	item.id = p_receiver->get_instance_ID();
 	item.resource = p_res;
 	item.path = path_id;
 	item.userdata = p_userdata;
@@ -331,7 +295,7 @@ void EditorResourcePreview::queue_resource_preview(const String &p_path, Object 
 	//print_line("send to thread "+p_path);
 	QueueItem item;
 	item.function = p_receiver_func;
-	item.id = p_receiver->get_instance_id();
+	item.id = p_receiver->get_instance_ID();
 	item.path = p_path;
 	item.userdata = p_userdata;
 
@@ -345,11 +309,6 @@ void EditorResourcePreview::add_preview_generator(const Ref<EditorResourcePrevie
 	preview_generators.push_back(p_generator);
 }
 
-void EditorResourcePreview::remove_preview_generator(const Ref<EditorResourcePreviewGenerator> &p_generator) {
-
-	preview_generators.erase(p_generator);
-}
-
 EditorResourcePreview *EditorResourcePreview::get_singleton() {
 
 	return singleton;
@@ -357,13 +316,8 @@ EditorResourcePreview *EditorResourcePreview::get_singleton() {
 
 void EditorResourcePreview::_bind_methods() {
 
-	ClassDB::bind_method("_preview_ready", &EditorResourcePreview::_preview_ready);
-
-	ClassDB::bind_method(D_METHOD("queue_resource_preview", "path", "receiver", "receiver_func", "userdata"), &EditorResourcePreview::queue_resource_preview);
-	ClassDB::bind_method(D_METHOD("queue_edited_resource_preview", "resource", "receiver", "receiver_func", "userdata"), &EditorResourcePreview::queue_edited_resource_preview);
-	ClassDB::bind_method(D_METHOD("add_preview_generator", "generator"), &EditorResourcePreview::add_preview_generator);
-	ClassDB::bind_method(D_METHOD("remove_preview_generator", "generator"), &EditorResourcePreview::remove_preview_generator);
-	ClassDB::bind_method(D_METHOD("check_for_invalidation", "path"), &EditorResourcePreview::check_for_invalidation);
+	ObjectTypeDB::bind_method("_preview_ready", &EditorResourcePreview::_preview_ready);
+	ObjectTypeDB::bind_method(_MD("check_for_invalidation", "path"), &EditorResourcePreview::check_for_invalidation);
 
 	ADD_SIGNAL(MethodInfo("preview_invalidated", PropertyInfo(Variant::STRING, "path")));
 }

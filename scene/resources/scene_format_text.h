@@ -38,7 +38,6 @@
 
 class ResourceInteractiveLoaderText : public ResourceInteractiveLoader {
 
-	bool translation_remapped;
 	String local_path;
 	String res_path;
 	String error_text;
@@ -57,7 +56,7 @@ class ResourceInteractiveLoaderText : public ResourceInteractiveLoader {
 
 	bool ignore_resource_parsing;
 
-	//Map<String,String> remaps;
+	//	Map<String,String> remaps;
 
 	Map<int, ExtResource> ext_resources;
 
@@ -72,13 +71,21 @@ class ResourceInteractiveLoaderText : public ResourceInteractiveLoader {
 	Map<String, String> remaps;
 	//void _printerr();
 
-	static Error _parse_sub_resources(void *p_self, VariantParser::Stream *p_stream, Ref<Resource> &r_res, int &line, String &r_err_str) { return reinterpret_cast<ResourceInteractiveLoaderText *>(p_self)->_parse_sub_resource(p_stream, r_res, line, r_err_str); }
-	static Error _parse_ext_resources(void *p_self, VariantParser::Stream *p_stream, Ref<Resource> &r_res, int &line, String &r_err_str) { return reinterpret_cast<ResourceInteractiveLoaderText *>(p_self)->_parse_ext_resource(p_stream, r_res, line, r_err_str); }
+	static Error _parse_sub_resources(void *p_self, VariantParser::Stream *p_stream, Variant &r_value_res, int &line, String &r_err_str) { return reinterpret_cast<ResourceInteractiveLoaderText *>(p_self)->_parse_sub_resource(p_stream, r_value_res, line, r_err_str); }
+	static Error _parse_ext_resources(void *p_self, VariantParser::Stream *p_stream, Variant &r_value_res, int &line, String &r_err_str) { return reinterpret_cast<ResourceInteractiveLoaderText *>(p_self)->_parse_ext_resource(p_stream, r_value_res, line, r_err_str); }
 
-	Error _parse_sub_resource(VariantParser::Stream *p_stream, Ref<Resource> &r_res, int &line, String &r_err_str);
-	Error _parse_ext_resource(VariantParser::Stream *p_stream, Ref<Resource> &r_res, int &line, String &r_err_str);
+	Error _parse_sub_resource(VariantParser::Stream *p_stream, Variant &r_value_res, int &line, String &r_err_str);
+	Error _parse_ext_resource(VariantParser::Stream *p_stream, Variant &r_value_res, int &line, String &r_err_str);
 
 	VariantParser::ResourceParser rp;
+
+	static Error _parse_sub_resources_export(void *p_self, VariantParser::Stream *p_stream, Variant &r_value_res, int &line, String &r_err_str) { return reinterpret_cast<ResourceInteractiveLoaderText *>(p_self)->_parse_sub_resource_export(p_stream, r_value_res, line, r_err_str); }
+	static Error _parse_ext_resources_export(void *p_self, VariantParser::Stream *p_stream, Variant &r_value_res, int &line, String &r_err_str) { return reinterpret_cast<ResourceInteractiveLoaderText *>(p_self)->_parse_ext_resource_export(p_stream, r_value_res, line, r_err_str); }
+
+	Error _parse_sub_resource_export(VariantParser::Stream *p_stream, Variant &r_value_res, int &line, String &r_err_str);
+	Error _parse_ext_resource_export(VariantParser::Stream *p_stream, Variant &r_value_res, int &line, String &r_err_str);
+
+	VariantParser::ResourceParser rp_export;
 
 	Ref<PackedScene> packed_scene;
 
@@ -95,26 +102,29 @@ public:
 	virtual Error poll();
 	virtual int get_stage() const;
 	virtual int get_stage_count() const;
-	virtual void set_translation_remapped(bool p_remapped);
 
 	void open(FileAccess *p_f, bool p_skip_first_tag = false);
 	String recognize(FileAccess *p_f);
 	void get_dependencies(FileAccess *p_f, List<String> *p_dependencies, bool p_add_types);
 	Error rename_dependencies(FileAccess *p_f, const String &p_path, const Map<String, String> &p_map);
+	Error get_export_data(FileAccess *p_f, ExportData &r_export_data);
 
-	ResourceInteractiveLoaderText();
 	~ResourceInteractiveLoaderText();
 };
 
 class ResourceFormatLoaderText : public ResourceFormatLoader {
 public:
-	virtual Ref<ResourceInteractiveLoader> load_interactive(const String &p_path, const String &p_original_path = "", Error *r_error = NULL);
+	virtual Ref<ResourceInteractiveLoader> load_interactive(const String &p_path, Error *r_error = NULL);
 	virtual void get_recognized_extensions_for_type(const String &p_type, List<String> *p_extensions) const;
 	virtual void get_recognized_extensions(List<String> *p_extensions) const;
 	virtual bool handles_type(const String &p_type) const;
 	virtual String get_resource_type(const String &p_path) const;
 	virtual void get_dependencies(const String &p_path, List<String> *p_dependencies, bool p_add_types = false);
 	virtual Error rename_dependencies(const String &p_path, const Map<String, String> &p_map);
+	virtual Error get_export_data(const String &p_path, ExportData &r_export_data);
+
+	static ResourceFormatLoaderText *singleton;
+	ResourceFormatLoaderText() { singleton = this; }
 };
 
 class ResourceFormatSaverTextInstance {

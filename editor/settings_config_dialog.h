@@ -36,7 +36,7 @@
 
 class EditorSettingsDialog : public AcceptDialog {
 
-	GDCLASS(EditorSettingsDialog, AcceptDialog);
+	OBJ_TYPE(EditorSettingsDialog, AcceptDialog);
 
 	bool updating;
 
@@ -50,12 +50,11 @@ class EditorSettingsDialog : public AcceptDialog {
 
 	Timer *timer;
 
-	UndoRedo *undo_redo;
 	Tree *shortcuts;
 
 	ConfirmationDialog *press_a_key;
 	Label *press_a_key_label;
-	Ref<InputEventKey> last_wait_for_key;
+	InputEvent last_wait_for_key;
 	String shortcut_configured;
 	String shortcut_filter;
 
@@ -66,11 +65,10 @@ class EditorSettingsDialog : public AcceptDialog {
 	void _settings_property_edited(const String &p_name);
 	void _settings_save();
 
-	void _unhandled_input(const Ref<InputEvent> &p_event);
 	void _notification(int p_what);
 
 	void _press_a_key_confirm();
-	void _wait_for_key(const Ref<InputEvent> &p_event);
+	void _wait_for_key(const InputEvent &p_event);
 
 	void _clear_shortcut_search_box();
 	void _clear_search_box();
@@ -80,8 +78,6 @@ class EditorSettingsDialog : public AcceptDialog {
 	void _update_shortcuts();
 	void _shortcut_button_pressed(Object *p_item, int p_column, int p_idx);
 
-	static void _undo_redo_callback(void *p_self, const String &p_name);
-
 protected:
 	static void _bind_methods();
 
@@ -89,7 +85,6 @@ public:
 	void popup_edit_settings();
 
 	EditorSettingsDialog();
-	~EditorSettingsDialog();
 };
 
 #endif // SETTINGS_CONFIG_DIALOG_H

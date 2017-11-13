@@ -34,17 +34,17 @@
 
 class Translation : public Resource {
 
-	GDCLASS(Translation, Resource);
+	OBJ_TYPE(Translation, Resource);
 	OBJ_SAVE_TYPE(Translation);
-	RES_BASE_EXTENSION("translation");
+	RES_BASE_EXTENSION("xl");
 
 	String locale;
 	Map<StringName, StringName> translation_map;
 
-	PoolVector<String> _get_message_list() const;
+	DVector<String> _get_message_list() const;
 
-	PoolVector<String> _get_messages() const;
-	void _set_messages(const PoolVector<String> &p_messages);
+	DVector<String> _get_messages() const;
+	void _set_messages(const DVector<String> &p_messages);
 
 protected:
 	static void _bind_methods();
@@ -65,15 +65,13 @@ public:
 
 class TranslationServer : public Object {
 
-	GDCLASS(TranslationServer, Object);
+	OBJ_TYPE(TranslationServer, Object);
 
 	String locale;
 	String fallback;
 
 	Set<Ref<Translation> > translations;
 	Ref<Translation> tool_translation;
-
-	Map<String, String> locale_name_map;
 
 	bool enabled;
 
@@ -93,8 +91,6 @@ public:
 	void set_locale(const String &p_locale);
 	String get_locale() const;
 
-	String get_locale_name(const String &p_locale) const;
-
 	void add_translation(const Ref<Translation> &p_translation);
 	void remove_translation(const Ref<Translation> &p_translation);
 
@@ -102,7 +98,6 @@ public:
 
 	static Vector<String> get_all_locales();
 	static Vector<String> get_all_locale_names();
-	static bool is_locale_valid(const String &p_locale);
 
 	void set_tool_translation(const Ref<Translation> &p_translation);
 	StringName tool_translate(const StringName &p_message) const;

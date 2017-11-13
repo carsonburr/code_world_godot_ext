@@ -38,7 +38,7 @@
 
 class TileMap : public Node2D {
 
-	GDCLASS(TileMap, Node2D);
+	OBJ_TYPE(TileMap, Node2D);
 
 public:
 	enum Mode {
@@ -65,7 +65,7 @@ private:
 	int quadrant_size;
 	bool center_x, center_y;
 	Mode mode;
-	Transform2D custom_transform;
+	Matrix32 custom_transform;
 	HalfOffset half_offset;
 	bool use_kinematic;
 	Navigation2D *navigation;
@@ -109,18 +109,18 @@ private:
 
 		Vector2 pos;
 		List<RID> canvas_items;
-		RID body;
+		Vector<RID> bodies;
 
 		SelfList<Quadrant> dirty_list;
 
 		struct NavPoly {
 			int id;
-			Transform2D xform;
+			Matrix32 xform;
 		};
 
 		struct Occluder {
 			RID id;
-			Transform2D xform;
+			Matrix32 xform;
 		};
 
 		Map<PosKey, NavPoly> navpoly_ids;
@@ -131,7 +131,7 @@ private:
 		void operator=(const Quadrant &q) {
 			pos = q.pos;
 			canvas_items = q.canvas_items;
-			body = q.body;
+			bodies = q.bodies;
 			cells = q.cells;
 			navpoly_ids = q.navpoly_ids;
 			occluder_instances = q.occluder_instances;
@@ -140,7 +140,7 @@ private:
 			: dirty_list(this) {
 			pos = q.pos;
 			canvas_items = q.canvas_items;
-			body = q.body;
+			bodies = q.bodies;
 			cells = q.cells;
 			occluder_instances = q.occluder_instances;
 			navpoly_ids = q.navpoly_ids;
@@ -171,7 +171,7 @@ private:
 
 	int occluder_light_mask;
 
-	void _fix_cell_transform(Transform2D &xform, const Cell &p_cell, const Vector2 &p_offset, const Size2 &p_sc);
+	void _fix_cell_transform(Matrix32 &xform, const Cell &p_cell, const Vector2 &p_offset, const Size2 &p_sc);
 
 	Map<PosKey, Quadrant>::Element *_create_quadrant(const PosKey &p_qk);
 	void _erase_quadrant(Map<PosKey, Quadrant>::Element *Q);
@@ -188,8 +188,8 @@ private:
 
 	_FORCE_INLINE_ int _get_quadrant_size() const;
 
-	void _set_tile_data(const PoolVector<int> &p_data);
-	PoolVector<int> _get_tile_data() const;
+	void _set_tile_data(const DVector<int> &p_data);
+	DVector<int> _get_tile_data() const;
 
 	void _set_old_cell_size(int p_size) { set_cell_size(Size2(p_size, p_size)); }
 	int _get_old_cell_size() const { return cell_size.x; }
@@ -260,10 +260,10 @@ public:
 	void set_tile_origin(TileOrigin p_tile_origin);
 	TileOrigin get_tile_origin() const;
 
-	void set_custom_transform(const Transform2D &p_xform);
-	Transform2D get_custom_transform() const;
+	void set_custom_transform(const Matrix32 &p_xform);
+	Matrix32 get_custom_transform() const;
 
-	Transform2D get_cell_transform() const;
+	Matrix32 get_cell_transform() const;
 	Vector2 get_cell_draw_offset() const;
 
 	Vector2 map_to_world(const Vector2 &p_pos, bool p_ignore_ofs = false) const;
@@ -281,7 +281,7 @@ public:
 
 	virtual void set_light_mask(int p_light_mask);
 
-	virtual void set_material(const Ref<Material> &p_material);
+	virtual void set_material(const Ref<CanvasItemMaterial> &p_material);
 
 	virtual void set_use_parent_material(bool p_use_parent_material);
 

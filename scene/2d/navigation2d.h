@@ -35,7 +35,7 @@
 
 class Navigation2D : public Node2D {
 
-	GDCLASS(Navigation2D, Node2D);
+	OBJ_TYPE(Navigation2D, Node2D);
 
 	union Point {
 
@@ -57,9 +57,9 @@ class Navigation2D : public Node2D {
 			return (a.key == p_key.a.key) ? (b.key < p_key.b.key) : (a.key < p_key.a.key);
 		};
 
-		EdgeKey(const Point &p_a = Point(), const Point &p_b = Point())
-			: a(p_a),
-			  b(p_b) {
+		EdgeKey(const Point &p_a = Point(), const Point &p_b = Point()) {
+			a = p_a;
+			b = p_b;
 			if (a.key > b.key) {
 				SWAP(a, b);
 			}
@@ -124,7 +124,7 @@ class Navigation2D : public Node2D {
 	struct NavMesh {
 
 		Object *owner;
-		Transform2D xform;
+		Matrix32 xform;
 		bool linked;
 		Ref<NavigationPolygon> navpoly;
 		List<Polygon> polygons;
@@ -153,14 +153,16 @@ class Navigation2D : public Node2D {
 	float cell_size;
 	Map<int, NavMesh> navpoly_map;
 	int last_id;
-
+#if 0
+	void _clip_path(Vector<Vector2>& path,Polygon *from_poly, const Vector2& p_to_point, Polygon* p_to_poly);
+#endif
 protected:
 	static void _bind_methods();
 
 public:
 	//API should be as dynamic as possible
-	int navpoly_create(const Ref<NavigationPolygon> &p_mesh, const Transform2D &p_xform, Object *p_owner = NULL);
-	void navpoly_set_transform(int p_id, const Transform2D &p_xform);
+	int navpoly_create(const Ref<NavigationPolygon> &p_mesh, const Matrix32 &p_xform, Object *p_owner = NULL);
+	void navpoly_set_transform(int p_id, const Matrix32 &p_xform);
 	void navpoly_remove(int p_id);
 
 	Vector<Vector2> get_simple_path(const Vector2 &p_start, const Vector2 &p_end, bool p_optimize = true);

@@ -27,11 +27,11 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
-//#include "servers/visual/visual_server_raster.h"
-//#include "servers/visual/rasterizer_dummy.h"
 #include "os_server.h"
 #include "print_string.h"
 #include "servers/physics/physics_server_sw.h"
+#include "servers/visual/rasterizer_dummy.h"
+#include "servers/visual/visual_server_raster.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -58,11 +58,16 @@ void OS_Server::initialize(const VideoMode &p_desired, int p_video_driver, int p
 	current_videomode = p_desired;
 	main_loop = NULL;
 
-	//rasterizer = memnew( RasterizerDummy );
+	rasterizer = memnew(RasterizerDummy);
 
-	//visual_server = memnew( VisualServerRaster(rasterizer) );
+	visual_server = memnew(VisualServerRaster(rasterizer));
 
-	AudioDriverManager::initialize(p_audio_driver);
+	AudioDriverManagerSW::get_driver(p_audio_driver)->set_singleton();
+
+	if (AudioDriverManagerSW::get_driver(p_audio_driver)->init() != OK) {
+
+		ERR_PRINT("Initializing audio failed.");
+	}
 
 	sample_manager = memnew(SampleManagerMallocSW);
 	audio_server = memnew(AudioServerSW(sample_manager));
@@ -96,11 +101,9 @@ void OS_Server::finalize() {
 	spatial_sound_2d_server->finish();
 	memdelete(spatial_sound_2d_server);
 
-	/*
-	if (debugger_connection_console) {
-		memdelete(debugger_connection_console);
-	}
-	*/
+	//if (debugger_connection_console) {
+	//		memdelete(debugger_connection_console);
+	//}
 
 	memdelete(sample_manager);
 
@@ -109,7 +112,7 @@ void OS_Server::finalize() {
 
 	visual_server->finish();
 	memdelete(visual_server);
-	//memdelete(rasterizer);
+	memdelete(rasterizer);
 
 	physics_server->finish();
 	memdelete(physics_server);
@@ -138,7 +141,7 @@ int OS_Server::get_mouse_button_state() const {
 	return 0;
 }
 
-Point2 OS_Server::get_mouse_position() const {
+Point2 OS_Server::get_mouse_pos() const {
 
 	return Point2();
 }
@@ -195,18 +198,6 @@ void OS_Server::move_window_to_foreground() {
 void OS_Server::set_cursor_shape(CursorShape p_shape) {
 }
 
-OS::PowerState OS_Server::get_power_state() {
-	return power_manager->get_power_state();
-}
-
-int OS_Server::get_power_seconds_left() {
-	return power_manager->get_power_seconds_left();
-}
-
-int OS_Server::get_power_percent_left() {
-	return power_manager->get_power_percent_left();
-}
-
 void OS_Server::run() {
 
 	force_quit = false;
@@ -227,6 +218,7 @@ void OS_Server::run() {
 
 OS_Server::OS_Server() {
 
+	AudioDriverManagerSW::add_driver(&driver_dummy);
 	//adriver here
 	grab = false;
 };

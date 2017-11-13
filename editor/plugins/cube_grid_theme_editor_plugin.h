@@ -35,7 +35,7 @@
 
 class MeshLibraryEditor : public Control {
 
-	GDCLASS(MeshLibraryEditor, Control);
+	OBJ_TYPE(MeshLibraryEditor, Control);
 
 	Ref<MeshLibrary> theme;
 
@@ -72,7 +72,7 @@ public:
 
 class MeshLibraryEditorPlugin : public EditorPlugin {
 
-	GDCLASS(MeshLibraryEditorPlugin, EditorPlugin);
+	OBJ_TYPE(MeshLibraryEditorPlugin, EditorPlugin);
 
 	MeshLibraryEditor *theme_editor;
 	EditorNode *editor;

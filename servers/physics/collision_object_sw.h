@@ -53,7 +53,7 @@ private:
 	Type type;
 	RID self;
 	ObjectID instance_id;
-	uint32_t collision_layer;
+	uint32_t layer_mask;
 	uint32_t collision_mask;
 
 	struct Shape {
@@ -61,12 +61,11 @@ private:
 		Transform xform;
 		Transform xform_inv;
 		BroadPhaseSW::ID bpid;
-		Rect3 aabb_cache; //for rayqueries
-		real_t area_cache;
+		AABB aabb_cache; //for rayqueries
 		ShapeSW *shape;
-		bool disabled;
+		bool trigger;
 
-		Shape() { disabled = false; }
+		Shape() { trigger = false; }
 	};
 
 	Vector<Shape> shapes;
@@ -74,8 +73,6 @@ private:
 	Transform transform;
 	Transform inv_transform;
 	bool _static;
-
-	SelfList<CollisionObjectSW> pending_shape_update_list;
 
 	void _update_shapes();
 
@@ -100,7 +97,8 @@ protected:
 	void _set_static(bool p_static);
 
 	virtual void _shapes_changed() = 0;
-	void _set_space(SpaceSW *p_space);
+	virtual void _shape_index_removed(int p_index) = 0;
+	void _set_space(SpaceSW *space);
 
 	bool ray_pickable;
 
@@ -123,8 +121,7 @@ public:
 	_FORCE_INLINE_ ShapeSW *get_shape(int p_index) const { return shapes[p_index].shape; }
 	_FORCE_INLINE_ const Transform &get_shape_transform(int p_index) const { return shapes[p_index].xform; }
 	_FORCE_INLINE_ const Transform &get_shape_inv_transform(int p_index) const { return shapes[p_index].xform_inv; }
-	_FORCE_INLINE_ const Rect3 &get_shape_aabb(int p_index) const { return shapes[p_index].aabb_cache; }
-	_FORCE_INLINE_ const real_t get_shape_area(int p_index) const { return shapes[p_index].area_cache; }
+	_FORCE_INLINE_ const AABB &get_shape_aabb(int p_index) const { return shapes[p_index].aabb_cache; }
 
 	_FORCE_INLINE_ Transform get_transform() const { return transform; }
 	_FORCE_INLINE_ Transform get_inv_transform() const { return inv_transform; }
@@ -133,17 +130,17 @@ public:
 	_FORCE_INLINE_ void set_ray_pickable(bool p_enable) { ray_pickable = p_enable; }
 	_FORCE_INLINE_ bool is_ray_pickable() const { return ray_pickable; }
 
-	_FORCE_INLINE_ void set_shape_as_disabled(int p_idx, bool p_enable) { shapes[p_idx].disabled = p_enable; }
-	_FORCE_INLINE_ bool is_shape_set_as_disabled(int p_idx) const { return shapes[p_idx].disabled; }
+	_FORCE_INLINE_ void set_shape_as_trigger(int p_idx, bool p_enable) { shapes[p_idx].trigger = p_enable; }
+	_FORCE_INLINE_ bool is_shape_set_as_trigger(int p_idx) const { return shapes[p_idx].trigger; }
 
-	_FORCE_INLINE_ void set_collision_layer(uint32_t p_layer) { collision_layer = p_layer; }
-	_FORCE_INLINE_ uint32_t get_collision_layer() const { return collision_layer; }
+	_FORCE_INLINE_ void set_layer_mask(uint32_t p_mask) { layer_mask = p_mask; }
+	_FORCE_INLINE_ uint32_t get_layer_mask() const { return layer_mask; }
 
 	_FORCE_INLINE_ void set_collision_mask(uint32_t p_mask) { collision_mask = p_mask; }
 	_FORCE_INLINE_ uint32_t get_collision_mask() const { return collision_mask; }
 
 	_FORCE_INLINE_ bool test_collision_mask(CollisionObjectSW *p_other) const {
-		return collision_layer & p_other->collision_mask || p_other->collision_layer & collision_mask;
+		return layer_mask & p_other->collision_mask || p_other->layer_mask & collision_mask;
 	}
 
 	void remove_shape(ShapeSW *p_shape);

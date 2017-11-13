@@ -38,11 +38,11 @@ Error QuickHull::build(const Vector<Vector3> &p_points, Geometry::MeshData &r_me
 
 	/* CREATE AABB VOLUME */
 
-	Rect3 aabb;
+	AABB aabb;
 	for (int i = 0; i < p_points.size(); i++) {
 
 		if (i == 0) {
-			aabb.position = p_points[i];
+			aabb.pos = p_points[i];
 		} else {
 			aabb.expand_to(p_points[i]);
 		}
@@ -58,7 +58,7 @@ Error QuickHull::build(const Vector<Vector3> &p_points, Geometry::MeshData &r_me
 
 	for (int i = 0; i < p_points.size(); i++) {
 
-		Vector3 sp = p_points[i].snapped(Vector3(0.0001, 0.0001, 0.0001));
+		Vector3 sp = p_points[i].snapped(0.0001);
 		if (valid_cache.has(sp)) {
 			valid_points[i] = false;
 			//print_line("INVALIDATED: "+itos(i));
@@ -76,13 +76,13 @@ Error QuickHull::build(const Vector<Vector3> &p_points, Geometry::MeshData &r_me
 	int simplex[4];
 
 	{
-		real_t max = 0, min = 0;
+		real_t max, min;
 
 		for (int i = 0; i < p_points.size(); i++) {
 
 			if (!valid_points[i])
 				continue;
-			real_t d = p_points[i][longest_axis];
+			float d = p_points[i][longest_axis];
 			if (i == 0 || d < min) {
 
 				simplex[0] = i;
@@ -99,7 +99,7 @@ Error QuickHull::build(const Vector<Vector3> &p_points, Geometry::MeshData &r_me
 	//third vertex is one most further away from the line
 
 	{
-		real_t maxd = 0;
+		float maxd;
 		Vector3 rel12 = p_points[simplex[0]] - p_points[simplex[1]];
 
 		for (int i = 0; i < p_points.size(); i++) {
@@ -121,7 +121,7 @@ Error QuickHull::build(const Vector<Vector3> &p_points, Geometry::MeshData &r_me
 	//fourth vertex is the one  most further away from the plane
 
 	{
-		real_t maxd = 0;
+		float maxd;
 		Plane p(p_points[simplex[0]], p_points[simplex[1]], p_points[simplex[2]]);
 
 		for (int i = 0; i < p_points.size(); i++) {
@@ -389,8 +389,8 @@ Error QuickHull::build(const Vector<Vector3> &p_points, Geometry::MeshData &r_me
 
 		for (int i = 0; i < f.indices.size(); i++) {
 
-			int a = E->get().indices[i];
-			int b = E->get().indices[(i + 1) % f.indices.size()];
+			uint32_t a = E->get().indices[i];
+			uint32_t b = E->get().indices[(i + 1) % f.indices.size()];
 			Edge e(a, b);
 
 			Map<Edge, RetFaceConnect>::Element *F = ret_edges.find(e);
@@ -447,7 +447,7 @@ Error QuickHull::build(const Vector<Vector3> &p_points, Geometry::MeshData &r_me
 	//fill mesh
 	r_mesh.faces.clear();
 	r_mesh.faces.resize(ret_faces.size());
-	//print_line("FACECOUNT: "+itos(r_mesh.faces.size()));
+	//	print_line("FACECOUNT: "+itos(r_mesh.faces.size()));
 
 	int idx = 0;
 	for (List<Geometry::MeshData::Face>::Element *E = ret_faces.front(); E; E = E->next()) {

@@ -30,11 +30,11 @@
 #include "shape.h"
 
 #include "os/os.h"
-#include "scene/main/scene_tree.h"
+#include "scene/main/scene_main_loop.h"
 #include "scene/resources/mesh.h"
 #include "servers/physics_server.h"
 
-void Shape::add_vertices_to_array(PoolVector<Vector3> &array, const Transform &p_xform) {
+void Shape::add_vertices_to_array(DVector<Vector3> &array, const Transform &p_xform) {
 
 	Vector<Vector3> toadd = _gen_debug_mesh_lines();
 
@@ -42,29 +42,29 @@ void Shape::add_vertices_to_array(PoolVector<Vector3> &array, const Transform &p
 
 		int base = array.size();
 		array.resize(base + toadd.size());
-		PoolVector<Vector3>::Write w = array.write();
+		DVector<Vector3>::Write w = array.write();
 		for (int i = 0; i < toadd.size(); i++) {
 			w[i + base] = p_xform.xform(toadd[i]);
 		}
 	}
 }
 
-Ref<ArrayMesh> Shape::get_debug_mesh() {
+Ref<Mesh> Shape::get_debug_mesh() {
 
 	if (debug_mesh_cache.is_valid())
 		return debug_mesh_cache;
 
 	Vector<Vector3> lines = _gen_debug_mesh_lines();
 
-	debug_mesh_cache = Ref<ArrayMesh>(memnew(ArrayMesh));
+	debug_mesh_cache = Ref<Mesh>(memnew(Mesh));
 
 	if (!lines.empty()) {
 		//make mesh
-		PoolVector<Vector3> array;
+		DVector<Vector3> array;
 		array.resize(lines.size());
 		{
 
-			PoolVector<Vector3>::Write w = array.write();
+			DVector<Vector3>::Write w = array.write();
 			for (int i = 0; i < lines.size(); i++) {
 				w[i] = lines[i];
 			}
@@ -74,9 +74,9 @@ Ref<ArrayMesh> Shape::get_debug_mesh() {
 		arr.resize(Mesh::ARRAY_MAX);
 		arr[Mesh::ARRAY_VERTEX] = array;
 
-		SceneTree *st = Object::cast_to<SceneTree>(OS::get_singleton()->get_main_loop());
+		SceneTree *st = OS::get_singleton()->get_main_loop()->cast_to<SceneTree>();
 
-		debug_mesh_cache->add_surface_from_arrays(Mesh::PRIMITIVE_LINES, arr);
+		debug_mesh_cache->add_surface(Mesh::PRIMITIVE_LINES, arr);
 
 		if (st) {
 			debug_mesh_cache->surface_set_material(0, st->get_debug_collision_material());

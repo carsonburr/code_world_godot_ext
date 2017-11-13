@@ -29,10 +29,10 @@
 /*************************************************************************/
 #include "file_access_memory.h"
 
+#include "globals.h"
 #include "map.h"
 #include "os/copymem.h"
 #include "os/dir_access.h"
-#include "project_settings.h"
 
 static Map<String, Vector<uint8_t> > *files = NULL;
 
@@ -43,8 +43,8 @@ void FileAccessMemory::register_file(String p_name, Vector<uint8_t> p_data) {
 	}
 
 	String name;
-	if (ProjectSettings::get_singleton())
-		name = ProjectSettings::get_singleton()->globalize_path(p_name);
+	if (Globals::get_singleton())
+		name = Globals::get_singleton()->globalize_path(p_name);
 	else
 		name = p_name;
 	//name = DirAccess::normalize_path(name);
@@ -68,7 +68,7 @@ FileAccess *FileAccessMemory::create() {
 bool FileAccessMemory::file_exists(const String &p_name) {
 
 	String name = fix_path(p_name);
-	//name = DirAccess::normalize_path(name);
+	//	name = DirAccess::normalize_path(name);
 
 	return files && (files->find(name) != NULL);
 }
@@ -86,7 +86,7 @@ Error FileAccessMemory::_open(const String &p_path, int p_mode_flags) {
 	ERR_FAIL_COND_V(!files, ERR_FILE_NOT_FOUND);
 
 	String name = fix_path(p_path);
-	//name = DirAccess::normalize_path(name);
+	//	name = DirAccess::normalize_path(name);
 
 	Map<String, Vector<uint8_t> >::Element *E = files->find(name);
 	ERR_FAIL_COND_V(!E, ERR_FILE_NOT_FOUND);
@@ -120,7 +120,7 @@ void FileAccessMemory::seek_end(int64_t p_position) {
 	pos = length + p_position;
 }
 
-size_t FileAccessMemory::get_position() const {
+size_t FileAccessMemory::get_pos() const {
 
 	ERR_FAIL_COND_V(!data, 0);
 	return pos;
@@ -168,10 +168,6 @@ int FileAccessMemory::get_buffer(uint8_t *p_dst, int p_length) const {
 Error FileAccessMemory::get_error() const {
 
 	return pos >= length ? ERR_FILE_EOF : OK;
-}
-
-void FileAccessMemory::flush() {
-	ERR_FAIL_COND(!data);
 }
 
 void FileAccessMemory::store_8(uint8_t p_byte) {

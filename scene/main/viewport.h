@@ -1,4 +1,3 @@
-
 /*************************************************************************/
 /*  viewport.h                                                           */
 /*************************************************************************/
@@ -50,24 +49,15 @@ class Label;
 class Timer;
 class Viewport;
 
-class ViewportTexture : public Texture {
+class RenderTargetTexture : public Texture {
 
-	GDCLASS(ViewportTexture, Texture);
+	OBJ_TYPE(RenderTargetTexture, Texture);
 
-	NodePath path;
-
+	int flags;
 	friend class Viewport;
 	Viewport *vp;
 
-protected:
-	static void _bind_methods();
-
 public:
-	void set_viewport_path_in_scene(const NodePath &p_path);
-	NodePath get_viewport_path_in_scene() const;
-
-	virtual void setup_local_to_scene();
-
 	virtual int get_width() const;
 	virtual int get_height() const;
 	virtual Size2 get_size() const;
@@ -78,90 +68,35 @@ public:
 	virtual void set_flags(uint32_t p_flags);
 	virtual uint32_t get_flags() const;
 
-	virtual Ref<Image> get_data() const;
-
-	ViewportTexture();
-	~ViewportTexture();
+	RenderTargetTexture(Viewport *p_vp = NULL);
 };
 
 class Viewport : public Node {
 
-	GDCLASS(Viewport, Node);
+	OBJ_TYPE(Viewport, Node);
 
 public:
-	enum UpdateMode {
-		UPDATE_DISABLED,
-		UPDATE_ONCE, //then goes to disabled
-		UPDATE_WHEN_VISIBLE, // default
-		UPDATE_ALWAYS
-	};
-
-	enum ShadowAtlasQuadrantSubdiv {
-		SHADOW_ATLAS_QUADRANT_SUBDIV_DISABLED,
-		SHADOW_ATLAS_QUADRANT_SUBDIV_1,
-		SHADOW_ATLAS_QUADRANT_SUBDIV_4,
-		SHADOW_ATLAS_QUADRANT_SUBDIV_16,
-		SHADOW_ATLAS_QUADRANT_SUBDIV_64,
-		SHADOW_ATLAS_QUADRANT_SUBDIV_256,
-		SHADOW_ATLAS_QUADRANT_SUBDIV_1024,
-		SHADOW_ATLAS_QUADRANT_SUBDIV_MAX,
-
-	};
-
-	enum MSAA {
-		MSAA_DISABLED,
-		MSAA_2X,
-		MSAA_4X,
-		MSAA_8X,
-		MSAA_16X,
-	};
-
-	enum Usage {
-		USAGE_2D,
-		USAGE_2D_NO_SAMPLING,
-		USAGE_3D,
-		USAGE_3D_NO_EFFECTS,
-	};
-
-	enum RenderInfo {
-
-		RENDER_INFO_OBJECTS_IN_FRAME,
-		RENDER_INFO_VERTICES_IN_FRAME,
-		RENDER_INFO_MATERIAL_CHANGES_IN_FRAME,
-		RENDER_INFO_SHADER_CHANGES_IN_FRAME,
-		RENDER_INFO_SURFACE_CHANGES_IN_FRAME,
-		RENDER_INFO_DRAW_CALLS_IN_FRAME,
-		RENDER_INFO_MAX
-	};
-
-	enum DebugDraw {
-		DEBUG_DRAW_DISABLED,
-		DEBUG_DRAW_UNSHADED,
-		DEBUG_DRAW_OVERDRAW,
-		DEBUG_DRAW_WIREFRAME,
-	};
-
-	enum ClearMode {
-
-		CLEAR_MODE_ALWAYS,
-		CLEAR_MODE_NEVER,
-		CLEAR_MODE_ONLY_NEXT_FRAME
+	enum RenderTargetUpdateMode {
+		RENDER_TARGET_UPDATE_DISABLED,
+		RENDER_TARGET_UPDATE_ONCE, //then goes to disabled
+		RENDER_TARGET_UPDATE_WHEN_VISIBLE, // default
+		RENDER_TARGET_UPDATE_ALWAYS
 	};
 
 private:
-	friend class ViewportTexture;
+	friend class RenderTargetTexture;
 
+	Control *parent_control;
 	Viewport *parent;
 
 	Listener *listener;
 	Set<Listener *> listeners;
 
-	bool arvr;
-
 	Camera *camera;
 	Set<Camera *> cameras;
 
 	RID viewport;
+	RID canvas_item;
 	RID current_canvas;
 
 	bool audio_listener;
@@ -170,11 +105,11 @@ private:
 	bool audio_listener_2d;
 	RID internal_listener_2d;
 
-	Transform2D canvas_transform;
-	Transform2D global_canvas_transform;
-	Transform2D stretch_transform;
+	Matrix32 canvas_transform;
+	Matrix32 global_canvas_transform;
+	Matrix32 stretch_transform;
 
-	Size2 size;
+	Rect2 rect;
 	Rect2 to_screen_rect;
 
 	RID contact_2d_debug;
@@ -189,15 +124,13 @@ private:
 	Rect2 last_vp_rect;
 
 	bool transparent_bg;
-	bool vflip;
-	ClearMode clear_mode;
-	bool filter;
-	bool gen_mipmaps;
-
-	bool snap_controls_to_pixels;
+	bool render_target_vflip;
+	bool render_target_clear_on_new_frame;
+	bool render_target_filter;
+	bool render_target_gen_mipmaps;
 
 	bool physics_object_picking;
-	List<Ref<InputEvent> > physics_picking_events;
+	List<InputEvent> physics_picking_events;
 	ObjectID physics_object_capture;
 	ObjectID physics_object_over;
 	Vector2 physics_last_mousepos;
@@ -229,23 +162,10 @@ private:
 	void _update_stretch_transform();
 	void _update_global_transform();
 
-	bool disable_3d;
-	UpdateMode update_mode;
-	RID texture_rid;
-	uint32_t texture_flags;
-
-	DebugDraw debug_draw;
-
-	Usage usage;
-
-	int shadow_atlas_size;
-	ShadowAtlasQuadrantSubdiv shadow_atlas_quadrant_subdiv[4];
-
-	MSAA msaa;
-	bool hdr;
-
-	Ref<ViewportTexture> default_texture;
-	Set<ViewportTexture *> viewport_textures;
+	bool render_target;
+	RenderTargetUpdateMode render_target_update_mode;
+	RID render_target_texture_rid;
+	Ref<RenderTargetTexture> render_target_texture;
 
 	struct GUI {
 		// info used when this is a window
@@ -268,38 +188,37 @@ private:
 		float tooltip_delay;
 		List<Control *> modal_stack;
 		unsigned int cancelled_input_ID;
-		Transform2D focus_inv_xform;
+		Matrix32 focus_inv_xform;
 		bool subwindow_order_dirty;
 		List<Control *> subwindows;
 		bool roots_order_dirty;
 		List<Control *> roots;
-		int canvas_sort_index; //for sorting items with canvas as root
 
 		GUI();
 	} gui;
 
 	bool disable_input;
 
-	void _gui_call_input(Control *p_control, const Ref<InputEvent> &p_input);
+	void _gui_call_input(Control *p_control, const InputEvent &p_input);
 	void _gui_sort_subwindows();
 	void _gui_sort_roots();
 	void _gui_sort_modal_stack();
 	Control *_gui_find_control(const Point2 &p_global);
-	Control *_gui_find_control_at_pos(CanvasItem *p_node, const Point2 &p_global, const Transform2D &p_xform, Transform2D &r_inv_xform);
+	Control *_gui_find_control_at_pos(CanvasItem *p_node, const Point2 &p_global, const Matrix32 &p_xform, Matrix32 &r_inv_xform);
 
-	void _gui_input_event(Ref<InputEvent> p_event);
+	void _gui_input_event(InputEvent p_event);
 
 	void update_worlds();
 
-	_FORCE_INLINE_ Transform2D _get_input_pre_xform() const;
+	_FORCE_INLINE_ Matrix32 _get_input_pre_xform() const;
 
 	void _vp_enter_tree();
 	void _vp_exit_tree();
 
-	void _vp_input(const Ref<InputEvent> &p_ev);
+	void _vp_input(const InputEvent &p_ev);
 	void _vp_input_text(const String &p_text);
-	void _vp_unhandled_input(const Ref<InputEvent> &p_ev);
-	Ref<InputEvent> _make_input_local(const Ref<InputEvent> &ev);
+	void _vp_unhandled_input(const InputEvent &p_ev);
+	void _make_input_local(InputEvent &ev);
 
 	friend class Control;
 
@@ -337,8 +256,6 @@ private:
 
 	Vector2 _get_window_offset() const;
 
-	bool _gui_drop(Control *p_at_control, Point2 p_at_pos, bool p_just_check);
-
 	friend class Listener;
 	void _listener_transform_changed_notify();
 	void _listener_set(Listener *p_listener);
@@ -361,20 +278,16 @@ public:
 	Listener *get_listener() const;
 	Camera *get_camera() const;
 
-	void set_use_arvr(bool p_use_arvr);
-	bool use_arvr();
-
 	void set_as_audio_listener(bool p_enable);
 	bool is_audio_listener() const;
 
 	void set_as_audio_listener_2d(bool p_enable);
 	bool is_audio_listener_2d() const;
 
-	void set_size(const Size2 &p_size);
-
-	Size2 get_size() const;
+	void set_rect(const Rect2 &p_rect);
+	Rect2 get_rect() const;
 	Rect2 get_visible_rect() const;
-	RID get_viewport_rid() const;
+	RID get_viewport() const;
 
 	void set_world(const Ref<World> &p_world);
 	void set_world_2d(const Ref<World2D> &p_world_2d);
@@ -384,65 +297,62 @@ public:
 	Ref<World2D> get_world_2d() const;
 	Ref<World2D> find_world_2d() const;
 
-	void set_canvas_transform(const Transform2D &p_transform);
-	Transform2D get_canvas_transform() const;
+	void set_canvas_transform(const Matrix32 &p_transform);
+	Matrix32 get_canvas_transform() const;
 
-	void set_global_canvas_transform(const Transform2D &p_transform);
-	Transform2D get_global_canvas_transform() const;
+	void set_global_canvas_transform(const Matrix32 &p_transform);
+	Matrix32 get_global_canvas_transform() const;
 
-	Transform2D get_final_transform() const;
+	Matrix32 get_final_transform() const;
 
 	void set_transparent_background(bool p_enable);
 	bool has_transparent_background() const;
 
 	void set_size_override(bool p_enable, const Size2 &p_size = Size2(-1, -1), const Vector2 &p_margin = Vector2());
 	Size2 get_size_override() const;
-
 	bool is_size_override_enabled() const;
 	void set_size_override_stretch(bool p_enable);
 	bool is_size_override_stretch_enabled() const;
 
-	void set_vflip(bool p_enable);
-	bool get_vflip() const;
+	void set_as_render_target(bool p_enable);
+	bool is_set_as_render_target() const;
 
-	void set_clear_mode(ClearMode p_mode);
-	ClearMode get_clear_mode() const;
+	void set_render_target_vflip(bool p_enable);
+	bool get_render_target_vflip() const;
 
-	void set_update_mode(UpdateMode p_mode);
-	UpdateMode get_update_mode() const;
-	Ref<ViewportTexture> get_texture() const;
+	void set_render_target_clear_on_new_frame(bool p_enable);
+	bool get_render_target_clear_on_new_frame() const;
+	void render_target_clear();
 
-	void set_shadow_atlas_size(int p_size);
-	int get_shadow_atlas_size() const;
+	void set_render_target_filter(bool p_enable);
+	bool get_render_target_filter() const;
 
-	void set_shadow_atlas_quadrant_subdiv(int p_quadrant, ShadowAtlasQuadrantSubdiv p_subdiv);
-	ShadowAtlasQuadrantSubdiv get_shadow_atlas_quadrant_subdiv(int p_quadrant) const;
+	void set_render_target_gen_mipmaps(bool p_enable);
+	bool get_render_target_gen_mipmaps() const;
 
-	void set_msaa(MSAA p_msaa);
-	MSAA get_msaa() const;
-
-	void set_hdr(bool p_hdr);
-	bool get_hdr() const;
+	void set_render_target_update_mode(RenderTargetUpdateMode p_mode);
+	RenderTargetUpdateMode get_render_target_update_mode() const;
+	Ref<RenderTargetTexture> get_render_target_texture() const;
 
 	Vector2 get_camera_coords(const Vector2 &p_viewport_coords) const;
 	Vector2 get_camera_rect_size() const;
 
+	void queue_screen_capture();
+	Image get_screen_capture() const;
+
 	void set_use_own_world(bool p_world);
 	bool is_using_own_world() const;
 
-	void input(const Ref<InputEvent> &p_event);
-	void unhandled_input(const Ref<InputEvent> &p_event);
+	void input(const InputEvent &p_event);
+	void unhandled_input(const InputEvent &p_event);
 
 	void set_disable_input(bool p_disable);
 	bool is_input_disabled() const;
 
-	void set_disable_3d(bool p_disable);
-	bool is_3d_disabled() const;
+	void set_render_target_to_screen_rect(const Rect2 &p_rect);
+	Rect2 get_render_target_to_screen_rect() const;
 
-	void set_attach_to_screen_rect(const Rect2 &p_rect);
-	Rect2 get_attach_to_screen_rect() const;
-
-	Vector2 get_mouse_position() const;
+	Vector2 get_mouse_pos() const;
 	void warp_mouse(const Vector2 &p_pos);
 
 	void set_physics_object_picking(bool p_enable);
@@ -453,32 +363,11 @@ public:
 	Variant gui_get_drag_data() const;
 	Control *get_modal_stack_top() const;
 
-	void gui_reset_canvas_sort_index();
-	int gui_get_canvas_sort_index();
-
 	virtual String get_configuration_warning() const;
-
-	void set_usage(Usage p_usage);
-	Usage get_usage() const;
-
-	void set_debug_draw(DebugDraw p_debug_draw);
-	DebugDraw get_debug_draw() const;
-
-	int get_render_info(RenderInfo p_info);
-
-	void set_snap_controls_to_pixels(bool p_enable);
-	bool is_snap_controls_to_pixels_enabled() const;
 
 	Viewport();
 	~Viewport();
 };
 
-VARIANT_ENUM_CAST(Viewport::UpdateMode);
-VARIANT_ENUM_CAST(Viewport::ShadowAtlasQuadrantSubdiv);
-VARIANT_ENUM_CAST(Viewport::MSAA);
-VARIANT_ENUM_CAST(Viewport::Usage);
-VARIANT_ENUM_CAST(Viewport::DebugDraw);
-VARIANT_ENUM_CAST(Viewport::ClearMode);
-VARIANT_ENUM_CAST(Viewport::RenderInfo);
-
+VARIANT_ENUM_CAST(Viewport::RenderTargetUpdateMode);
 #endif

@@ -58,7 +58,7 @@ class DirAccessWindows : public DirAccess {
 	bool _cishidden;
 
 public:
-	virtual Error list_dir_begin(); ///< This starts dir listing
+	virtual bool list_dir_begin(); ///< This starts dir listing
 	virtual String get_next();
 	virtual bool current_is_dir() const;
 	virtual bool current_is_hidden() const;
@@ -75,8 +75,8 @@ public:
 
 	virtual Error make_dir(String p_dir);
 
-	virtual Error rename(String p_path, String p_new_path);
-	virtual Error remove(String p_path);
+	virtual Error rename(String p_from, String p_to);
+	virtual Error remove(String p_name);
 
 	//virtual FileType get_file_type() const;
 	size_t get_space_left();
