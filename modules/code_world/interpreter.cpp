@@ -54,6 +54,10 @@ static PyObject* PyInit_cw_emb() {
    Public Functions
 *********************/
 
+bool Interpreter::is_initialized() {
+   return initialized;
+}
+
 bool Interpreter::init(String code) {
    
    // ***** temp init *****
@@ -136,6 +140,7 @@ void Interpreter::_bind_methods() {
    ObjectTypeDB::bind_method("run", &Interpreter::run);
    ObjectTypeDB::bind_method("finalize", &Interpreter::finalize);
    ObjectTypeDB::bind_method("get_output", &Interpreter::get_output);
+	ObjectTypeDB::bind_method("is_initialized", &Interpreter::is_initialized);
 }
 
 Interpreter::Interpreter() {

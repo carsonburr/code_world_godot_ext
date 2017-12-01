@@ -18,6 +18,8 @@ protected:
    static void _bind_methods();
 
 public:
+   bool is_initialized();
+   
    bool init(String code);
    bool run();
    bool finalize();

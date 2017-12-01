@@ -8,6 +8,7 @@ class Room_Tile;
 
 class Room_Map : public Reference {
    OBJ_TYPE(Room_Map,Reference);
+   bool initialized;
    
    // used for directions of doors
    const int RIGHT = 0;
@@ -16,27 +17,26 @@ class Room_Map : public Reference {
    const int DOWN = 3;
    
    Ref<Floor_Map> floor;
-   Ref<Room_Map> doors[4];
    Ref<Room_Tile>** tiles;
    int size_x, size_y;
+   int x, y;
    
+   void set_tile(Ref<Room_Tile> tile, int x, int y);
 
 protected:
    static void _bind_methods();
 
 public:
-   Ref<Room_Tile> get_tile(int x, int y);
-   void set_tile(Ref<Room_Tile> tile, int x, int y);
-   Ref<Floor_Map> get_floor();
-   void set_floor(Ref<Floor_Map> floor);
-   Ref<Room_Map> get_door(int dir);
-   void set_door(Ref<Room_Map> nroom, int dir);
-   int get_size_x();
-   int get_size_y();
+   bool is_initialized();
+   Ref<Room_Tile> get_tile    (int x, int y);
+   Ref<Floor_Map> get_floor   ();
+   void           set_floor   (Ref<Floor_Map> floor);
+   int            get_size_x  ();
+   int            get_size_y  ();
+   int            get_x       ();
+   int            get_y       ();
    
-   void connect(int dir, Ref<Room_Map> nroom);
-   
-   Room_Map(Ref<Floor_Map> floor, int size_x, int size_y);
+   void           init        (Ref<Floor_Map> floor, int x, int y, int size_x, int size_y);
    Room_Map();
 };
 
