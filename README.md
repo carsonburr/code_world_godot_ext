@@ -1,13 +1,12 @@
-## Copy of the godot engine with added module for code_world
----
+## Copy of the godot engine with added module for code_world  
 link to most recent executable: https://www.dropbox.com/sh/5abcqw3idghleek/AABzjBqElM1cWP3MmvqVndzna?dl=0
 
-##Documentation
----
-####**Entity**
-Any object in godot (read node) that we want to represent to the interpreter
-#####Properties:
+## Documentation
 
+#### Entity  
+Any object in godot (read node) that we want to represent to the interpreter
+
+##### Properties:  
 <dl>
 	<dt>NodePath node</dt>
 		<dd>the path to the godot node the entity represents. For use with get_node(NodePath)</dd>
@@ -17,8 +16,7 @@ Any object in godot (read node) that we want to represent to the interpreter
 		<dd>get_tile(), set_tile(Room_Tile tile)</dd>
 </dl>
 
-#####Member functions:
-
+##### Member functions:  
 <dl>
 	<dt>void init(NodePath node, Room_Tile tile)</dt>
 		<dd>initializes the entity, other functions (including get/set) will not work until init is called</dd>
@@ -32,9 +30,9 @@ Any object in godot (read node) that we want to represent to the interpreter
 		<dd>move the entity to a tile in a new room. returns success</dd>
 </dl>
 
-####**Room_Tile**
-#####Properties:
+#### Room_Tile
 
+##### Properties:  
 <dl>
 	<dt>Room_Map room</dt>
 		<dd>the room that the tile resides in</dd>
@@ -47,8 +45,7 @@ Any object in godot (read node) that we want to represent to the interpreter
 		<dd>get_entity(), set_entity(Entity ent)</dd>
 </dl>
 
-#####Member functions:
-
+##### Member functions:  
 <dl>
 	<dt>void init(NodePath node, Room_Tile tile)</dt>
 		<dd>initializes the tile, other functions (including get/set) will not work until init is called</dd>
@@ -56,9 +53,9 @@ Any object in godot (read node) that we want to represent to the interpreter
 		<dd>check if tile is initialized</dd>
 </dl>
 
-####**Room_Map**
-#####Properties:
+#### Room_Map
 
+##### Properties:  
 <dl>
 	<dt>Floor_Map floor</dt>
 		<dd>the floor that the room resides in</dd>
@@ -74,8 +71,7 @@ Any object in godot (read node) that we want to represent to the interpreter
 		<dd>get_size_x(), get_size_y()</dd>
 </dl>
 
-#####Member functions:
-
+##### Member functions:  
 <dl>
 	<dt>void init(Floor_Map floor, int x, int y, int size_x, int size_y)</dt>
 		<dd>initializes the room, other functions (including get/set) will not work until init is called</dd>
@@ -83,9 +79,9 @@ Any object in godot (read node) that we want to represent to the interpreter
 		<dd>check if room is initialized</dd>
 </dl>
 
-####**Floor_Map**
-#####Properties:
+#### Floor_Map
 
+##### Properties:  
 <dl>
 	<dt>Room_Map** rooms</dt>
 		<dd>a 2d array of rooms that the floor contains</dd>
@@ -95,8 +91,7 @@ Any object in godot (read node) that we want to represent to the interpreter
 		<dd>get_size_x(), get_size_y()</dd>
 </dl>
 
-#####Member functions:
-
+##### Member functions:  
 <dl>
 	<dt>void init(int size_x, int size_y)</dt>
 		<dd>initializes the floor, other functions (including get/set) will not work until init is called</dd>
@@ -104,11 +99,11 @@ Any object in godot (read node) that we want to represent to the interpreter
 		<dd>check if floor is initialized</dd>
 </dl>
 
-####**Interpreter**
-#####Properties:
+#### Interpreter
 
-#####Member functions:
+##### Properties:  
 
+##### Member functions:  
 <dl>
 	<dt>bool init(String code)</dt>
 		<dd>initializes the interpreter with the user's code, other functions will not work until init is called. returns success</dd>
