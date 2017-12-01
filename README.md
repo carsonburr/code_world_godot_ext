@@ -3,7 +3,7 @@ link to most recent executable: https://www.dropbox.com/sh/5abcqw3idghleek/AABzj
 
 ## Documentation
 
-#### Entity  
+### Entity  
 Any object in godot (read node) that we want to represent to the interpreter
 
 ##### Properties:  
@@ -30,7 +30,7 @@ Any object in godot (read node) that we want to represent to the interpreter
 		<dd>move the entity to a tile in a new room. returns success</dd>
 </dl>
 
-#### Room_Tile
+### Room_Tile
 
 ##### Properties:  
 <dl>
@@ -53,7 +53,7 @@ Any object in godot (read node) that we want to represent to the interpreter
 		<dd>check if tile is initialized</dd>
 </dl>
 
-#### Room_Map
+### Room_Map
 
 ##### Properties:  
 <dl>
@@ -79,7 +79,7 @@ Any object in godot (read node) that we want to represent to the interpreter
 		<dd>check if room is initialized</dd>
 </dl>
 
-#### Floor_Map
+### Floor_Map
 
 ##### Properties:  
 <dl>
@@ -99,7 +99,7 @@ Any object in godot (read node) that we want to represent to the interpreter
 		<dd>check if floor is initialized</dd>
 </dl>
 
-#### Interpreter
+### Interpreter
 
 ##### Properties:  
 
