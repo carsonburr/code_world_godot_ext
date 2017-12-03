@@ -25,6 +25,7 @@ public:
    
    void init(int size_x, int size_y);
    Floor_Map();
+   ~Floor_Map();
 };
 
 #endif

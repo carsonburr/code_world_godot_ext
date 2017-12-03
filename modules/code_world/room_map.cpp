@@ -90,3 +90,15 @@ void Room_Map::_bind_methods() {
 Room_Map::Room_Map() {
    initialized = false;
 }
+
+Room_Map::~Room_Map() {
+   if (initialized) {
+      for (int cx = 0; cx < size_x; ++cx) {
+         for (int cy = 0; cy < size_y; ++cy) {
+            tiles[cx][cy].unref();
+         }
+         free(tiles[cx]);
+      }
+      free(tiles);
+   }
+}

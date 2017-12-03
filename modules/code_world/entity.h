@@ -30,6 +30,7 @@ public:
    
    void init(NodePath node, Ref<Room_Tile> tile);
    Entity();
+   ~Entity();
 };
 
 #endif

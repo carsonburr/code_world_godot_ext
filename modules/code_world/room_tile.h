@@ -28,6 +28,7 @@ public:
    
    void init(Ref<Room_Map> room, int x, int y);
    Room_Tile();
+   ~Room_Tile();
 };
 
 #endif

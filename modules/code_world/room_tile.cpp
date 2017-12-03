@@ -56,3 +56,9 @@ void Room_Tile::_bind_methods() {
 Room_Tile::Room_Tile() {
    initialized = false;
 }
+
+Room_Tile::~Room_Tile() {
+   if (initialized) {
+      if (ent != NULL) ent.unref();
+   }
+}

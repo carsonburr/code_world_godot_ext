@@ -84,3 +84,7 @@ void Entity::_bind_methods() {
 Entity::Entity() {
    initialized = false;
 }
+
+Entity::~Entity() {
+   
+}

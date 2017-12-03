@@ -46,7 +46,7 @@ void Floor_Map::init(int size_x, int size_y) {
    this->size_y = size_y;
    
    this->rooms = (Ref<Room_Map>**) calloc(size_x, sizeof(Ref<Room_Map>*));
-   for (int x = 0; x < size_x; x++) {
+   for (int x = 0; x < size_x; ++x) {
       this->rooms[x] = (Ref<Room_Map>*) calloc(size_y, sizeof(Ref<Room_Map>));
    }
 }
@@ -62,4 +62,16 @@ void Floor_Map::_bind_methods() {
 
 Floor_Map::Floor_Map() {
    initialized = false;
+}
+
+Floor_Map::~Floor_Map() {
+   if (initialized) {
+      for (int x = 0; x < size_x; ++x) {
+         for (int y = 0; y < size_y; ++y) {
+            rooms[x][y].unref();
+         }
+         free(rooms[x]);
+      }
+      free(rooms);
+   }
 }

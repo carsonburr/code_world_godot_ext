@@ -10,12 +10,6 @@ class Room_Map : public Reference {
    OBJ_TYPE(Room_Map,Reference);
    bool initialized;
    
-   // used for directions of doors
-   const int RIGHT = 0;
-   const int UP = 1;
-   const int LEFT = 2;
-   const int DOWN = 3;
-   
    Ref<Floor_Map> floor;
    Ref<Room_Tile>** tiles;
    int size_x, size_y;
@@ -38,6 +32,7 @@ public:
    
    void           init        (Ref<Floor_Map> floor, int x, int y, int size_x, int size_y);
    Room_Map();
+   ~Room_Map();
 };
 
 #endif
