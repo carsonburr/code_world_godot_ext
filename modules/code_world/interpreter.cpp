@@ -2,45 +2,86 @@
 
 #include "interpreter.h"
 
-static int c_output;
-
+#undef I
+#define I(x) false, 
+bool Interpreter::inputs[maxbutton] = { INTERP_INPUTS };
+Ref<Entity> Interpreter::playerbot = NULL;
 /***********************
    Embedded Functions
 ***********************/
-
-// test function. making sure python embedding works
-static PyObject* cw_get_n_by_three(PyObject* self, PyObject* args) {
-   int py_n;
-   if (PyArg_ParseTuple(args, "i:get_n_by_three", &py_n)) {
-      printf("py_n is %d", py_n);
-      return PyLong_FromLong(py_n*3);
-   }
-   return NULL;
-}
-
-static PyObject* cw_set_output(PyObject* self, PyObject* args) {
-   int py_output;
-   if (PyArg_ParseTuple(args, "i:set_output", &py_output)) {
-      c_output = py_output;
+static PyObject* cw_press_left(PyObject* self, PyObject* args) {
+   if (PyArg_ParseTuple(args, ":press_left")) {
+      Interpreter::inputs[Interpreter::left] = true;
       Py_RETURN_TRUE;
    }
    return NULL;
 }
 
+static PyObject* cw_press_up(PyObject* self, PyObject* args) {
+   if (PyArg_ParseTuple(args, ":press_up")) {
+      Interpreter::inputs[Interpreter::up] = true;
+      Py_RETURN_TRUE;
+   }
+   return NULL;
+}
 
+static PyObject* cw_press_right(PyObject* self, PyObject* args) {
+   if (PyArg_ParseTuple(args, ":press_right")) {
+      Interpreter::inputs[Interpreter::right] = true;
+      Py_RETURN_TRUE;
+   }
+   return NULL;
+}
+
+static PyObject* cw_press_down(PyObject* self, PyObject* args) {
+   if (PyArg_ParseTuple(args, ":press_down")) {
+      Interpreter::inputs[Interpreter::down] = true;
+      Py_RETURN_TRUE;
+   }
+   return NULL;
+}
+
+static PyObject* cw_press_use_arrow(PyObject* self, PyObject* args) {
+   if (PyArg_ParseTuple(args, ":press_use_arrow")) {
+      Interpreter::inputs[Interpreter::use_arrow] = true;
+      Py_RETURN_TRUE;
+   }
+   return NULL;
+}
+
+static PyObject* cw_get_pos_x(PyObject* self, PyObject* args) {
+   if (PyArg_ParseTuple(args, ":get_pos_x")) {
+      int pos_x = Interpreter::playerbot->get_tile()->get_x();
+      return PyLong_FromLong(pos_x);
+   }
+   return NULL;
+}
+
+static PyObject* cw_get_pos_y(PyObject* self, PyObject* args) {
+   if (PyArg_ParseTuple(args, ":get_pos_y")) {
+      int pos_y = Interpreter::playerbot->get_tile()->get_y();
+      return PyLong_FromLong(pos_y);
+   }
+   return NULL;
+}
 
 /**********************
    Module Definition
 **********************/
 
 static PyMethodDef cw_methods[] = {
-   {"get_n_by_three", cw_get_n_by_three, METH_VARARGS, "Return n times three"},
-   {"set_output", cw_set_output, METH_VARARGS, "Set a variable within C++"},
+   {"press_left", cw_press_left, METH_VARARGS, "Press left input"},
+   {"press_up", cw_press_up, METH_VARARGS, "Press up input"},
+   {"press_right", cw_press_right, METH_VARARGS, "Press right input"},
+   {"press_down", cw_press_down, METH_VARARGS, "Press down input"},
+   {"press_use_arrow", cw_press_use_arrow, METH_VARARGS, "Press use_arrow input"},
+   {"get_pos_x", cw_get_pos_x, METH_VARARGS, "Get bot x"},
+   {"get_pos_y", cw_get_pos_y, METH_VARARGS, "Get bot y"},
    {NULL, NULL, 0, NULL}
 };
 
 static PyModuleDef cw_module = {
-   PyModuleDef_HEAD_INIT, "cw_emb", NULL, -1, cw_methods,
+   PyModuleDef_HEAD_INIT, "cw", NULL, -1, cw_methods,
    NULL, NULL, NULL, NULL
 };
 
@@ -58,10 +99,12 @@ bool Interpreter::is_initialized() {
    return initialized;
 }
 
-bool Interpreter::init(String code) {
+bool Interpreter::init(String code, Ref<Entity> pb) {
+   if (initialized) {
+      return false;
+   }
    
-   // ***** temp init *****
-   c_output = 0;
+   playerbot = pb;
    
    // save file from code
    FILE* py_file = fopen("user_code.py", "w");
@@ -69,7 +112,7 @@ bool Interpreter::init(String code) {
    fclose(py_file);
    
    // import C++ module
-   PyImport_AppendInittab("cw_emb", &PyInit_cw_emb);
+   PyImport_AppendInittab("cw", &PyInit_cw_emb);
    
    Py_Initialize();
    
@@ -108,6 +151,8 @@ bool Interpreter::run() {
       return false;
    }
    
+   for (int i = 0; i < maxbutton; i++) inputs[i] = false;
+   
    PyObject_CallObject(py_run_func, NULL);
    
    if (PyErr_Occurred()) {
@@ -131,21 +176,27 @@ bool Interpreter::finalize() {
    return true;
 }
 
-int Interpreter::get_output() {
-   return c_output;
+bool Interpreter::is_button_pressed(int button) {
+   if (button < 0 || button > maxbutton) {
+      return false;
+   }
+   return inputs[button];
 }
 
 void Interpreter::_bind_methods() {
    ObjectTypeDB::bind_method("init", &Interpreter::init);
    ObjectTypeDB::bind_method("run", &Interpreter::run);
    ObjectTypeDB::bind_method("finalize", &Interpreter::finalize);
-   ObjectTypeDB::bind_method("get_output", &Interpreter::get_output);
+   ObjectTypeDB::bind_method("is_button_pressed", &Interpreter::is_button_pressed);
 	ObjectTypeDB::bind_method("is_initialized", &Interpreter::is_initialized);
 }
 
 Interpreter::Interpreter() {
-   // ***** temp init *****
-   c_output = 0;
-   
    initialized = false;
 }
+
+Interpreter::~Interpreter() {
+   finalize();
+}
+
+#undef I
