@@ -31,10 +31,7 @@ Ref<Room_Tile> Room_Map::get_tile(int x, int y) {
 
 void Room_Map::set_tile(Ref<Room_Tile> tile, int x, int y) {
    RETURN_IF(!is_initialized())
-   if (x < 0 || y < 0 || x >= size_x || y >= size_y) {
-      return;
-   }
-   
+   RETURN_IF(x < 0 || y < 0 || x >= size_x || y >= size_y)
    tiles[x][y] = tile;
 }
 
@@ -63,6 +60,19 @@ int Room_Map::get_y() {
    return y;
 }
 
+bool Room_Map::get_door(int dir) {
+   RETURN_NULL_IF(!is_initialized())
+   RETURN_NULL_IF(dir < 0 || dir > 3)
+   return doors[dir];
+}
+
+void Room_Map::set_doors(bool dup, bool ddown, bool dleft, bool dright) {
+   this->doors[up] = dup;
+   this->doors[down] = ddown;
+   this->doors[left] = dleft;
+   this->doors[right] = dright;
+}
+
 void Room_Map::init(Ref<Floor_Map> floor, int x, int y, int size_x, int size_y) {
    initialized = true;
    this->floor = floor;
@@ -70,6 +80,10 @@ void Room_Map::init(Ref<Floor_Map> floor, int x, int y, int size_x, int size_y) 
    this->size_y = size_y;
    this->x = x;
    this->y = y;
+   this->doors[up] = false;
+   this->doors[down] = false;
+   this->doors[left] = false;
+   this->doors[right] = false;
    
    this->tiles = (Ref<Room_Tile>**) calloc(size_x, sizeof(Ref<Room_Tile>*));
    for (int x = 0; x < size_x; x++) {
@@ -83,8 +97,14 @@ void Room_Map::_bind_methods() {
 	ObjectTypeDB::bind_method("get_floor", &Room_Map::get_floor);
 	ObjectTypeDB::bind_method("get_size_x", &Room_Map::get_size_x);
 	ObjectTypeDB::bind_method("get_size_y", &Room_Map::get_size_y);
+	ObjectTypeDB::bind_method("get_door", &Room_Map::get_door);
+	ObjectTypeDB::bind_method("set_doors", &Room_Map::set_doors);
 	ObjectTypeDB::bind_method("init", &Room_Map::init);
 	ObjectTypeDB::bind_method("is_initialized", &Room_Map::is_initialized);
+   BIND_CONSTANT(up);
+   BIND_CONSTANT(down);
+   BIND_CONSTANT(left);
+   BIND_CONSTANT(right);
 }
 
 Room_Map::Room_Map() {

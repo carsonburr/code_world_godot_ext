@@ -23,7 +23,7 @@ protected:
 
 public:
    
-   #define INTERP_INPUTS I(left)I(up)I(right)I(down)I(use_arrow)
+   #define INTERP_INPUTS I(up)I(down)I(left)I(right)I(use_arrow)
    #define I(x) x, 
    enum buttons : int {
       INTERP_INPUTS
@@ -31,6 +31,7 @@ public:
    };
    static bool inputs[maxbutton];
    static Ref<Entity> playerbot;
+   static int test_output;
    
    bool is_initialized();
    
@@ -39,6 +40,7 @@ public:
    bool finalize();
    
    bool is_button_pressed(int button);
+   int get_test_output();
 
    Interpreter();
    ~Interpreter();

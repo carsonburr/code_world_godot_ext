@@ -14,6 +14,13 @@ class Room_Map : public Reference {
    Ref<Room_Tile>** tiles;
    int size_x, size_y;
    int x, y;
+   enum doordir : int {
+      up,
+      down,
+      left,
+      right
+   };
+   bool doors[4];
    
    void set_tile(Ref<Room_Tile> tile, int x, int y);
 
@@ -29,6 +36,8 @@ public:
    int            get_size_y  ();
    int            get_x       ();
    int            get_y       ();
+   bool           get_door    (int dir);
+   void           set_doors   (bool dup, bool ddown, bool dleft, bool dright);
    
    void           init        (Ref<Floor_Map> floor, int x, int y, int size_x, int size_y);
    Room_Map();

@@ -69,6 +69,9 @@ Any object in godot (read node) that we want to represent to the interpreter
 	<dt>int size_x, size_y</dt>
 		<dd>the dimensions for the grid of tiles that the room contains</dd>
 		<dd>get_size_x(), get_size_y()</dd>
+	<dt>bool doors[4]</dt>
+		<dd>stores whether or not there is a door in each direction. Uses constants up, down, left, right</dd>
+		<dd>get_door(int dir), set_doors(bool up, bool down, bool left, bool right)</dd>
 </dl>
 
 ##### Member functions:  
@@ -113,4 +116,42 @@ Any object in godot (read node) that we want to represent to the interpreter
 		<dd>Calls a function in the user's code named 'run()' returns success</dd>
 	<dt>bool finalize()</dt>
 		<dd>Stops the interpreter. Needed to prevent errors/memory leaks. returns success</dd>
+	<dt>bool is_button_pressed(int button)</dt>
+		<dd>Checks if the user pressed the specified button with their python code. button uses the constants up, down, left, right, use_arrow</dd>
 </dl>
+
+### Python Module
+
+Use:
+```Python
+import cw
+
+def run():
+	#user code here. Each time the player-bot steps, this is called
+```
+
+##### Methods:
+<dl>
+	<dt>cw.press_up()</dt>
+	<dt>cw.press_down()</dt>
+	<dt>cw.press_left()</dt>
+	<dt>cw.press_right()</dt>
+	<dt>cw.press_use_arrow()</dt>
+		<dd>User can call these to press a virtual button input for the bot</dd>
+	<dt>cw.get_pos_x()</dt>
+	<dt>cw.get_pos_y()</dt>
+		<dd>User can call these to get the position of the bot in the current room</dd>
+	<dt>cw.get_room_x()</dt>
+	<dt>cw.get_room_y()</dt>
+		<dd>User can call these to get the x and y coordinates of the current room in the floor</dd>
+	<dt>bool cw.get_enemy_at(x, y)</dt>
+		<dd>User can call these to determine if there is an enemy on the tile of the (x, y) coordinates of the room</dd>
+	<dt>bool cw.get_door(dir)</dt>
+		<dd>determines if there is a door in the current room in the specified direction. Takes "u", "d", "l", or "r" as dir</dd>
+	<dt>bool cw.get_door(str dir, x, y)</dt>
+		<dd>determines if there is a door in the specified (x, y) room in the specified direction. Takes "u", "d", "l", or "r" as dir</dd>
+</dl>
+
+
+
+
