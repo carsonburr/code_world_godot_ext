@@ -148,7 +148,7 @@ def run():
 		<dd>User can call these to determine if there is an enemy on the tile of the (x, y) coordinates of the room</dd>
 	<dt>bool cw.get_door(dir)</dt>
 		<dd>determines if there is a door in the current room in the specified direction. Takes "u", "d", "l", or "r" as dir</dd>
-	<dt>bool cw.get_door(str dir, x, y)</dt>
+	<dt>bool cw.get_door_room(str dir, x, y)</dt>
 		<dd>determines if there is a door in the specified (x, y) room in the specified direction. Takes "u", "d", "l", or "r" as dir</dd>
 </dl>
 
