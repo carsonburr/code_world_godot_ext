@@ -140,12 +140,12 @@ def run():
 		<dd>User can call these to press a virtual button input for the bot</dd>
 	<dt>cw.get_pos_x()</dt>
 	<dt>cw.get_pos_y()</dt>
-		<dd>User can call these to get the position of the bot in the current room</dd>
+		<dd>gets the position of the bot in the current room</dd>
 	<dt>cw.get_room_x()</dt>
 	<dt>cw.get_room_y()</dt>
-		<dd>User can call these to get the x and y coordinates of the current room in the floor</dd>
+		<dd>gets the x and y coordinates of the current room in the floor</dd>
 	<dt>bool cw.get_enemy_at(x, y)</dt>
-		<dd>User can call these to determine if there is an enemy on the tile of the (x, y) coordinates of the room</dd>
+		<dd>determines if there is an enemy on the tile of the (x, y) coordinates of the room</dd>
 	<dt>bool cw.get_door(dir)</dt>
 		<dd>determines if there is a door in the current room in the specified direction. Takes "u", "d", "l", or "r" as dir</dd>
 	<dt>bool cw.get_door_room(str dir, x, y)</dt>
