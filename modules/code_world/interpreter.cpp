@@ -287,6 +287,9 @@ bool Interpreter::finalize() {
    Py_DECREF(py_run_func);
    Py_DECREF(py_module);
    Py_Finalize();
+   
+   remove("__pycache__/user_code.cpython-36.pyc");
+   
    initialized = false;
    return true;
 }

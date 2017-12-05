@@ -18,10 +18,16 @@ Ref<Room_Tile> Room_Map::get_tile(int x, int y) {
          return NULL;
       }
    }
+   if (x < 0 || x >= size_x) {
+      return NULL;
+   }
    if (y < 1 || y >= size_y-1) {
       if (x < ((int)(size_x/2))-1 || x > ((int)(size_x/2))+1) {
          return NULL;
       }
+   }
+   if (y < 0 || y >= size_y) {
+      return NULL;
    }
    
    Ref<Room_Tile> tile = tiles[x][y];
