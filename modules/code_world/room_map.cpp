@@ -13,8 +13,15 @@ bool Room_Map::is_initialized() {
 
 Ref<Room_Tile> Room_Map::get_tile(int x, int y) {
    RETURN_NULL_IF(!is_initialized())
-   if (x < 0 || y < 0 || x >= size_x || y >= size_y) {
-      return NULL;
+   if (x < 1 || x >= size_x-1) {
+      if (y < ((int)(size_y/2))-1 || y > ((int)(size_y/2))+1) {
+         return NULL;
+      }
+   }
+   if (y < 1 || y >= size_y-1) {
+      if (x < ((int)(size_x/2))-1 || x > ((int)(size_x/2))+1) {
+         return NULL;
+      }
    }
    
    Ref<Room_Tile> tile = tiles[x][y];
@@ -22,6 +29,7 @@ Ref<Room_Tile> Room_Map::get_tile(int x, int y) {
    if (tile == NULL) {
       tile = (Ref<Room_Tile>) memnew( Room_Tile );
       tile->init(Ref<Room_Map>(this), x, y);
+      tile->get_room().unref();
       set_tile(tile, x, y);
       return tiles[x][y];
    }
@@ -91,6 +99,20 @@ void Room_Map::init(Ref<Floor_Map> floor, int x, int y, int size_x, int size_y) 
    }
 }
 
+void Room_Map::uninit() {
+   initialized = false;
+   
+   if (initialized) {
+      for (int cx = 0; cx < size_x; ++cx) {
+         for (int cy = 0; cy < size_y; ++cy) {
+            tiles[cx][cy].unref();
+         }
+         free(tiles[cx]);
+      }
+      free(tiles);
+   }
+}
+
 void Room_Map::_bind_methods() {
 	ObjectTypeDB::bind_method("get_tile", &Room_Map::get_tile);
 	ObjectTypeDB::bind_method("set_tile", &Room_Map::set_tile);
@@ -100,6 +122,7 @@ void Room_Map::_bind_methods() {
 	ObjectTypeDB::bind_method("get_door", &Room_Map::get_door);
 	ObjectTypeDB::bind_method("set_doors", &Room_Map::set_doors);
 	ObjectTypeDB::bind_method("init", &Room_Map::init);
+	ObjectTypeDB::bind_method("uninit", &Room_Map::uninit);
 	ObjectTypeDB::bind_method("is_initialized", &Room_Map::is_initialized);
    BIND_CONSTANT(up);
    BIND_CONSTANT(down);
@@ -112,13 +135,5 @@ Room_Map::Room_Map() {
 }
 
 Room_Map::~Room_Map() {
-   if (initialized) {
-      for (int cx = 0; cx < size_x; ++cx) {
-         for (int cy = 0; cy < size_y; ++cy) {
-            tiles[cx][cy].unref();
-         }
-         free(tiles[cx]);
-      }
-      free(tiles);
-   }
+   uninit();
 }

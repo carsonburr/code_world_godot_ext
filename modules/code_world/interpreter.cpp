@@ -156,6 +156,8 @@ static PyObject* cw_get_door_room(PyObject* self, PyObject* args) {
       case 114:
          door = room->get_door(Interpreter::right);
          break;
+      default:
+         break;
    }
    if (door) {
       Py_RETURN_TRUE;
@@ -300,6 +302,14 @@ int Interpreter::get_test_output() {
    return test_output;
 }
 
+void Interpreter::set_playerbot(Ref<Entity> pb) {
+   if (!initialized) {
+      // handle error
+      return;
+   }
+   playerbot = pb;
+}
+
 void Interpreter::_bind_methods() {
    ObjectTypeDB::bind_method("init", &Interpreter::init);
    ObjectTypeDB::bind_method("run", &Interpreter::run);
@@ -307,6 +317,7 @@ void Interpreter::_bind_methods() {
    ObjectTypeDB::bind_method("is_button_pressed", &Interpreter::is_button_pressed);
 	ObjectTypeDB::bind_method("is_initialized", &Interpreter::is_initialized);
 	ObjectTypeDB::bind_method("get_test_output", &Interpreter::get_test_output);
+	ObjectTypeDB::bind_method("set_playerbot", &Interpreter::set_playerbot);
    #undef I
    #define I(x) BIND_CONSTANT(x);\
    

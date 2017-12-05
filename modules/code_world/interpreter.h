@@ -41,6 +41,7 @@ public:
    
    bool is_button_pressed(int button);
    int get_test_output();
+   void set_playerbot(Ref<Entity> pb);
 
    Interpreter();
    ~Interpreter();

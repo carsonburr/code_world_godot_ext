@@ -18,6 +18,9 @@ Ref<Entity> Room_Tile::get_entity() {
 
 void Room_Tile::set_entity(Ref<Entity> ent) {
    RETURN_IF(!is_initialized())
+   if (this->ent != NULL) {
+      this->ent.unref();
+   }
    this->ent = ent;
 }
 

@@ -40,6 +40,7 @@ public:
    void           set_doors   (bool dup, bool ddown, bool dleft, bool dright);
    
    void           init        (Ref<Floor_Map> floor, int x, int y, int size_x, int size_y);
+   void           uninit      ();
    Room_Map();
    ~Room_Map();
 };
